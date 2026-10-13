@@ -61,10 +61,13 @@ except Exception as exc:
 
 def is_bot_token_valid(token: Optional[str]) -> bool:
     """Validate whether BOT_TOKEN is present and matches the basic Telegram bot token format."""
-    if not token or token == "YOUR_BOT_TOKEN_HERE":
+    if not token:
         return False
-    parts = token.strip().split(":")
-    if len(parts) != 2 or not parts[0].isdigit() or not parts[1]:
+    t = token.strip()
+    if t in ("YOUR_BOT_TOKEN_HERE", "1234567890:ABCdefghijklmnopqrstuvwxyz", "1234567890:ABC-DEF"):
+        return False
+    parts = t.split(":")
+    if len(parts) != 2 or not parts[0].isdigit() or len(parts[1]) < 10:
         return False
     return True
 
@@ -92,6 +95,8 @@ async def setup_bot_commands(bot: Bot):
 
 async def main():
     logger.info("Initializing GeoGuru & GeoGuessr Bot...")
+    logger.info(f"Database active path: {config.DB_PATH}")
+    print(f"Initializing GeoGuru & GeoGuessr Bot... (Database: {config.DB_PATH})", flush=True)
 
     # Initialize async database
     db = Database(config.DB_PATH)
@@ -101,15 +106,18 @@ async def main():
     load_photo_cache()
 
     if not is_bot_token_valid(config.BOT_TOKEN):
-        logger.error(
-            "❌ CRITICAL: BOT_TOKEN is missing! Set BOT_TOKEN in Railway Variables.\n"
-            "To connect live to Telegram:\n"
-            "1. Obtain a token from @BotFather\n"
-            "2. Add BOT_TOKEN=123456:ABC-DEF in Railway Variables or .env\n"
-            "3. Restart the deployment"
+        err_msg = (
+            "❌ CRITICAL: BOT_TOKEN is missing or default placeholder left!\n"
+            "Telegramga ulanish uchun:\n"
+            "1. Telegramda @BotFather ga kiring va o'z botingiz tokenini oling.\n"
+            "2. Railway -> Variables bo'limiga kiring.\n"
+            "3. BOT_TOKEN=123456:ABC-DEF ko'rinishidagi haqiqiy tokenni kiriting.\n"
+            "4. 'Deploy' tugmasini bosing."
         )
-        sys.stdout.flush()
-        sys.stderr.flush()
+        logger.info(err_msg)
+        logger.error(err_msg)
+        print(err_msg, file=sys.stdout, flush=True)
+        print(err_msg, file=sys.stderr, flush=True)
         # Prevent tight restart loop in Railway container
         if "unittest" not in sys.modules and not os.getenv("TESTING"):
             await asyncio.sleep(3600)
@@ -122,6 +130,31 @@ async def main():
     )
     bot.db = db
     bot["db"] = db
+
+    # Live connection test with Telegram (only in live runtime, skipped in unit tests)
+    if "unittest" not in sys.modules and not os.getenv("TESTING"):
+        try:
+            bot_user = await bot.get_me()
+            conn_ok = f"✅ Telegram bot muvaffaqiyatli ulandi: @{bot_user.username} (ID: {bot_user.id})"
+            logger.info(conn_ok)
+            print(conn_ok, file=sys.stdout, flush=True)
+        except Exception as exc:
+            auth_err = (
+                f"❌ TELEGRAM BOT TOKEN XATOSI: Telegram serveri tokenni qabul qilmadi!\n"
+                f"Xato tafsiloti: {exc}\n\n"
+                f"👉 Sababi: Railway Variables bo'limidagi BOT_TOKEN noto'g'ri, yaroqsiz yoki muddati o'tgan.\n"
+                f"👉 Yechim:\n"
+                f"1. Telegramda @BotFather ga kiring va haqiqiy bot tokenni oling.\n"
+                f"2. Railway -> Variables bo'limida BOT_TOKEN qiymatini yangilang.\n"
+                f"3. Railway-da 'Deploy' tugmasini bosing."
+            )
+            logger.info(auth_err)
+            logger.error(auth_err)
+            print(auth_err, file=sys.stdout, flush=True)
+            print(auth_err, file=sys.stderr, flush=True)
+            await bot.session.close()
+            await asyncio.sleep(3600)
+            return
 
     dp = Dispatcher()
     dp["db"] = db
@@ -136,8 +169,13 @@ async def main():
     await setup_bot_commands(bot)
 
     logger.info("Bot started successfully. Waiting for updates...")
-    sys.stdout.flush()
+    print("Bot started successfully. Waiting for updates...", file=sys.stdout, flush=True)
     try:
+        if "unittest" not in sys.modules and not os.getenv("TESTING"):
+            try:
+                await bot.delete_webhook(drop_pending_updates=True)
+            except Exception as wh_err:
+                logger.warning(f"Webhook reset notice: {wh_err}")
         await dp.start_polling(bot, db=db)
     finally:
         await bot.session.close()
