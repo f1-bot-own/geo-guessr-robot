@@ -1,0 +1,33 @@
+# Environment & Secrets (NEVER push tokens to GitHub)
+.env
+.env.local
+*.env
+
+# SQLite Databases & Local Storage
+geobot.db
+*.db
+*.db-journal
+data/photo_cache.json
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
