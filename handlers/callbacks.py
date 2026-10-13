@@ -418,8 +418,28 @@ async def cb_set_language(query: CallbackQuery, bot: Bot):
     chat = query.message.chat
     if chat.type in ("group", "supergroup"):
         await db.set_chat_language(chat.id, new_lang)
+        active_session = game_manager.get_session(chat.id)
+        if active_session:
+            active_session.lang = new_lang
+        try:
+            from game.engine import game_manager as engine_gm
+            eng_session = engine_gm.get_group_game(chat.id)
+            if eng_session:
+                eng_session.lang = new_lang
+        except Exception:
+            pass
     else:
         await db.set_user_language(query.from_user.id, new_lang)
+        active_solo = game_manager.get_solo_session(query.from_user.id)
+        if active_solo:
+            active_solo.lang = new_lang
+        try:
+            from game.engine import game_manager as engine_gm
+            eng_solo = engine_gm.get_solo_game(query.from_user.id)
+            if eng_solo:
+                eng_solo.lang = new_lang
+        except Exception:
+            pass
 
     text = t("lang_changed", new_lang, lang_name=lang_name)
     await query.answer(f"Language: {lang_name}")

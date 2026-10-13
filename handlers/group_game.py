@@ -22,6 +22,7 @@ from config import (
 from locales.i18n import t
 from database.db import (
     get_user_language,
+    get_chat_language,
     record_answer_result,
     record_match_player_stats,
     record_match,
@@ -371,6 +372,13 @@ async def launch_next_round(chat_id: int, bot: Bot):
     session = game_manager.get_group_game(chat_id)
     if not session or not session.is_active:
         return
+
+    try:
+        latest_lang = await get_chat_language(chat_id)
+        if latest_lang:
+            session.lang = latest_lang
+    except Exception:
+        pass
 
     question = session.start_next_round()
     lang = session.lang

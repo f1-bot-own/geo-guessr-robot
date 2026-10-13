@@ -432,8 +432,49 @@ async def cmd_top(message: Message, bot: Bot):
 
 @router.message(Command("language", "lang"))
 async def cmd_language(message: Message, bot: Bot):
-    """Change user or chat language."""
+    """Change user or chat language, supporting direct language argument (e.g. /language uz)."""
     db = get_db(bot)
+    args = (message.text or "").strip().split()[1:]
+    if args:
+        chosen = args[0].lower().strip().lstrip("@").split("@")[0]
+        lang_map = {
+            "uz": "uz", "uzbek": "uz", "o'zbek": "uz", "oʻzbek": "uz", "uzbekcha": "uz",
+            "ru": "ru", "rus": "ru", "russian": "ru", "рус": "ru", "русский": "ru",
+            "en": "en", "eng": "en", "english": "en", "анг": "en", "английский": "en"
+        }
+        if chosen in lang_map:
+            new_lang = lang_map[chosen]
+            lang_names = {"en": "English 🇬🇧", "ru": "Русский 🇷🇺", "uz": "O'zbekcha 🇺🇿"}
+            lang_name = lang_names.get(new_lang, new_lang)
+            if message.chat.type in ("group", "supergroup"):
+                await db.set_chat_language(message.chat.id, new_lang)
+                active_session = game_manager.get_session(message.chat.id)
+                if active_session:
+                    active_session.lang = new_lang
+                try:
+                    from game.engine import game_manager as engine_gm
+                    eng_session = engine_gm.get_group_game(message.chat.id)
+                    if eng_session:
+                        eng_session.lang = new_lang
+                except Exception:
+                    pass
+            else:
+                await db.set_user_language(message.from_user.id, new_lang)
+                active_solo = game_manager.get_solo_session(message.from_user.id)
+                if active_solo:
+                    active_solo.lang = new_lang
+                try:
+                    from game.engine import game_manager as engine_gm
+                    eng_solo = engine_gm.get_solo_game(message.from_user.id)
+                    if eng_solo:
+                        eng_solo.lang = new_lang
+                except Exception:
+                    pass
+
+            confirmation = t("lang_changed", new_lang, lang_name=lang_name)
+            await message.reply(text=confirmation, parse_mode="HTML")
+            return
+
     lang = "en"
     if message.chat.type in ("group", "supergroup"):
         lang = await db.get_chat_language(message.chat.id)

@@ -540,6 +540,13 @@ async def proceed_after_round(bot: Bot, chat_id: int, session: GameSession, db):
                 if session.status == "finished":
                     return
                 session.status = "in_progress"
+                if db and hasattr(db, "get_chat_language"):
+                    try:
+                        latest_lang = await db.get_chat_language(chat_id)
+                        if latest_lang:
+                            session.lang = latest_lang
+                    except Exception:
+                        pass
                 session.next_round()
 
             await send_round_question(bot, chat_id, session, db)

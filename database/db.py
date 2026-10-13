@@ -191,9 +191,16 @@ class Database:
             return dict(row) if row else None
 
     async def set_user_language(self, user_id: int, language: str):
-        """Update preferred user language."""
+        """Update preferred user language, ensuring user record exists."""
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("UPDATE users SET language = ? WHERE user_id = ?", (language, user_id))
+            await db.execute(
+                """
+                INSERT INTO users (user_id, language)
+                VALUES (?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET language = excluded.language
+                """,
+                (user_id, language)
+            )
             await db.commit()
 
     async def get_user_language(self, user_id: int) -> str:
@@ -227,6 +234,7 @@ class Database:
                 """
                 INSERT INTO chats (chat_id, chat_type, title, language)
                 VALUES (?, ?, ?, ?)
+                ON CONFLICT(chat_id) DO UPDATE SET language = excluded.language
                 """,
                 (chat_id, chat_type, title or "Group", default_lang)
             )
@@ -244,9 +252,16 @@ class Database:
             return row[0] if row and row[0] else "en"
 
     async def set_chat_language(self, chat_id: int, language: str):
-        """Update group chat language."""
+        """Update group chat language, ensuring chat record exists."""
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("UPDATE chats SET language = ? WHERE chat_id = ?", (language, chat_id))
+            await db.execute(
+                """
+                INSERT INTO chats (chat_id, chat_type, title, language)
+                VALUES (?, 'group', 'Group', ?)
+                ON CONFLICT(chat_id) DO UPDATE SET language = excluded.language
+                """,
+                (chat_id, language)
+            )
             await db.commit()
 
     async def record_answer_result(self, user_id: int, is_correct: bool, xp_earned: int = 0, user_name: Optional[str] = None):
@@ -717,3 +732,9 @@ async def update_duel_status(duel_id: int, status: str, winner_id: Optional[int]
 
 async def record_match(chat_id: int, mode: str, winner_id: Optional[int], winner_name: str, winner_score: int, players_count: int):
     return await get_default_db().record_match(chat_id, mode, winner_id, winner_name, winner_score, players_count)
+
+async def set_chat_language(chat_id: int, language: str):
+    return await get_default_db().set_chat_language(chat_id, language)
+
+async def get_chat_language(chat_id: int) -> str:
+    return await get_default_db().get_chat_language(chat_id)

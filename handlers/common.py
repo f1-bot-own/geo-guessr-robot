@@ -12,6 +12,8 @@ from database.db import (
     get_or_create_user,
     set_user_language,
     get_user_language,
+    set_chat_language,
+    get_chat_language,
     get_user,
     get_global_leaderboard,
     get_group_leaderboard,
@@ -74,13 +76,25 @@ async def handle_language(message: Message):
 
 @router.callback_query(F.data.startswith("set_lang:"))
 async def handle_set_language_callback(callback: CallbackQuery):
-    """Process language selection callback."""
+    """Process language selection callback for both users and groups."""
     user_id = callback.from_user.id
+    chat = callback.message.chat
     new_lang = callback.data.split(":")[1]
     
     if new_lang in SUPPORTED_LANGUAGES:
-        await set_user_language(user_id, new_lang)
-        lang_names = {"en": "English", "ru": "Русский", "uz": "O'zbekcha"}
+        if chat.type in ("group", "supergroup"):
+            await set_chat_language(chat.id, new_lang)
+            try:
+                from games.manager import game_manager as gm
+                active = gm.get_session(chat.id)
+                if active:
+                    active.lang = new_lang
+            except Exception:
+                pass
+        else:
+            await set_user_language(user_id, new_lang)
+
+        lang_names = {"en": "English 🇬🇧", "ru": "Русский 🇷🇺", "uz": "O'zbekcha 🇺🇿"}
         confirmation = t("lang_changed", new_lang, lang_name=lang_names.get(new_lang, new_lang))
         await callback.answer()
         try:
