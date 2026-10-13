@@ -30,7 +30,11 @@ PHOTO_CACHE: Dict[str, str] = {}
 
 
 def get_default_photo_cache_path() -> Path:
-    """Resolve photo cache path to the directory containing DB_PATH (e.g. Railway volume)."""
+    """Resolve photo cache path to PHOTO_CACHE_PATH if set, or directory containing DB_PATH (e.g. Railway volume)."""
+    import os
+    env_cache = os.getenv("PHOTO_CACHE_PATH")
+    if env_cache:
+        return Path(env_cache)
     db_str = str(config.DB_PATH)
     if db_str == ":memory:":
         return config.BASE_DIR / "photo_cache.json"
@@ -42,11 +46,15 @@ PHOTO_CACHE_FILE = get_default_photo_cache_path()
 
 def load_photo_cache(file_path: Optional[Path] = None):
     """Load cached telegram file_ids from disk if available."""
-    target = file_path or PHOTO_CACHE_FILE
+    target = file_path or get_default_photo_cache_path()
     if not target.exists():
         legacy_path = config.BASE_DIR / "data" / "photo_cache.json"
         if legacy_path.exists():
             target = legacy_path
+        else:
+            root_path = config.BASE_DIR / "photo_cache.json"
+            if root_path.exists():
+                target = root_path
 
     if target.exists():
         try:
@@ -58,13 +66,14 @@ def load_photo_cache(file_path: Optional[Path] = None):
         except Exception as e:
             logger.warning(f"Could not load photo cache from {target}: {e}")
 
+
 ENABLE_PERSISTENT_CACHE: bool = True
 
 def save_photo_cache(file_path: Optional[Path] = None):
     """Persist cached telegram file_ids to disk."""
     if file_path is None and not ENABLE_PERSISTENT_CACHE:
         return
-    target = file_path or PHOTO_CACHE_FILE
+    target = file_path or get_default_photo_cache_path()
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, "w", encoding="utf-8") as f:

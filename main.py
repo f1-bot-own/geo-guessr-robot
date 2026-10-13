@@ -19,31 +19,44 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
-from aiogram.client.default import DefaultBotProperties
-from aiogram.types import BotCommand
-
-from handlers.bot_compat import patch_bot_item_access
-patch_bot_item_access()
-
-import config
-from database.db import Database
-from handlers import (
-    commands_router,
-    callbacks_router,
-    chat_member_router,
-    text_answers_router,
-)
-from games.flow import load_photo_cache
-
-# Configure logging to stdout so Railway's deploy log capture displays all messages
+# Configure logging to stdout immediately so Railway's deploy log capture displays all messages
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger("GeoBot")
+
+try:
+    from aiogram import Bot, Dispatcher
+    from aiogram.enums import ParseMode
+    from aiogram.client.default import DefaultBotProperties
+    from aiogram.types import BotCommand
+
+    from handlers.bot_compat import patch_bot_item_access
+    patch_bot_item_access()
+
+    import config
+    from database.db import Database
+    from handlers import (
+        commands_router,
+        callbacks_router,
+        chat_member_router,
+        text_answers_router,
+    )
+    from games.flow import load_photo_cache
+except Exception as exc:
+    tb = traceback.format_exc()
+    msg = f"❌ CRITICAL: Fatal startup import exception:\n{tb}"
+    logger.error(msg)
+    print(msg, file=sys.stderr)
+    print(msg, file=sys.stdout)
+    sys.stderr.flush()
+    sys.stdout.flush()
+    if __name__ == "__main__" and "unittest" not in sys.modules and not os.getenv("TESTING"):
+        time.sleep(3600)
+        sys.exit(1)
+    raise
 
 
 def is_bot_token_valid(token: Optional[str]) -> bool:
@@ -104,7 +117,7 @@ async def main():
 
     # Initialize bot and dispatcher
     bot = Bot(
-        token=config.BOT_TOKEN,
+        token=config.BOT_TOKEN.strip(),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     bot.db = db

@@ -3,6 +3,7 @@ Unit and Integration Tests for Bot initialization, database binding, and get_db 
 Verifies fix for: TypeError: 'Bot' object does not support item assignment
 """
 
+import os
 import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 from aiogram import Bot, Dispatcher
@@ -214,6 +215,39 @@ class TestMainBotStartup(unittest.IsolatedAsyncioTestCase):
             cache_path = get_default_photo_cache_path()
             self.assertEqual(cache_path.name, "photo_cache.json")
             self.assertEqual(str(cache_path.parent).replace("\\", "/"), "/app/data")
+
+    def test_photo_cache_custom_env_override(self):
+        """Verify PHOTO_CACHE_PATH environment variable overrides default resolution."""
+        from games.flow import get_default_photo_cache_path
+
+        with patch.dict(os.environ, {"PHOTO_CACHE_PATH": "/custom/path/cache.json"}):
+            cache_path = get_default_photo_cache_path()
+            self.assertEqual(str(cache_path).replace("\\", "/"), "/custom/path/cache.json")
+
+    def test_sys_modules_data_aliases_active(self):
+        """Verify that importing through data.* aliases resolves directly to gamedata."""
+        import sys
+        import gamedata
+        self.assertIn("data", sys.modules)
+        self.assertIn("data.countries", sys.modules)
+        self.assertIn("data.landmarks", sys.modules)
+        self.assertIn("data.streetviews", sys.modules)
+        self.assertIn("data.fun_facts", sys.modules)
+        import data.countries as dc
+        import gamedata.countries as gc
+        self.assertIs(dc.COUNTRIES, gc.COUNTRIES)
+
+    async def test_main_startup_catches_fatal_exceptions_and_outputs(self):
+        """Verify main() catches unexpected exceptions, logging to stdout/stderr."""
+        import main
+
+        with patch("config.BOT_TOKEN", "123456789:ABC-def_GHI"), \
+             patch("main.Database.init_db", side_effect=RuntimeError("Simulated DB connection crash")), \
+             patch("sys.stdout") as mock_stdout, \
+             patch("sys.stderr") as mock_stderr:
+
+            with self.assertRaises(RuntimeError):
+                await main.main()
 
 
 if __name__ == "__main__":
