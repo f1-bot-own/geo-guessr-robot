@@ -3,6 +3,7 @@ Callback Query Handlers for GeoGuru & GeoGuessr Telegram Bot.
 Handles answers, game setup, lifelines, menu navigation, languages, and duels.
 """
 
+import asyncio
 from datetime import datetime
 from aiogram import Router, Bot, F
 from aiogram.types import CallbackQuery
@@ -71,19 +72,18 @@ async def cb_group_answer(query: CallbackQuery, bot: Bot):
         await query.answer(t("wrong_answer_alert", session.lang, penalty=points), show_alert=True)
         await db.record_answer(user.id, is_correct=False, points=-points, user_name=user_name, username=user.username)
     elif result == "correct":
-        await query.answer("🎯 Correct!", show_alert=False)
-        # Cancel round timer
+        # Cancel round timer immediately
         if session.timer_task and not session.timer_task.done():
             session.timer_task.cancel()
         session.current_kb = None
 
-        await db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username, chat_id=chat_id)
-
-        # Remove buttons from the answered question
-        try:
-            await query.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            pass
+        # Execute popup answer, reply_markup clearing, and DB recording concurrently
+        await asyncio.gather(
+            query.answer("🎯 Correct!", show_alert=False),
+            query.message.edit_reply_markup(reply_markup=None),
+            db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username, chat_id=chat_id),
+            return_exceptions=True
+        )
 
         q = session.current_question
         correct_ans = q.correct_answer if q else "—"
@@ -215,18 +215,14 @@ async def cb_daily_answer(query: CallbackQuery, bot: Bot):
         await query.answer("⚠️ Today's challenge ended or expired.", show_alert=True)
         return
 
-    # Invalidate current question keyboard to prevent double-clicks
-    try:
-        await query.message.edit_reply_markup(reply_markup=None)
-    except Exception:
-        pass
-
     is_correct, points, is_finished, correct_answer = session.check_answer(opt_idx)
 
-    if is_correct:
-        await query.answer(f"🎯 Correct! +{points} pts", show_alert=False)
-    else:
-        await query.answer(f"❌ Incorrect! Correct answer: {correct_answer}", show_alert=True)
+    alert_text = f"🎯 Correct! +{points} pts" if is_correct else f"❌ Incorrect! Correct answer: {correct_answer}"
+    await asyncio.gather(
+        query.answer(alert_text, show_alert=not is_correct),
+        query.message.edit_reply_markup(reply_markup=None),
+        return_exceptions=True
+    )
 
     if not is_finished:
         await send_daily_round(bot, user.id, session)
@@ -250,7 +246,7 @@ async def cb_daily_answer(query: CallbackQuery, bot: Bot):
 # ----------------- Solo Mode Answers & Lifelines -----------------
 @router.callback_query(F.data.startswith("solo_ans:"))
 async def cb_solo_answer(query: CallbackQuery, bot: Bot):
-    """Handle solo mode question answer."""
+    """Handle solo mode question answer with optimized low-latency concurrent processing."""
     db = get_db(bot)
     user = query.from_user
     opt_idx = int(query.data.split(":")[1])
@@ -275,11 +271,6 @@ async def cb_solo_answer(query: CallbackQuery, bot: Bot):
             await query.answer("This option has been eliminated!", show_alert=False)
             return
 
-        # Invalidate current question keyboard to prevent double-clicks
-        try:
-            await query.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            pass
         session.current_kb = None
 
         # Cancel active countdown timer cleanly on answer
@@ -292,25 +283,35 @@ async def cb_solo_answer(query: CallbackQuery, bot: Bot):
 
         user_name = user.first_name or user.username or "Player"
         if is_correct:
-            await query.answer(f"🎯 Correct! +{points} pts", show_alert=False)
-            await db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username)
+            # Parallelize answer popup, reply_markup removal, and DB record concurrently
+            await asyncio.gather(
+                query.answer(f"🎯 Correct! +{points} pts", show_alert=False),
+                query.message.edit_reply_markup(reply_markup=None),
+                db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username),
+                return_exceptions=True
+            )
             text = t("solo_correct_answer_announcement", session.lang, points=points, answer=correct_ans)
             if q and q.fun_fact:
                 text += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"
             if q and getattr(q, "maps_url", None) and q.maps_url not in text:
                 text += f"\n🗺️ <a href=\"{q.maps_url}\">{t('streetview_view_maps', session.lang)}</a>"
+
+            session.next_round()
+            session.status = "in_progress"
+
             try:
                 await bot.send_message(chat_id=user.id, text=text, parse_mode="HTML")
             except Exception:
                 pass
-
-            session.next_round()
-            session.status = "in_progress"
             await send_solo_round(bot, user.id, session, db)
         else:
-            await db.record_answer(user.id, is_correct=False, points=0, user_name=user_name, username=user.username)
             if is_game_over:
-                await query.answer("💔 Out of lives!", show_alert=True)
+                await asyncio.gather(
+                    query.answer("💔 Out of lives!", show_alert=True),
+                    query.message.edit_reply_markup(reply_markup=None),
+                    db.record_answer(user.id, is_correct=False, points=0, user_name=user_name, username=user.username),
+                    return_exceptions=True
+                )
                 game_over_text = t(
                     "solo_game_over",
                     session.lang,
@@ -328,8 +329,13 @@ async def cb_solo_answer(query: CallbackQuery, bot: Bot):
                 except Exception:
                     pass
             else:
-                await query.answer(f"❌ Wrong answer! Lives remaining: {session.lives}", show_alert=True)
                 lives_str = "❤️" * session.lives
+                await asyncio.gather(
+                    query.answer(f"❌ Wrong answer! Lives remaining: {session.lives}", show_alert=True),
+                    query.message.edit_reply_markup(reply_markup=None),
+                    db.record_answer(user.id, is_correct=False, points=0, user_name=user_name, username=user.username),
+                    return_exceptions=True
+                )
                 text = t("solo_wrong_answer_announcement", session.lang, answer=correct_ans, lives=lives_str)
                 if q and q.fun_fact:
                     text += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"

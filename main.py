@@ -176,7 +176,11 @@ async def main():
                 await bot.delete_webhook(drop_pending_updates=True)
             except Exception as wh_err:
                 logger.warning(f"Webhook reset notice: {wh_err}")
-        await dp.start_polling(bot, db=db)
+        await dp.start_polling(
+            bot,
+            db=db,
+            allowed_updates=dp.resolve_used_update_types()
+        )
     finally:
         await bot.session.close()
 

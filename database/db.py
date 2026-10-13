@@ -42,6 +42,10 @@ class Database:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         
         async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("PRAGMA journal_mode = WAL;")
+            await db.execute("PRAGMA synchronous = NORMAL;")
+            await db.execute("PRAGMA temp_store = MEMORY;")
+            await db.execute("PRAGMA cache_size = -64000;")
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
