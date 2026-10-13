@@ -13,8 +13,8 @@ import asyncio
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from data.streetviews import STREETVIEWS, get_streetview, get_random_streetview
-from data.countries import COUNTRIES, get_country
+from gamedata.streetviews import STREETVIEWS, get_streetview, get_random_streetview
+from gamedata.countries import COUNTRIES, get_country
 from locales.i18n import t
 from games.models import GameMode, Question
 from games.question_factory import QuestionFactory, create_streetview_question

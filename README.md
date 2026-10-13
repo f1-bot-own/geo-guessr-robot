@@ -57,12 +57,13 @@ geoguru-geoguessr-bot/
 ├── database/
 │   ├── __init__.py
 │   └── db.py                 # Async SQLite database (aiosqlite)
-├── data/
+├── gamedata/
 │   ├── __init__.py
 │   ├── countries.py          # 126+ sovereign countries database
 │   ├── landmarks.py          # GeoGuessr iconic landmarks & street views
 │   ├── streetviews.py        # Dedicated Street Views & Google Maps database (50+ locations)
 │   └── fun_facts.py          # Multilingual geography fun facts
+├── data/                     # Persistent storage directory (SQLite & photo cache volume mount)
 ├── games/
 │   ├── __init__.py
 │   ├── models.py             # Game data models & enums

@@ -5,10 +5,10 @@ Generates balanced, randomized questions for all supported game modes.
 
 import random
 from typing import Optional, Set, List
-from data.countries import COUNTRIES, get_country
-from data.landmarks import LANDMARKS
-from data.streetviews import STREETVIEWS, get_random_streetview
-from data.fun_facts import get_fun_fact
+from gamedata.countries import COUNTRIES, get_country
+from gamedata.landmarks import LANDMARKS
+from gamedata.streetviews import STREETVIEWS, get_random_streetview
+from gamedata.fun_facts import get_fun_fact
 from locales.i18n import t
 from .models import Question, GameMode
 

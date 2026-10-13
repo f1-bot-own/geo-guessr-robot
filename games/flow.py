@@ -27,11 +27,27 @@ logger = logging.getLogger(__name__)
 
 # Ultra-resilient photo file_id cache mapping image_url -> telegram_file_id
 PHOTO_CACHE: Dict[str, str] = {}
-PHOTO_CACHE_FILE = config.BASE_DIR / "data" / "photo_cache.json"
+
+
+def get_default_photo_cache_path() -> Path:
+    """Resolve photo cache path to the directory containing DB_PATH (e.g. Railway volume)."""
+    db_str = str(config.DB_PATH)
+    if db_str == ":memory:":
+        return config.BASE_DIR / "photo_cache.json"
+    return Path(config.DB_PATH).parent / "photo_cache.json"
+
+
+PHOTO_CACHE_FILE = get_default_photo_cache_path()
+
 
 def load_photo_cache(file_path: Optional[Path] = None):
     """Load cached telegram file_ids from disk if available."""
     target = file_path or PHOTO_CACHE_FILE
+    if not target.exists():
+        legacy_path = config.BASE_DIR / "data" / "photo_cache.json"
+        if legacy_path.exists():
+            target = legacy_path
+
     if target.exists():
         try:
             with open(target, "r", encoding="utf-8") as f:

@@ -11,7 +11,7 @@ from aiogram.types import Message
 from database.db import Database
 from games.manager import game_manager
 from games.flow import proceed_after_round, send_solo_round
-from data.countries import get_country, COUNTRIES
+from gamedata.countries import get_country, COUNTRIES
 from locales.i18n import t
 import config
 

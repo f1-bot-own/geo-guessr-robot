@@ -32,8 +32,8 @@ import games.flow
 from games.session import GameSession
 from games.solo_session import SoloGameSession
 from games.models import Question, GameMode
-from data.landmarks import LANDMARKS
-from data.streetviews import STREETVIEWS
+from gamedata.landmarks import LANDMARKS
+from gamedata.streetviews import STREETVIEWS
 
 
 class TestPhotoResilience(unittest.IsolatedAsyncioTestCase):

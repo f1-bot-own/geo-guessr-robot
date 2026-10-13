@@ -7,7 +7,7 @@ import random
 from typing import Optional, Set, List, Tuple, Any
 from .models import Question, GameMode
 from .question_factory import QuestionFactory
-from data.countries import get_country
+from gamedata.countries import get_country
 from locales.i18n import t
 import config
 

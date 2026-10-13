@@ -182,6 +182,39 @@ class TestMainBotStartup(unittest.IsolatedAsyncioTestCase):
             await main.main()
             self.assertFalse(mock_poll.called)
 
+    async def test_main_logs_critical_error_when_token_invalid(self):
+        """Verify main() logs critical error message when BOT_TOKEN is malformed or invalid."""
+        import main
+        from pathlib import Path
+        from games.flow import get_default_photo_cache_path
+
+        self.assertFalse(main.is_bot_token_valid(""))
+        self.assertFalse(main.is_bot_token_valid("YOUR_BOT_TOKEN_HERE"))
+        self.assertFalse(main.is_bot_token_valid("invalid_token_without_colon"))
+        self.assertFalse(main.is_bot_token_valid("abc:not_digits_in_prefix"))
+        self.assertTrue(main.is_bot_token_valid("123456789:ABC-def_GHI"))
+
+        with patch("config.BOT_TOKEN", "bad_token"), \
+             patch("main.Database.init_db", new_callable=AsyncMock), \
+             patch("main.logger.error") as mock_log_err, \
+             patch.object(Dispatcher, "start_polling", new_callable=AsyncMock) as mock_poll:
+
+            await main.main()
+            self.assertFalse(mock_poll.called)
+            self.assertTrue(mock_log_err.called)
+            logged_msg = mock_log_err.call_args[0][0]
+            self.assertIn("CRITICAL: BOT_TOKEN is missing", logged_msg)
+
+    def test_photo_cache_location_derived_from_db_path(self):
+        """Verify photo_cache.json is resolved relative to DB_PATH directory."""
+        from games.flow import get_default_photo_cache_path
+        from pathlib import Path
+
+        with patch("config.DB_PATH", "/app/data/geobot.db"):
+            cache_path = get_default_photo_cache_path()
+            self.assertEqual(cache_path.name, "photo_cache.json")
+            self.assertEqual(str(cache_path.parent).replace("\\", "/"), "/app/data")
+
 
 if __name__ == "__main__":
     unittest.main()

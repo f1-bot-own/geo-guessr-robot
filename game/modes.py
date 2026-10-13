@@ -12,9 +12,9 @@ import random
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
-from data.countries import COUNTRIES
-from data.landmarks import LANDMARKS
-from data.streetviews import STREETVIEWS
+from gamedata.countries import COUNTRIES
+from gamedata.landmarks import LANDMARKS
+from gamedata.streetviews import STREETVIEWS
 from locales.i18n import t
 
 @dataclass

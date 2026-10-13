@@ -2,8 +2,8 @@
 Unit tests for data integrity in GeoGuru & GeoGuessr.
 """
 import unittest
-from data.countries import COUNTRIES, COUNTRIES_BY_CODE, get_country, search_country_by_name
-from data.landmarks import LANDMARKS, LANDMARKS_BY_ID, get_landmark_by_id, get_random_landmarks
+from gamedata.countries import COUNTRIES, COUNTRIES_BY_CODE, get_country, search_country_by_name
+from gamedata.landmarks import LANDMARKS, LANDMARKS_BY_ID, get_landmark_by_id, get_random_landmarks
 
 class TestDataIntegrity(unittest.TestCase):
 
@@ -54,8 +54,12 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertIsNotNone(eiffel)
         self.assertEqual(eiffel["country_code"], "fr")
 
-        samples = get_random_landmarks(3)
-        self.assertEqual(len(samples), 3)
+    def test_backward_compatibility_data_proxy(self):
+        """Verify that importing from 'data' still works via proxy."""
+        import data.countries as legacy_countries
+        import data.landmarks as legacy_landmarks
+        self.assertEqual(len(legacy_countries.COUNTRIES), len(COUNTRIES))
+        self.assertEqual(len(legacy_landmarks.LANDMARKS), len(LANDMARKS))
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,8 @@ geobot.db
 *.db
 *.db-journal
 data/photo_cache.json
+photo_cache.json
+*/photo_cache.json
 
 # Python bytecode & cache
 __pycache__/

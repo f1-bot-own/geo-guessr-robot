@@ -20,5 +20,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy project code
 COPY . .
 
+# Ensure data directory exists for database / cache storage if volume is not mounted
+RUN mkdir -p /app/data
+
 # Launch Telegram bot polling
 CMD ["python", "main.py"]

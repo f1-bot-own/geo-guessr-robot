@@ -14,9 +14,9 @@ from pathlib import Path
 
 import config
 from locales.i18n import t, get_rank_name, LOCALES
-from data.countries import COUNTRIES, get_country, search_country_by_name
-from data.landmarks import LANDMARKS, get_landmark
-from data.fun_facts import get_fun_fact
+from gamedata.countries import COUNTRIES, get_country, search_country_by_name
+from gamedata.landmarks import LANDMARKS, get_landmark
+from gamedata.fun_facts import get_fun_fact
 from database.db import Database
 from games.models import Question, GameMode
 from games.question_factory import QuestionFactory
