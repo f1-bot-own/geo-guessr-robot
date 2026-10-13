@@ -165,7 +165,7 @@ async def send_resilient_photo(
     # Step 3: Direct byte download fallback with aiohttp
     try:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "User-Agent": "GeoGuessrTelegramBot/1.0 (https://github.com/f1-bot-own/geo-guessr-robot; contact@geobot.org) Mozilla/5.0"
         }
         timeout = aiohttp.ClientTimeout(total=10, connect=4, sock_read=6)
         async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:

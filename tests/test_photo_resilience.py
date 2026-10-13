@@ -350,7 +350,10 @@ class TestDataImageUrlsIntegrity(unittest.TestCase):
             url = lm.get("image_url", "")
             self.assertTrue(url.startswith("https://"), f"Landmark {lm['id']} must have https URL: {url}")
             self.assertNotIn("800px-", url, f"Landmark {lm['id']} still contains broken 800px- thumbnail: {url}")
-            self.assertIn("images.unsplash.com", url, f"Landmark {lm['id']} should use reliable CDN: {url}")
+            self.assertTrue(
+                any(domain in url for domain in ("images.unsplash.com", "upload.wikimedia.org", "wikimedia.org")),
+                f"Landmark {lm['id']} should use reliable CDN: {url}"
+            )
 
     def test_all_streetviews_have_valid_cdn_urls(self):
         """Ensure every streetview has a valid HTTP/HTTPS CDN URL without old broken Wikimedia thumb URLs."""
