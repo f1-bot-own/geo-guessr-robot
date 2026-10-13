@@ -164,21 +164,32 @@ async def check_group_text_answer(message: Message, bot: Bot):
                     announcement += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"
                 if getattr(q, "maps_url", None) and q.maps_url not in announcement:
                     announcement += f"\n🗺️ <a href=\"{q.maps_url}\">{t('streetview_view_maps', session.lang)}</a>"
-                await message.reply(text=announcement, parse_mode="HTML")
+                if not session.is_game_finished():
+                    announcement += f"\n\n⏳ {t('next_round_in', session.lang, seconds=3)}"
+                try:
+                    await message.reply(text=announcement, parse_mode="HTML")
+                except Exception:
+                    pass
                 await proceed_after_round(bot, chat_id, session, db)
                 return
             elif result == "wrong":
                 await db.record_answer(user.id, is_correct=False, points=-points, user_name=user_name, username=user.username)
-                await message.reply(
-                    text=t("wrong_answer_alert", session.lang, penalty=points),
-                    parse_mode="HTML"
-                )
+                try:
+                    await message.reply(
+                        text=t("wrong_answer_alert", session.lang, penalty=points),
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
                 return
             elif result == "already_wrong":
-                await message.reply(
-                    text=t("already_answered_wrong", session.lang, user=user_name),
-                    parse_mode="HTML"
-                )
+                try:
+                    await message.reply(
+                        text=t("already_answered_wrong", session.lang, user=user_name),
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
                 return
 
     # 2. Compile valid representations of correct answer
@@ -212,15 +223,23 @@ async def check_group_text_answer(message: Message, bot: Bot):
                 announcement += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"
             if getattr(q, "maps_url", None) and q.maps_url not in announcement:
                 announcement += f"\n🗺️ <a href=\"{q.maps_url}\">{t('streetview_view_maps', session.lang)}</a>"
+            if not session.is_game_finished():
+                announcement += f"\n\n⏳ {t('next_round_in', session.lang, seconds=3)}"
 
-            await message.reply(text=announcement, parse_mode="HTML")
+            try:
+                await message.reply(text=announcement, parse_mode="HTML")
+            except Exception:
+                pass
             await proceed_after_round(bot, chat_id, session, db)
             return
         elif result == "already_wrong":
-            await message.reply(
-                text=t("already_answered_wrong", session.lang, user=user_name),
-                parse_mode="HTML"
-            )
+            try:
+                await message.reply(
+                    text=t("already_answered_wrong", session.lang, user=user_name),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
             return
 
     # 3. Check if user typed one of the distractor options directly

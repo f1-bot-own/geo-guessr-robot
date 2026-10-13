@@ -100,6 +100,8 @@ async def cb_group_answer(query: CallbackQuery, bot: Bot):
             text += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"
         if q and getattr(q, "maps_url", None) and q.maps_url not in text:
             text += f"\n🗺️ <a href=\"{q.maps_url}\">{t('streetview_view_maps', session.lang)}</a>"
+        if not session.is_game_finished():
+            text += f"\n\n⏳ {t('next_round_in', session.lang, seconds=3)}"
 
         try:
             await bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")

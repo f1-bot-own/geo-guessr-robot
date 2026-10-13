@@ -459,9 +459,32 @@ async def send_round_question(bot: Bot, chat_id: int, session: GameSession, db):
                 parse_mode="HTML"
             )
             session.has_photo = False
+        except TelegramRetryAfter as e:
+            wait_t = e.retry_after + 1
+            logger.warning(f"TelegramRetryAfter caught on text question message: {e}. Waiting {wait_t}s...")
+            if wait_t <= 35:
+                try:
+                    await asyncio.sleep(wait_t)
+                    msg = await bot.send_message(
+                        chat_id=chat_id,
+                        text=caption,
+                        reply_markup=kb,
+                        parse_mode="HTML"
+                    )
+                    session.has_photo = False
+                except Exception as retry_err:
+                    logger.error(f"Failed to send question message after flood wait: {retry_err}")
         except Exception as e:
             logger.error(f"Failed to send question message: {e}")
-            return
+
+    if not msg:
+        logger.error("Failed to send question message even after retries. Pausing and scheduling recovery...")
+        await asyncio.sleep(5)
+        async with session.lock:
+            if session.status != "finished":
+                session.next_round()
+        await proceed_after_round(bot, chat_id, session, db)
+        return
 
     session.round_message_id = msg.message_id
     current_round_num = session.current_round
@@ -499,6 +522,8 @@ async def handle_round_timeout(bot: Bot, chat_id: int, session: GameSession, rou
         text += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"
     if q and getattr(q, "maps_url", None) and q.maps_url not in text:
         text += f"\n🗺️ <a href=\"{q.maps_url}\">{t('streetview_view_maps', session.lang)}</a>"
+    if not session.is_game_finished():
+        text += f"\n\n⏳ {t('next_round_in', session.lang, seconds=3)}"
 
     # Remove buttons from timed-out question message
     if session.round_message_id:
@@ -526,15 +551,6 @@ async def proceed_after_round(bot: Bot, chat_id: int, session: GameSession, db):
             await finish_game(bot, chat_id, session, db)
         else:
             wait_seconds = 3
-            try:
-                await bot.send_message(
-                    chat_id=chat_id,
-                    text=t("next_round_in", session.lang, seconds=wait_seconds),
-                    parse_mode="HTML"
-                )
-            except Exception:
-                pass
-
             await asyncio.sleep(wait_seconds)
             async with session.lock:
                 if session.status == "finished":
