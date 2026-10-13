@@ -8,7 +8,7 @@ and supports quick option shortcuts (1-4, A-D).
 import re
 from aiogram import Router, Bot, F
 from aiogram.types import Message
-from database.db import Database
+from database.db import Database, format_user_mention
 from games.manager import game_manager
 from games.flow import proceed_after_round, send_solo_round
 from gamedata.countries import get_country, COUNTRIES
@@ -150,11 +150,12 @@ async def check_group_text_answer(message: Message, bot: Bot):
                         await bot.edit_message_reply_markup(chat_id=chat_id, message_id=session.round_message_id, reply_markup=None)
                     except Exception:
                         pass
-                await db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username)
+                await db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username, chat_id=chat_id)
+                user_mention = format_user_mention(user.id, user_name)
                 announcement = t(
                     "correct_answer_announcement",
                     session.lang,
-                    user=user_name,
+                    user=user_mention,
                     time=elapsed,
                     points=points,
                     answer=q.correct_answer
@@ -196,12 +197,13 @@ async def check_group_text_answer(message: Message, bot: Bot):
                 except Exception:
                     pass
 
-            await db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username)
+            await db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username, chat_id=chat_id)
+            user_mention = format_user_mention(user.id, user_name)
 
             announcement = t(
                 "correct_answer_announcement",
                 session.lang,
-                user=user_name,
+                user=user_mention,
                 time=elapsed,
                 points=points,
                 answer=q.correct_answer

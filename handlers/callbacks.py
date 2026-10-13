@@ -7,7 +7,7 @@ from datetime import datetime
 from aiogram import Router, Bot, F
 from aiogram.types import CallbackQuery
 from locales.i18n import t, get_rank_name
-from database.db import Database
+from database.db import Database, format_user_mention
 from games.session import GameSession
 from games.solo_session import SoloGameSession
 from games.daily_session import DailyChallengeSession
@@ -21,6 +21,7 @@ from keyboards.game_kb import (
     get_daily_question_kb,
     get_category_selection_kb,
     get_game_type_kb,
+    get_leaderboard_kb,
 )
 import config
 
@@ -76,7 +77,7 @@ async def cb_group_answer(query: CallbackQuery, bot: Bot):
             session.timer_task.cancel()
         session.current_kb = None
 
-        await db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username)
+        await db.record_answer(user.id, is_correct=True, points=points, xp=config.XP_PER_CORRECT, user_name=user_name, username=user.username, chat_id=chat_id)
 
         # Remove buttons from the answered question
         try:
@@ -86,10 +87,11 @@ async def cb_group_answer(query: CallbackQuery, bot: Bot):
 
         q = session.current_question
         correct_ans = q.correct_answer if q else "—"
+        user_mention = format_user_mention(user.id, user_name)
         text = t(
             "correct_answer_announcement",
             session.lang,
-            user=user_name,
+            user=user_mention,
             time=elapsed,
             points=points,
             answer=correct_ans
@@ -504,14 +506,11 @@ async def cb_main_menu(query: CallbackQuery, bot: Bot):
         await bot.send_message(chat_id=user.id, text=text, parse_mode="HTML")
     elif action == "leaderboard":
         await query.answer()
-        top_players = await db.get_global_leaderboard(limit=10)
-        rows = [t("leaderboard_global_title", lang), ""]
-        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-        for idx, p in enumerate(top_players):
-            medal = medals[idx] if idx < len(medals) else f"{idx + 1}."
-            pname = p.get("first_name") or p.get("username") or f"User {p['user_id']}"
-            rows.append(f"{medal} <b>{pname}</b> — <b>{p.get('total_score', 0)} pts</b>")
-        await bot.send_message(chat_id=user.id, text="\n".join(rows), parse_mode="HTML")
+        from handlers.commands import format_leaderboard_text
+        top_players = await db.get_global_leaderboard(limit=10, period="all_time")
+        text = format_leaderboard_text(top_players, lb_type="global", period="all_time", lang=lang)
+        kb = get_leaderboard_kb(lb_type="global", current_period="all_time", lang=lang)
+        await bot.send_message(chat_id=user.id, text=text, reply_markup=kb, parse_mode="HTML")
     elif action == "language":
         await query.answer()
         await bot.send_message(chat_id=user.id, text=t("choose_lang", lang), reply_markup=get_language_kb(), parse_mode="HTML")
@@ -766,4 +765,36 @@ async def cb_duel(query: CallbackQuery, bot: Bot):
             parse_mode="HTML"
         )
         await send_round_question(bot, chat_id, session, db)
+
+# ----------------- Time-based Leaderboard Period Switcher -----------------
+@router.callback_query(F.data.startswith("lb_period:"))
+async def cb_leaderboard_period(query: CallbackQuery, bot: Bot):
+    """Handle interactive period switching for global and group leaderboards."""
+    db = get_db(bot)
+    parts = query.data.split(":")
+    if len(parts) < 3:
+        await query.answer()
+        return
+
+    lb_type = parts[1]  # "global" or "group"
+    period = parts[2]   # "daily", "weekly", "monthly", "all_time"
+    chat_id = query.message.chat.id
+
+    if lb_type == "group" and query.message.chat.type in ("group", "supergroup"):
+        lang = await db.get_chat_language(chat_id)
+        players = await db.get_group_leaderboard(chat_id, limit=10, period=period)
+    else:
+        user_data = await db.get_user(query.from_user.id)
+        lang = user_data.get("language", "en") if user_data else "en"
+        players = await db.get_global_leaderboard(limit=10, period=period)
+
+    from handlers.commands import format_leaderboard_text
+    text = format_leaderboard_text(players, lb_type=lb_type, period=period, lang=lang)
+    kb = get_leaderboard_kb(lb_type=lb_type, current_period=period, lang=lang)
+
+    try:
+        await query.message.edit_text(text=text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        pass
+    await query.answer()
 

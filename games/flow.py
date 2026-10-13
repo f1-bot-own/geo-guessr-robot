@@ -18,6 +18,7 @@ from .solo_session import SoloGameSession
 from .daily_session import DailyChallengeSession
 from .manager import game_manager
 from keyboards.game_kb import get_question_kb, get_solo_question_kb, get_daily_question_kb
+from database.db import format_user_mention
 import config
 
 from pathlib import Path
@@ -585,12 +586,15 @@ async def finish_game(bot: Bot, chat_id: int, session: GameSession, db):
         if winner_id:
             await db.record_answer(winner_id, is_correct=True, points=0, xp=config.XP_PER_WIN, user_name=c_name if winner_id == challenger_id else t_name)
 
+        c_mention = format_user_mention(challenger_id, c_name)
+        t_mention = format_user_mention(target_id, t_name)
+
         if c_score > t_score:
-            outcome = f"🏆 <b>Winner: {c_name}!</b>\n⚔️ {c_name} ({c_score} pts) 🆚 {t_name} ({t_score} pts)"
+            outcome = f"🏆 <b>Winner: {c_mention}!</b>\n⚔️ {c_mention} ({c_score} pts) 🆚 {t_mention} ({t_score} pts)"
         elif t_score > c_score:
-            outcome = f"🏆 <b>Winner: {t_name}!</b>\n⚔️ {t_name} ({t_score} pts) 🆚 {c_name} ({c_score} pts)"
+            outcome = f"🏆 <b>Winner: {t_mention}!</b>\n⚔️ {t_mention} ({t_score} pts) 🆚 {c_mention} ({c_score} pts)"
         else:
-            outcome = f"🤝 <b>It's a DRAW!</b>\n⚔️ {c_name} ({c_score} pts) 🆚 {t_name} ({t_score} pts)"
+            outcome = f"🤝 <b>It's a DRAW!</b>\n⚔️ {c_mention} ({c_score} pts) 🆚 {t_mention} ({t_score} pts)"
 
         msg_text = f"⚔️ <b>GEOGRAPHY DUEL FINISHED!</b> ⚔️\n\n{outcome}"
     elif not podium:
@@ -604,14 +608,15 @@ async def finish_game(bot: Bot, chat_id: int, session: GameSession, db):
             if is_winner:
                 await db.record_answer(uid, is_correct=True, points=0, xp=config.XP_PER_WIN, user_name=uname)
 
+            u_mention = format_user_mention(uid, uname)
             if pos == 1:
-                rows.append(t("podium_first", session.lang, user=uname, score=score))
+                rows.append(t("podium_first", session.lang, user=u_mention, score=score))
             elif pos == 2:
-                rows.append(t("podium_second", session.lang, user=uname, score=score))
+                rows.append(t("podium_second", session.lang, user=u_mention, score=score))
             elif pos == 3:
-                rows.append(t("podium_third", session.lang, user=uname, score=score))
+                rows.append(t("podium_third", session.lang, user=u_mention, score=score))
             else:
-                rows.append(t("standing_row", session.lang, pos=pos, user=uname, score=score))
+                rows.append(t("standing_row", session.lang, pos=pos, user=u_mention, score=score))
 
         msg_text = f"{header}\n" + "\n".join(rows)
 

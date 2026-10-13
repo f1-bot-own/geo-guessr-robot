@@ -15,9 +15,10 @@ from database.db import (
     get_user,
     get_global_leaderboard,
     get_group_leaderboard,
-    calculate_level
+    calculate_level,
+    format_user_mention
 )
-from keyboards.inline import get_start_keyboard, get_language_keyboard
+from keyboards.inline import get_start_keyboard, get_language_keyboard, get_leaderboard_kb
 
 router = Router(name="common")
 
@@ -137,21 +138,12 @@ async def handle_profile(message: Message):
 async def handle_leaderboard(message: Message):
     """Handle /leaderboard: global top 10 players."""
     lang = await get_user_language(message.from_user.id)
-    leaders = await get_global_leaderboard(10)
+    leaders = await get_global_leaderboard(10, period="all_time")
     
-    title = t("leaderboard_global_title", lang)
-    if not leaders:
-        await message.answer(f"{title}\n\n{t('empty_leaderboard', lang)}", parse_mode="HTML")
-        return
-
-    lines = [title, ""]
-    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-    for i, p in enumerate(leaders):
-        icon = medals[i] if i < len(medals) else f"{i+1}."
-        user_name = p.get("first_name") or f"Player {p['user_id']}"
-        lines.append(f"{icon} <b>{user_name}</b> — ⭐ Lvl {p.get('level', 1)} | {p.get('xp', 0)} XP ({p.get('games_won', 0)} wins)")
-
-    await message.answer("\n".join(lines), parse_mode="HTML")
+    from handlers.commands import format_leaderboard_text
+    text = format_leaderboard_text(leaders, lb_type="global", period="all_time", lang=lang)
+    kb = get_leaderboard_kb(lb_type="global", current_period="all_time", lang=lang)
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("top"))
 async def handle_group_top(message: Message):
@@ -161,21 +153,12 @@ async def handle_group_top(message: Message):
         return
 
     lang = await get_user_language(message.from_user.id)
-    leaders = await get_group_leaderboard(message.chat.id, 10)
-    title = t("leaderboard_group_title", lang)
+    leaders = await get_group_leaderboard(message.chat.id, 10, period="all_time")
 
-    if not leaders:
-        await message.answer(f"{title}\n\n{t('empty_leaderboard', lang)}", parse_mode="HTML")
-        return
-
-    lines = [title, ""]
-    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-    for i, p in enumerate(leaders):
-        icon = medals[i] if i < len(medals) else f"{i+1}."
-        name = p.get("first_name") or f"Player {p['user_id']}"
-        lines.append(f"{icon} <b>{name}</b> — <b>{p.get('score', 0)} pts</b> ({p.get('games_won', 0)} wins)")
-
-    await message.answer("\n".join(lines), parse_mode="HTML")
+    from handlers.commands import format_leaderboard_text
+    text = format_leaderboard_text(leaders, lb_type="group", period="all_time", lang=lang)
+    kb = get_leaderboard_kb(lb_type="group", current_period="all_time", lang=lang)
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 # Callback shortcuts from start menu
 @router.callback_query(F.data == "menu_language")
@@ -215,18 +198,11 @@ async def cb_menu_profile(callback: CallbackQuery):
 @router.callback_query(F.data == "menu_leaderboard")
 async def cb_menu_leaderboard(callback: CallbackQuery):
     lang = await get_user_language(callback.from_user.id)
-    leaders = await get_global_leaderboard(10)
-    title = t("leaderboard_global_title", lang)
-    if not leaders:
-        await callback.message.answer(f"{title}\n\n{t('empty_leaderboard', lang)}", parse_mode="HTML")
-    else:
-        lines = [title, ""]
-        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-        for i, p in enumerate(leaders):
-            icon = medals[i] if i < len(medals) else f"{i+1}."
-            name = p.get("first_name") or f"Player {p['user_id']}"
-            lines.append(f"{icon} <b>{name}</b> — ⭐ Lvl {p.get('level', 1)} | {p.get('xp', 0)} XP")
-        await callback.message.answer("\n".join(lines), parse_mode="HTML")
+    leaders = await get_global_leaderboard(10, period="all_time")
+    from handlers.commands import format_leaderboard_text
+    text = format_leaderboard_text(leaders, lb_type="global", period="all_time", lang=lang)
+    kb = get_leaderboard_kb(lb_type="global", current_period="all_time", lang=lang)
+    await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @router.callback_query(F.data == "menu_group_top")
@@ -235,16 +211,9 @@ async def cb_menu_group_top(callback: CallbackQuery):
         await callback.answer("Only available in groups!", show_alert=True)
         return
     lang = await get_user_language(callback.from_user.id)
-    leaders = await get_group_leaderboard(callback.message.chat.id, 10)
-    title = t("leaderboard_group_title", lang)
-    if not leaders:
-        await callback.message.answer(f"{title}\n\n{t('empty_leaderboard', lang)}", parse_mode="HTML")
-    else:
-        lines = [title, ""]
-        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-        for i, p in enumerate(leaders):
-            icon = medals[i] if i < len(medals) else f"{i+1}."
-            name = p.get("first_name") or f"Player {p['user_id']}"
-            lines.append(f"{icon} <b>{name}</b> — <b>{p.get('score', 0)} pts</b>")
-        await callback.message.answer("\n".join(lines), parse_mode="HTML")
+    leaders = await get_group_leaderboard(callback.message.chat.id, 10, period="all_time")
+    from handlers.commands import format_leaderboard_text
+    text = format_leaderboard_text(leaders, lb_type="group", period="all_time", lang=lang)
+    kb = get_leaderboard_kb(lb_type="group", current_period="all_time", lang=lang)
+    await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
     await callback.answer()

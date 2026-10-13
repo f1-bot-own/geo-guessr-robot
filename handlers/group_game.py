@@ -24,7 +24,8 @@ from database.db import (
     get_user_language,
     record_answer_result,
     record_match_player_stats,
-    record_match
+    record_match,
+    format_user_mention
 )
 from game.engine import game_manager, GroupGameSession, AnswerResult
 from game.modes import Question
@@ -507,11 +508,12 @@ async def handle_game_answer(callback: CallbackQuery, bot: Bot):
         await record_answer_result(user_id, is_correct=True, xp_earned=XP_PER_CORRECT)
 
         current_q = session.current_question
+        user_mention = format_user_mention(user_id, user_name)
         # Announce round victory
         announce = t(
             "correct_answer_announcement",
             lang,
-            user=f"<b>{user_name}</b>",
+            user=user_mention,
             time=res.elapsed_time,
             points=res.points_awarded,
             answer=res.correct_answer_text
@@ -549,21 +551,22 @@ async def finish_game(chat_id: int, bot: Bot):
 
     if standings:
         for idx, (uid, uname, score) in enumerate(standings, start=1):
+            u_mention = format_user_mention(uid, uname)
             if idx == 1:
                 winner_id = uid
                 winner_name = uname
                 winner_score = score
-                lines.append(t("podium_first", lang, user=uname, score=score))
+                lines.append(t("podium_first", lang, user=u_mention, score=score))
                 # Award winner bonus XP
                 await record_match_player_stats(uid, chat_id, uname, is_win=True, score=score, xp_bonus=XP_PER_WIN)
             elif idx == 2:
-                lines.append(t("podium_second", lang, user=uname, score=score))
+                lines.append(t("podium_second", lang, user=u_mention, score=score))
                 await record_match_player_stats(uid, chat_id, uname, is_win=False, score=score, xp_bonus=XP_PER_WIN // 2)
             elif idx == 3:
-                lines.append(t("podium_third", lang, user=uname, score=score))
+                lines.append(t("podium_third", lang, user=u_mention, score=score))
                 await record_match_player_stats(uid, chat_id, uname, is_win=False, score=score, xp_bonus=XP_PER_WIN // 4)
             else:
-                lines.append(t("standing_row", lang, pos=idx, user=uname, score=score))
+                lines.append(t("standing_row", lang, pos=idx, user=u_mention, score=score))
                 await record_match_player_stats(uid, chat_id, uname, is_win=False, score=score, xp_bonus=10)
     else:
         lines.append(t("no_scores", lang))

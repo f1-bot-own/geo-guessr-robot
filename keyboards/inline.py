@@ -152,3 +152,25 @@ def get_duel_invite_keyboard(duel_id: int, lang: str = "en") -> InlineKeyboardMa
             InlineKeyboardButton(text=t("duel_decline", lang), callback_data=f"duel_dec:{duel_id}")
         ]
     ])
+
+def get_leaderboard_kb(lb_type: str = "global", current_period: str = "all_time", lang: str = "en") -> InlineKeyboardMarkup:
+    """Generate keyboard for switching leaderboard periods (daily, weekly, monthly, all-time)."""
+    periods = [
+        ("daily", t("btn_lb_daily", lang)),
+        ("weekly", t("btn_lb_weekly", lang)),
+        ("monthly", t("btn_lb_monthly", lang)),
+        ("all_time", t("btn_lb_all_time", lang)),
+    ]
+    buttons = []
+    row = []
+    for p_key, p_label in periods:
+        prefix = "• " if p_key == current_period else ""
+        suffix = " •" if p_key == current_period else ""
+        btn_text = f"{prefix}{p_label}{suffix}"
+        row.append(InlineKeyboardButton(text=btn_text, callback_data=f"lb_period:{lb_type}:{p_key}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    return InlineKeyboardMarkup(inline_keyboard=buttons)

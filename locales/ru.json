@@ -101,5 +101,16 @@
   "correct_answer_reveal": "✅ Правильный ответ: <b>{answer}</b>",
   "solo_correct_answer_announcement": "🎯 <b>Верно!</b> (+{points} очков)\n✅ Правильный ответ: <b>{answer}</b>",
   "solo_wrong_answer_announcement": "❌ <b>Неверный ответ!</b>\n✅ Правильный ответ: <b>{answer}</b>\n\n❤️ Осталось жизней: {lives}",
-  "solo_wrong_game_over_announcement": "❌ <b>Неверный ответ!</b>\n✅ Правильный ответ: <b>{answer}</b>\n\n{game_over}"
+  "solo_wrong_game_over_announcement": "❌ <b>Неверный ответ!</b>\n✅ Правильный ответ: <b>{answer}</b>\n\n{game_over}",
+  "btn_lb_daily": "📅 День",
+  "btn_lb_weekly": "📆 Неделя",
+  "btn_lb_monthly": "🗓 Месяц",
+  "btn_lb_all_time": "🏆 Всё время",
+  "leaderboard_period_daily": "За день",
+  "leaderboard_period_weekly": "За неделю",
+  "leaderboard_period_monthly": "За месяц",
+  "leaderboard_period_all_time": "Всё время",
+  "leaderboard_global_title_period": "🌍 <b>Глобальный рейтинг ({period}):</b>",
+  "leaderboard_group_title_period": "👥 <b>Рейтинг группы ({period}):</b>",
+  "empty_leaderboard_period": "В этом периоде пока нет очков. Сыграйте первым!"
 }

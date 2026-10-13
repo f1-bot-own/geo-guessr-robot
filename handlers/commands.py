@@ -8,7 +8,7 @@ from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 from locales.i18n import t, get_rank_name
-from database.db import Database
+from database.db import Database, format_user_mention
 from games.session import GameSession
 from games.solo_session import SoloGameSession
 from games.daily_session import DailyChallengeSession
@@ -20,6 +20,7 @@ from keyboards.game_kb import (
     get_duel_kb,
     get_category_selection_kb,
     get_game_type_kb,
+    get_leaderboard_kb,
 )
 import config
 
@@ -343,34 +344,64 @@ async def cmd_profile(message: Message, bot: Bot):
 
     await message.reply(text=text, parse_mode="HTML")
 
+def format_leaderboard_text(players: list, lb_type: str = "global", period: str = "all_time", lang: str = "en") -> str:
+    """Format global or group leaderboard with clickable profile mentions and localized period title."""
+    period_title_key = f"leaderboard_period_{period}"
+    period_name = t(period_title_key, lang)
+    if lb_type == "global":
+        title = t("leaderboard_global_title_period", lang, period=period_name)
+    else:
+        title = t("leaderboard_group_title_period", lang, period=period_name)
+
+    if not players:
+        return f"{title}\n\n{t('empty_leaderboard_period', lang)}"
+
+    rows = [title, ""]
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    for idx, player in enumerate(players):
+        medal = medals[idx] if idx < len(medals) else f"{idx + 1}."
+        user_id = player.get("user_id")
+        raw_name = player.get("first_name") or player.get("username") or f"Player {user_id}"
+        mention = format_user_mention(user_id, raw_name)
+        if lb_type == "global":
+            score = player.get("total_score", 0)
+            lvl = player.get("level", 1)
+            rows.append(f"{medal} {mention} — <b>{score} pts</b> (Lvl {lvl})")
+        else:
+            score = player.get("score", 0)
+            wins = player.get("wins", 0)
+            rows.append(f"{medal} {mention} — <b>{score} pts</b> (🏆 {wins} wins)")
+    return "\n".join(rows)
+
 @router.message(Command("leaderboard"))
 async def cmd_leaderboard(message: Message, bot: Bot):
-    """Show global top 10 geography players."""
+    """Show global top 10 geography players with period switching."""
     db = get_db(bot)
     user = message.from_user
     user_data = await db.get_user(user.id)
     lang = user_data.get("language", "en") if user_data else "en"
 
-    top_players = await db.get_global_leaderboard(limit=10)
-    if not top_players:
-        await message.reply(text=t("empty_leaderboard", lang), parse_mode="HTML")
-        return
+    args = (message.text or "").strip().split()[1:]
+    period = "all_time"
+    if args:
+        a = args[0].lower()
+        if a in ("daily", "day", "kunlik", "день"):
+            period = "daily"
+        elif a in ("weekly", "week", "haftalik", "неделя"):
+            period = "weekly"
+        elif a in ("monthly", "month", "oylik", "месяц"):
+            period = "monthly"
+        elif a in ("all", "alltime", "all_time", "barcha", "asosiy", "все"):
+            period = "all_time"
 
-    rows = [t("leaderboard_global_title", lang), ""]
-    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-
-    for idx, player in enumerate(top_players):
-        medal = medals[idx] if idx < len(medals) else f"{idx + 1}."
-        name = player.get("first_name") or player.get("username") or f"Player {player['user_id']}"
-        score = player.get("total_score", 0)
-        lvl = player.get("level", 1)
-        rows.append(f"{medal} <b>{name}</b> — <b>{score} pts</b> (Lvl {lvl})")
-
-    await message.reply(text="\n".join(rows), parse_mode="HTML")
+    top_players = await db.get_global_leaderboard(limit=10, period=period)
+    text = format_leaderboard_text(top_players, lb_type="global", period=period, lang=lang)
+    kb = get_leaderboard_kb(lb_type="global", current_period=period, lang=lang)
+    await message.reply(text=text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("top"))
 async def cmd_top(message: Message, bot: Bot):
-    """Show group chat top 10 leaderboard."""
+    """Show group chat top 10 leaderboard with period switching."""
     db = get_db(bot)
     chat = message.chat
 
@@ -380,23 +411,24 @@ async def cmd_top(message: Message, bot: Bot):
         return
 
     lang = await db.get_chat_language(chat.id)
-    top_players = await db.get_group_leaderboard(chat.id, limit=10)
 
-    if not top_players:
-        await message.reply(text=t("empty_leaderboard", lang), parse_mode="HTML")
-        return
+    args = (message.text or "").strip().split()[1:]
+    period = "all_time"
+    if args:
+        a = args[0].lower()
+        if a in ("daily", "day", "kunlik", "день"):
+            period = "daily"
+        elif a in ("weekly", "week", "haftalik", "неделя"):
+            period = "weekly"
+        elif a in ("monthly", "month", "oylik", "месяц"):
+            period = "monthly"
+        elif a in ("all", "alltime", "all_time", "barcha", "asosiy", "все"):
+            period = "all_time"
 
-    rows = [t("leaderboard_group_title", lang), ""]
-    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-
-    for idx, player in enumerate(top_players):
-        medal = medals[idx] if idx < len(medals) else f"{idx + 1}."
-        name = player.get("first_name") or player.get("username") or f"Player {player['user_id']}"
-        score = player.get("score", 0)
-        wins = player.get("wins", 0)
-        rows.append(f"{medal} <b>{name}</b> — <b>{score} pts</b> (🏆 {wins} wins)")
-
-    await message.reply(text="\n".join(rows), parse_mode="HTML")
+    top_players = await db.get_group_leaderboard(chat.id, limit=10, period=period)
+    text = format_leaderboard_text(top_players, lb_type="group", period=period, lang=lang)
+    kb = get_leaderboard_kb(lb_type="group", current_period=period, lang=lang)
+    await message.reply(text=text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("language", "lang"))
 async def cmd_language(message: Message, bot: Bot):
@@ -470,11 +502,13 @@ async def cmd_duel(message: Message, bot: Bot):
         "lang": lang
     })
 
+    c_mention = format_user_mention(challenger.id, challenger_name)
+    t_mention = format_user_mention(target_user.id, target_name)
     text = t(
         "duel_invite",
         lang,
-        challenger=challenger_name,
-        target=target_name
+        challenger=c_mention,
+        target=t_mention
     )
     await message.answer(
         text=text,

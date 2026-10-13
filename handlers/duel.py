@@ -12,7 +12,8 @@ from database.db import (
     get_user_language,
     create_duel,
     get_duel,
-    update_duel_status
+    update_duel_status,
+    format_user_mention
 )
 from config import DEFAULT_ROUND_TIME
 from game.engine import game_manager, GroupGameSession
@@ -71,7 +72,9 @@ async def handle_duel_command(message: Message):
         "lang": lang
     }
 
-    invite_text = t("duel_invite", lang, challenger=f"<b>{challenger_name}</b>", target=f"<b>{opponent_name}</b>")
+    challenger_mention = format_user_mention(challenger.id, challenger_name)
+    target_mention = format_user_mention(target_user.id, opponent_name)
+    invite_text = t("duel_invite", lang, challenger=challenger_mention, target=target_mention)
     kb = get_duel_invite_keyboard(duel_id, lang)
     await message.answer(invite_text, reply_markup=kb, parse_mode="HTML")
 
@@ -100,8 +103,10 @@ async def handle_duel_accept(callback: CallbackQuery, bot: Bot):
         del PENDING_DUELS[duel_id]
 
     try:
+        c_mention = format_user_mention(duel['challenger_id'], duel['challenger_name'])
+        o_mention = format_user_mention(duel['opponent_id'], duel['opponent_name'])
         await callback.message.edit_text(
-            f"⚔️ <b>Duel Accepted!</b>\n{duel['challenger_name']} vs {duel['opponent_name']}\n3 Rounds • Fastest correct answer wins!",
+            f"⚔️ <b>Duel Accepted!</b>\n{c_mention} vs {o_mention}\n3 Rounds • Fastest correct answer wins!",
             parse_mode="HTML"
         )
     except Exception:

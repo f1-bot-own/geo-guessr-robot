@@ -12,7 +12,19 @@ from datetime import date
 
 import config
 
+import html
+
 logger = logging.getLogger(__name__)
+
+def format_user_mention(user_id: Optional[int], name: Optional[str]) -> str:
+    """Format user name as a clickable Telegram profile link <a href="tg://user?id=...">...</a>."""
+    raw_name = (name or "").strip()
+    if not raw_name:
+        raw_name = f"Player {user_id}" if user_id else "Player"
+    safe_name = html.escape(raw_name)
+    if user_id and user_id > 0:
+        return f'<a href="tg://user?id={user_id}">{safe_name}</a>'
+    return f'<b>{safe_name}</b>'
 
 class Database:
     def __init__(self, db_path: str):
@@ -111,10 +123,24 @@ class Database:
                 );
             """)
 
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS score_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER,
+                    points INTEGER NOT NULL DEFAULT 0,
+                    xp INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
             # Indexes for leaderboards
             await db.execute("CREATE INDEX IF NOT EXISTS idx_users_total_score ON users(total_score DESC);")
             await db.execute("CREATE INDEX IF NOT EXISTS idx_users_xp ON users(xp DESC);")
             await db.execute("CREATE INDEX IF NOT EXISTS idx_group_score ON group_scores(chat_id, score DESC);")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_score_events_created ON score_events(created_at);")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_score_events_user_time ON score_events(user_id, created_at);")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_score_events_chat_time ON score_events(chat_id, created_at);")
 
             await db.commit()
             logger.info("Database schema initialized successfully.")
@@ -270,7 +296,24 @@ class Database:
 
             await db.commit()
 
-    async def record_answer(self, user_id: int, is_correct: bool, points: int = 0, xp: int = 0, user_name: Optional[str] = None, username: Optional[str] = None):
+        if is_correct and xp_earned > 0:
+            await self.record_score_event(user_id, points=0, xp=xp_earned)
+
+    async def record_score_event(self, user_id: int, points: int, xp: int = 0, chat_id: Optional[int] = None):
+        """Record an incremental score/XP event for time-based leaderboards (daily/weekly/monthly)."""
+        if points <= 0 and xp <= 0:
+            return
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO score_events (user_id, chat_id, points, xp)
+                VALUES (?, ?, ?, ?)
+                """,
+                (user_id, chat_id, max(0, points), max(0, xp))
+            )
+            await db.commit()
+
+    async def record_answer(self, user_id: int, is_correct: bool, points: int = 0, xp: int = 0, user_name: Optional[str] = None, username: Optional[str] = None, chat_id: Optional[int] = None):
         """Record answer with points and xp, auto-registering user if needed."""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -317,6 +360,9 @@ class Database:
                 )
 
             await db.commit()
+
+        if is_correct and (points > 0 or xp > 0):
+            await self.record_score_event(user_id, points, xp, chat_id=chat_id)
 
     async def record_match_player_stats(self, user_id: int, chat_id: Optional[int], first_name: str, is_win: bool, score: int, xp_bonus: int = 0):
         """Update match records for user and group, auto-registering user if needed."""
@@ -367,6 +413,9 @@ class Database:
 
             await db.commit()
 
+        if score > 0 or xp_bonus > 0:
+            await self.record_score_event(user_id, points=score, xp=xp_bonus, chat_id=chat_id)
+
     async def update_group_player_score(self, chat_id: int, user_id: int, points: int, is_win: bool = False, first_name: str = "Player", username: str = ""):
         """Update user score in a specific group chat, ensuring user and player name are saved."""
         async with aiosqlite.connect(self.db_path) as db:
@@ -411,35 +460,97 @@ class Database:
             await db.execute("UPDATE chats SET total_games = total_games + 1 WHERE chat_id = ?", (chat_id,))
             await db.commit()
 
-    async def get_global_leaderboard(self, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_global_leaderboard(self, limit: int = 10, period: str = "all_time") -> List[Dict[str, Any]]:
+        period = (period or "all_time").lower()
+        intervals = {
+            "daily": "-1 day",
+            "weekly": "-7 days",
+            "monthly": "-30 days",
+        }
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            cursor = await db.execute(
-                """
-                SELECT user_id, username, first_name, total_score, level, xp, games_won, games_played, correct_answers, total_answers
-                FROM users
-                ORDER BY xp DESC, total_score DESC, games_won DESC
-                LIMIT ?
-                """,
-                (limit,)
-            )
+            if period in intervals:
+                interval_val = intervals[period]
+                cursor = await db.execute(
+                    """
+                    SELECT 
+                        se.user_id,
+                        COALESCE(u.username, '') AS username,
+                        COALESCE(u.first_name, 'Player') AS first_name,
+                        SUM(se.points) AS total_score,
+                        COALESCE(u.level, 1) AS level,
+                        SUM(se.xp) AS xp,
+                        COALESCE(u.games_won, 0) AS games_won,
+                        COALESCE(u.games_played, 0) AS games_played,
+                        COUNT(se.id) AS correct_answers,
+                        COALESCE(u.total_answers, 0) AS total_answers
+                    FROM score_events se
+                    LEFT JOIN users u ON se.user_id = u.user_id
+                    WHERE se.created_at >= datetime('now', ?)
+                    GROUP BY se.user_id
+                    HAVING SUM(se.points) > 0 OR SUM(se.xp) > 0
+                    ORDER BY total_score DESC, xp DESC
+                    LIMIT ?
+                    """,
+                    (interval_val, limit)
+                )
+            else:
+                cursor = await db.execute(
+                    """
+                    SELECT user_id, username, first_name, total_score, level, xp, games_won, games_played, correct_answers, total_answers
+                    FROM users
+                    ORDER BY total_score DESC, xp DESC, games_won DESC
+                    LIMIT ?
+                    """,
+                    (limit,)
+                )
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
 
-    async def get_group_leaderboard(self, chat_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_group_leaderboard(self, chat_id: int, limit: int = 10, period: str = "all_time") -> List[Dict[str, Any]]:
+        period = (period or "all_time").lower()
+        intervals = {
+            "daily": "-1 day",
+            "weekly": "-7 days",
+            "monthly": "-30 days",
+        }
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            cursor = await db.execute(
-                """
-                SELECT gs.user_id, COALESCE(u.username, '') AS username, COALESCE(gs.first_name, u.first_name, 'Player') AS first_name, gs.score, gs.wins, gs.wins AS games_won, gs.games_played
-                FROM group_scores gs
-                LEFT JOIN users u ON gs.user_id = u.user_id
-                WHERE gs.chat_id = ?
-                ORDER BY gs.score DESC, gs.wins DESC
-                LIMIT ?
-                """,
-                (chat_id, limit)
-            )
+            if period in intervals:
+                interval_val = intervals[period]
+                cursor = await db.execute(
+                    """
+                    SELECT 
+                        se.user_id,
+                        COALESCE(u.username, '') AS username,
+                        COALESCE(gs.first_name, u.first_name, 'Player') AS first_name,
+                        SUM(se.points) AS score,
+                        COALESCE(gs.wins, 0) AS wins,
+                        COALESCE(gs.wins, 0) AS games_won,
+                        COALESCE(gs.games_played, 0) AS games_played
+                    FROM score_events se
+                    LEFT JOIN users u ON se.user_id = u.user_id
+                    LEFT JOIN group_scores gs ON se.user_id = gs.user_id AND se.chat_id = gs.chat_id
+                    WHERE se.chat_id = ? AND se.created_at >= datetime('now', ?)
+                    GROUP BY se.user_id
+                    HAVING SUM(se.points) > 0
+                    ORDER BY score DESC
+                    LIMIT ?
+                    """,
+                    (chat_id, interval_val, limit)
+                )
+            else:
+                cursor = await db.execute(
+                    """
+                    SELECT gs.user_id, COALESCE(u.username, '') AS username, COALESCE(gs.first_name, u.first_name, 'Player') AS first_name, gs.score, gs.wins, gs.wins AS games_won, gs.games_played
+                    FROM group_scores gs
+                    LEFT JOIN users u ON gs.user_id = u.user_id
+                    WHERE gs.chat_id = ?
+                    ORDER BY gs.score DESC, gs.wins DESC
+                    LIMIT ?
+                    """,
+                    (chat_id, limit)
+                )
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
 
@@ -499,6 +610,9 @@ class Database:
                 (new_xp, new_level, d_str, new_streak, user_id)
             )
             await db.commit()
+
+        if score > 0 or xp_bonus > 0:
+            await self.record_score_event(user_id, points=score, xp=xp_bonus, chat_id=None)
 
     async def can_play_daily(self, user_id: int, today_str: str) -> bool:
         done = await self.check_daily_challenge_done(user_id, today_str)
@@ -580,11 +694,11 @@ async def record_answer_result(user_id: int, is_correct: bool, xp_earned: int = 
 async def record_match_player_stats(user_id: int, chat_id: Optional[int], first_name: str, is_win: bool, score: int, xp_bonus: int = 0):
     return await get_default_db().record_match_player_stats(user_id, chat_id, first_name, is_win, score, xp_bonus)
 
-async def get_global_leaderboard(limit: int = 10) -> List[Dict[str, Any]]:
-    return await get_default_db().get_global_leaderboard(limit)
+async def get_global_leaderboard(limit: int = 10, period: str = "all_time") -> List[Dict[str, Any]]:
+    return await get_default_db().get_global_leaderboard(limit, period)
 
-async def get_group_leaderboard(chat_id: int, limit: int = 10) -> List[Dict[str, Any]]:
-    return await get_default_db().get_group_leaderboard(chat_id, limit)
+async def get_group_leaderboard(chat_id: int, limit: int = 10, period: str = "all_time") -> List[Dict[str, Any]]:
+    return await get_default_db().get_group_leaderboard(chat_id, limit, period)
 
 async def check_daily_challenge_done(user_id: int, challenge_date: Optional[str] = None) -> Optional[Dict[str, Any]]:
     return await get_default_db().check_daily_challenge_done(user_id, challenge_date)

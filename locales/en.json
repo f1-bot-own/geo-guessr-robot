@@ -101,5 +101,16 @@
   "correct_answer_reveal": "✅ Correct Answer: <b>{answer}</b>",
   "solo_correct_answer_announcement": "🎯 <b>Correct!</b> (+{points} pts)\n✅ Correct Answer: <b>{answer}</b>",
   "solo_wrong_answer_announcement": "❌ <b>Wrong answer!</b>\n✅ Correct Answer: <b>{answer}</b>\n\n❤️ Lives remaining: {lives}",
-  "solo_wrong_game_over_announcement": "❌ <b>Wrong answer!</b>\n✅ Correct Answer: <b>{answer}</b>\n\n{game_over}"
+  "solo_wrong_game_over_announcement": "❌ <b>Wrong answer!</b>\n✅ Correct Answer: <b>{answer}</b>\n\n{game_over}",
+  "btn_lb_daily": "📅 Daily",
+  "btn_lb_weekly": "📆 Weekly",
+  "btn_lb_monthly": "🗓 Monthly",
+  "btn_lb_all_time": "🏆 All-Time",
+  "leaderboard_period_daily": "Daily",
+  "leaderboard_period_weekly": "Weekly",
+  "leaderboard_period_monthly": "Monthly",
+  "leaderboard_period_all_time": "All-Time",
+  "leaderboard_global_title_period": "🌍 <b>Global Leaderboard ({period}):</b>",
+  "leaderboard_group_title_period": "👥 <b>Group Leaderboard ({period}):</b>",
+  "empty_leaderboard_period": "No scores recorded for this period yet. Be the first to play!"
 }
