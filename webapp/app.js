@@ -41,6 +41,8 @@ const I18N = {
     decent: "Yaxshi urinish! 👍",
     far: "Biroz uzoq ketdi! 🌍",
     panorama360: "🔄 360° Aylantiring (Panorama)",
+    btnSatellite: "🛰 Sun'iy yo'ldosh",
+    btnStreet: "🗺 Xarita (Davlatlar)",
   },
   ru: {
     round: "Раунд",
@@ -68,6 +70,8 @@ const I18N = {
     decent: "Хорошая попытка! 👍",
     far: "Далековато! 🌍",
     panorama360: "🔄 360° Круговой обзор (Панорама)",
+    btnSatellite: "🛰 Спутник",
+    btnStreet: "🗺 Карта (Страны)",
   },
   en: {
     round: "Round",
@@ -95,6 +99,8 @@ const I18N = {
     decent: "Nice attempt! 👍",
     far: "A bit far off! 🌍",
     panorama360: "🔄 360° Interactive Panorama",
+    btnSatellite: "🛰 Satellite",
+    btnStreet: "🗺 Map (Countries)",
   }
 };
 
@@ -633,20 +639,27 @@ function createCustomPin(emoji, isTrueLocation = false) {
 }
 
 // Initialize Leaflet Map
+let currentTileLayer = null;
+let isSatellite = false;
+
+const TILE_OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_SAT = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
 function initMap() {
   map = L.map("map", {
-    center: [25, 10],
+    center: [20, 10],
     zoom: 2,
     minZoom: 1,
     maxZoom: 18,
+    worldCopyJump: true,
     zoomControl: false,
     attributionControl: false
   });
 
-  // Dark Matter CartoDB tiles
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd",
-    maxZoom: 19
+  // OpenStreetMap standard tiles (crisp continents, boundaries, 100% free with NO API key)
+  currentTileLayer = L.tileLayer(TILE_OSM, {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
   // Add zoom control top right
@@ -656,6 +669,25 @@ function initMap() {
   map.on("click", (e) => {
     onMapClick(e.latlng);
   });
+}
+
+function toggleMapLayer() {
+  if (!map) return;
+  isSatellite = !isSatellite;
+  if (currentTileLayer) {
+    map.removeLayer(currentTileLayer);
+  }
+  const url = isSatellite ? TILE_SAT : TILE_OSM;
+  currentTileLayer = L.tileLayer(url, {
+    maxZoom: 19,
+    attribution: isSatellite ? '&copy; Esri' : '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const t = I18N[currentLang];
+  const btn = document.getElementById("mapLayerToggle");
+  if (btn) {
+    btn.textContent = isSatellite ? (t.btnStreet || "🗺 Xarita (Davlatlar)") : (t.btnSatellite || "🛰 Sun'iy yo'ldosh");
+  }
 }
 
 function onMapClick(latlng) {
@@ -986,6 +1018,11 @@ function setLanguage(lang) {
       mapHintText.textContent = t.hintMap;
     }
   }
+
+  const btnMapToggle = document.getElementById("mapLayerToggle");
+  if (btnMapToggle) {
+    btnMapToggle.textContent = isSatellite ? (t.btnStreet || "🗺 Xarita (Davlatlar)") : (t.btnSatellite || "🛰 Sun'iy yo'ldosh");
+  }
 }
 
 // Event Listeners
@@ -993,6 +1030,11 @@ guessBtn.addEventListener("click", submitGuess);
 nextRoundBtn.addEventListener("click", onNextRound);
 btnSubmitScore.addEventListener("click", submitScoreToBot);
 btnPlayAgain.addEventListener("click", startNewGame);
+
+const mapLayerToggle = document.getElementById("mapLayerToggle");
+if (mapLayerToggle) {
+  mapLayerToggle.addEventListener("click", toggleMapLayer);
+}
 
 expandPhotoBtn.addEventListener("click", () => {
   photoContainer.classList.toggle("fullscreen");

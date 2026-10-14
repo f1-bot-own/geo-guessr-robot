@@ -38,6 +38,7 @@ class TestMiniAppWebServer(AioHTTPTestCase):
         self.assertIn("GeoGuessr Mini App", text)
         self.assertIn("pannellum", text.lower())
         self.assertIn("panoramaViewer", text)
+        self.assertIn("mapLayerToggle", text)
 
         resp2 = await self.client.request("GET", "/miniapp")
         self.assertEqual(resp2.status, 200)
