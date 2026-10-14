@@ -74,12 +74,26 @@ def create_web_app(db=None) -> web.Application:
 async def start_web_server(port: int = 8080, host: str = "0.0.0.0", db=None):
     """
     Start the embedded web server.
-    Returns (runner, site) for clean lifecycle management.
+    Binds to target port and fallback port 8080 if different, ensuring Railway's
+    public domain proxy always finds an active listener.
     """
     app = create_web_app(db=db)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host, port)
-    await site.start()
+
+    sites = []
+    site1 = web.TCPSite(runner, host, port)
+    await site1.start()
+    sites.append(site1)
     logger.info(f"GeoGuessr Mini App web server running at http://{host}:{port}")
-    return runner, site
+
+    if port != 8080:
+        try:
+            site2 = web.TCPSite(runner, host, 8080)
+            await site2.start()
+            sites.append(site2)
+            logger.info(f"GeoGuessr Mini App dual-listener also running at http://{host}:8080")
+        except Exception as e:
+            logger.info(f"Fallback port 8080 note: {e}")
+
+    return runner, sites

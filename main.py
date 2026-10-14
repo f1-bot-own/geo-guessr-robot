@@ -117,6 +117,16 @@ async def main():
     # Load persistent photo cache
     load_photo_cache()
 
+    # Start embedded web server for Telegram Mini App immediately
+    runner = None
+    if "unittest" not in sys.modules and not os.getenv("TESTING"):
+        try:
+            from webapp.server import start_web_server
+            runner, sites = await start_web_server(port=config.WEBAPP_PORT, host="0.0.0.0", db=db)
+            logger.info("Mini App web server initialized successfully.")
+        except Exception as ws_err:
+            logger.warning(f"Could not start webapp server on port {config.WEBAPP_PORT}: {ws_err}")
+
     if not is_bot_token_valid(config.BOT_TOKEN):
         err_msg = (
             "❌ CRITICAL: BOT_TOKEN is missing or default placeholder left!\n"
@@ -179,15 +189,6 @@ async def main():
 
     # Setup menu commands
     await setup_bot_commands(bot)
-
-    # Start embedded web server for Telegram Mini App
-    runner = None
-    if "unittest" not in sys.modules and not os.getenv("TESTING"):
-        try:
-            from webapp.server import start_web_server
-            runner, site = await start_web_server(port=config.WEBAPP_PORT, host="0.0.0.0", db=db)
-        except Exception as ws_err:
-            logger.warning(f"Could not start webapp server on port {config.WEBAPP_PORT}: {ws_err}")
 
     logger.info("Bot started successfully. Waiting for updates...")
     print("Bot started successfully. Waiting for updates...", file=sys.stdout, flush=True)
