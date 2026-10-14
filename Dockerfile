@@ -23,5 +23,8 @@ COPY . .
 # Ensure data and mount directories exist for database / cache storage
 RUN mkdir -p /app/data /data && chmod -R 777 /app/data /data
 
-# Launch Telegram bot polling
+# Expose port for Telegram Mini App web server
+EXPOSE 8080
+
+# Launch Telegram bot polling and embedded web server
 CMD ["python", "main.py"]

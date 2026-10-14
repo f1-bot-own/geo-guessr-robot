@@ -73,9 +73,10 @@ def is_bot_token_valid(token: Optional[str]) -> bool:
 
 
 async def setup_bot_commands(bot: Bot):
-    """Register menu commands with Telegram."""
+    """Register menu commands with Telegram and set Mini App menu button."""
     commands = [
         BotCommand(command="start", description="Start bot / Asosiy menyu"),
+        BotCommand(command="miniapp", description="Interactive Map Mini App / Xaritada o'ynash"),
         BotCommand(command="game", description="Start group game / Guruhda o'yin boshlash"),
         BotCommand(command="stop", description="Stop active game / O'yinni to'xtatish"),
         BotCommand(command="solo", description="Solo practice / Yakkaxon o'yin"),
@@ -91,6 +92,17 @@ async def setup_bot_commands(bot: Bot):
         await bot.set_my_commands(commands)
     except Exception as e:
         logger.warning(f"Could not register bot commands: {e}")
+
+    # Set Chat Menu Button to Mini App if valid HTTPS URL is configured
+    if config.WEBAPP_URL and config.WEBAPP_URL.startswith("https://"):
+        try:
+            from aiogram.types import MenuButtonWebApp, WebAppInfo
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(text="🗺️ Mini App", web_app=WebAppInfo(url=config.WEBAPP_URL))
+            )
+            logger.info(f"Registered Telegram Menu Button pointing to {config.WEBAPP_URL}")
+        except Exception as e:
+            logger.warning(f"Could not set webapp menu button: {e}")
 
 
 async def main():
@@ -168,6 +180,15 @@ async def main():
     # Setup menu commands
     await setup_bot_commands(bot)
 
+    # Start embedded web server for Telegram Mini App
+    runner = None
+    if "unittest" not in sys.modules and not os.getenv("TESTING"):
+        try:
+            from webapp.server import start_web_server
+            runner, site = await start_web_server(port=config.WEBAPP_PORT, host="0.0.0.0", db=db)
+        except Exception as ws_err:
+            logger.warning(f"Could not start webapp server on port {config.WEBAPP_PORT}: {ws_err}")
+
     logger.info("Bot started successfully. Waiting for updates...")
     print("Bot started successfully. Waiting for updates...", file=sys.stdout, flush=True)
     try:
@@ -178,6 +199,11 @@ async def main():
                 logger.warning(f"Webhook reset notice: {wh_err}")
         await dp.start_polling(bot, db=db)
     finally:
+        if runner:
+            try:
+                await runner.cleanup()
+            except Exception:
+                pass
         await bot.session.close()
 
 

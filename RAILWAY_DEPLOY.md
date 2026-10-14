@@ -84,11 +84,28 @@ Bot Telegramga ulanishi uchun unga token berish kerak:
    ```text
    [INFO] GeoBot: Initializing GeoGuru & GeoGuessr Bot...
    [INFO] database.db: Database schema initialized successfully.
+   [INFO] WebAppServer: GeoGuessr Mini App web server running at http://0.0.0.0:8080
    [INFO] GeoBot: Bot started successfully. Waiting for updates...
    [INFO] aiogram.dispatcher: Start polling
-   [INFO] aiogram.dispatcher: Run polling for bot @guessrrobot
    ```
 3. Telegramga kiring va botingizga `/start` buyrug'ini yuboring. Bot endi 24/7 internetda doimiy faol ishlaydi! 🎉
+
+---
+
+## 🗺️ 6-QADAM: GeoGuessr Telegram Mini App ni Yoqish (Public Networking)
+
+Telegram Mini App xaritasi o'yinchilar telefonida interaktiv ochilishi uchun Railway-da bepul HTTPS domen yoqiladi:
+
+1. Railway-dagi xizmatingiz (Service) **"Settings"** bo'limiga kiring.
+2. **"Networking"** (yoki **"Public Networking"**) bo'limiga tushing.
+3. **"Generate Domain"** tugmasini bosing.
+   Railway sizga avtomatik bepul HTTPS domen beradi (masalan: `geobot-production.up.railway.app`).
+4. **"Variables"** bo'limiga o'ting va quyidagi o'zgaruvchini qo'shing:
+   - **VARIABLE_NAME:** `WEBAPP_URL`
+   - **VALUE:** `https://geobot-production.up.railway.app` (o'zingizga berilgan domen)
+5. Shuningdek, Telegram @BotFather orqali bot menyusi tugmasini sozlash mumkin:
+   - `/setmenubutton` -> Botingizni tanlang -> Tugma matni: `🗺️ GeoGuessr` -> URL: `https://geobot-production.up.railway.app`
+6. Endi har bir o'yinchi bot menyusidagi yoki xabarlardagi **"🗺️ GeoGuessr (Mini App)"** tugmasi orqali to'g'ridan-to'g'ri interaktiv xaritada joyni belgilab o'ynay oladi!
 
 ---
 

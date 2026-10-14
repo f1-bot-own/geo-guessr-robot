@@ -112,5 +112,9 @@
   "leaderboard_period_all_time": "Butun vaqt",
   "leaderboard_global_title_period": "🌍 <b>Dunyo reytingi ({period}):</b>",
   "leaderboard_group_title_period": "👥 <b>Guruh reytingi ({period}):</b>",
-  "empty_leaderboard_period": "Ushbu davr uchun hozircha ballar yo'q. Birinchi bo'lib o'ynang!"
+  "empty_leaderboard_period": "Ushbu davr uchun hozircha ballar yo'q. Birinchi bo'lib o'ynang!",
+  "btn_miniapp": "🗺️ GeoGuessr (Mini App)",
+  "btn_miniapp_launch": "🚀 Xaritada o'ynash (Mini App)",
+  "miniapp_intro": "🗺️ <b>GeoGuessr Mini App — Interaktiv Xarita O'yini!</b>\n\nEkrandagi manzara yoki obida qaysi davlatda ekanligini xaritada belgilang (pin qo'ying)!\n\n🎯 <b>Qoidalar:</b>\n• Har bir o'yinda 5 ta qiziqarli raund\n• Belgilagan joyingiz qanchalik yaqin bo'lsa, shunchalik ko'p ball (5 000 gacha)\n• Maksimal natija: 25 000 ball!\n\n👇 O'yinni boshlash uchun quyidagi tugmani bosing:",
+  "miniapp_result_msg": "🎉 <b>Ajoyib o'yin! Mini App natijangiz saqlandi:</b>\n\n🏆 To'plangan ball: <b>{score} / 25 000</b>\n🎖 Daraja: <b>{rank}</b>\n⭐ Sizga <b>+{xp} XP</b> berildi!\n\n<i>Yana o'ynash uchun Mini Appni qayta ishga tushiring!</i>"
 }

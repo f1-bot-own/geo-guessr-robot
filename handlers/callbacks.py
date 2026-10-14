@@ -547,6 +547,15 @@ async def cb_main_menu(query: CallbackQuery, bot: Bot):
     elif action == "help":
         await query.answer()
         await bot.send_message(chat_id=user.id, text=t("help_text", lang), parse_mode="HTML")
+    elif action in ("miniapp", "miniapp_info"):
+        await query.answer()
+        from keyboards.menu_kb import get_miniapp_launch_kb
+        await bot.send_message(
+            chat_id=user.id,
+            text=t("miniapp_intro", lang),
+            reply_markup=get_miniapp_launch_kb(lang),
+            parse_mode="HTML"
+        )
 
 # ----------------- Game Type Selection -----------------
 @router.callback_query(F.data.startswith("game_type:"))

@@ -112,5 +112,9 @@
   "leaderboard_period_all_time": "All-Time",
   "leaderboard_global_title_period": "🌍 <b>Global Leaderboard ({period}):</b>",
   "leaderboard_group_title_period": "👥 <b>Group Leaderboard ({period}):</b>",
-  "empty_leaderboard_period": "No scores recorded for this period yet. Be the first to play!"
+  "empty_leaderboard_period": "No scores recorded for this period yet. Be the first to play!",
+  "btn_miniapp": "🗺️ GeoGuessr (Mini App)",
+  "btn_miniapp_launch": "🚀 Play on Map (Mini App)",
+  "miniapp_intro": "🗺️ <b>GeoGuessr Mini App — Interactive Map Challenge!</b>\n\nInspect the street view or landmark photo and drop a pin on the world map!\n\n🎯 <b>Rules:</b>\n• 5 exciting rounds per game\n• The closer your guess is, the more points you earn (up to 5,000 pts)\n• Max possible score: 25,000 points!\n\n👇 Tap the button below to launch the Mini App:",
+  "miniapp_result_msg": "🎉 <b>Awesome game! Mini App score recorded:</b>\n\n🏆 Final Score: <b>{score} / 25,000</b>\n🎖 Rank: <b>{rank}</b>\n⭐ You earned <b>+{xp} XP</b>!\n\n<i>To play another round, launch the Mini App again!</i>"
 }

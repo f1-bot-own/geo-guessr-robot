@@ -3,6 +3,7 @@ Bot Command Handlers for GeoGuru & GeoGuessr Telegram Bot.
 Includes: /start, /help, /game, /stop, /solo, /daily, /profile, /leaderboard, /top, /language, /duel.
 """
 
+import json
 from datetime import datetime
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandStart
@@ -14,7 +15,7 @@ from games.solo_session import SoloGameSession
 from games.daily_session import DailyChallengeSession
 from games.manager import game_manager
 from games.flow import send_round_question, send_solo_round, send_daily_round
-from keyboards.menu_kb import get_main_menu_kb, get_language_kb
+from keyboards.menu_kb import get_main_menu_kb, get_language_kb, get_miniapp_launch_kb
 from keyboards.game_kb import (
     get_setup_kb,
     get_duel_kb,
@@ -556,3 +557,57 @@ async def cmd_duel(message: Message, bot: Bot):
         reply_markup=get_duel_kb(challenger.id, target_user.id, lang, duel_id=duel_id),
         parse_mode="HTML"
     )
+
+
+@router.message(Command("miniapp", "map"))
+async def cmd_miniapp(message: Message, bot: Bot):
+    """Launch or explain the GeoGuessr Telegram Mini App."""
+    db = get_db(bot)
+    user_data = await db.get_user(message.from_user.id)
+    lang = user_data.get("language", "en") if user_data else "en"
+
+    await message.answer(
+        text=t("miniapp_intro", lang),
+        reply_markup=get_miniapp_launch_kb(lang),
+        parse_mode="HTML"
+    )
+
+
+@router.message(F.web_app_data)
+async def handle_miniapp_data(message: Message, bot: Bot):
+    """
+    Handle score and match completion payload sent back from GeoGuessr Telegram Mini App.
+    Awards user XP, updates user statistics, and posts a celebratory summary in the chat.
+    """
+    db = get_db(bot)
+    user = message.from_user
+    user_data = await db.get_user(user.id)
+    lang = user_data.get("language", "en") if user_data else "en"
+
+    try:
+        raw_data = message.web_app_data.data
+        data = json.loads(raw_data)
+        if data.get("action") == "miniapp_score":
+            score = int(data.get("total_score", 0))
+            rank = data.get("rank", "Explorer")
+            # Proportional XP reward: up to 500 XP
+            xp_awarded = min(500, max(25, int(score / 50)))
+
+            user_name = user.first_name or user.username or "Player"
+            await db.record_answer(
+                user_id=user.id,
+                is_correct=True,
+                points=score,
+                xp=xp_awarded,
+                user_name=user_name,
+                username=user.username
+            )
+
+            await message.reply(
+                text=t("miniapp_result_msg", lang, score=f"{score:,}", rank=rank, xp=xp_awarded),
+                reply_markup=get_miniapp_launch_kb(lang),
+                parse_mode="HTML"
+            )
+            return
+    except Exception as exc:
+        pass

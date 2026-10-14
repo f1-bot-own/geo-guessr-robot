@@ -66,3 +66,20 @@ XP_PER_CORRECT = 25
 XP_PER_WIN = 100
 
 # Level calculation: Level = 1 + int((XP / 200) ** 0.5)
+
+# Telegram Mini App Configuration
+WEBAPP_PORT = int(os.getenv("PORT", "8080"))
+
+def resolve_webapp_url() -> str:
+    url = os.getenv("WEBAPP_URL")
+    if url and url.strip():
+        val = url.strip()
+        if not val.startswith("http://") and not val.startswith("https://"):
+            return f"https://{val}"
+        return val
+    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+    if domain and domain.strip():
+        return f"https://{domain.strip()}"
+    return ""
+
+WEBAPP_URL = resolve_webapp_url()
