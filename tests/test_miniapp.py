@@ -31,14 +31,23 @@ class TestMiniAppWebServer(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_index_page(self):
-        """Verify / and /miniapp serve HTML page."""
+        """Verify / and /miniapp serve HTML page with Pannellum 360 viewer."""
         resp = await self.client.request("GET", "/")
         self.assertEqual(resp.status, 200)
         text = await resp.text()
         self.assertIn("GeoGuessr Mini App", text)
+        self.assertIn("pannellum", text.lower())
+        self.assertIn("panoramaViewer", text)
 
         resp2 = await self.client.request("GET", "/miniapp")
         self.assertEqual(resp2.status, 200)
+
+    @unittest_run_loop
+    async def test_panorama_assets_served(self):
+        """Verify 360 equirectangular panoramas are served statically."""
+        resp = await self.client.request("GET", "/panoramas/swiss-alps.jpg")
+        self.assertEqual(resp.status, 200)
+        self.assertEqual(resp.headers.get("Content-Type"), "image/jpeg")
 
     @unittest_run_loop
     async def test_score_api_submission(self):

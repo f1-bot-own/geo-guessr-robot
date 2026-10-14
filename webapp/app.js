@@ -40,6 +40,7 @@ const I18N = {
     close: "Juda yaqin! 👏",
     decent: "Yaxshi urinish! 👍",
     far: "Biroz uzoq ketdi! 🌍",
+    panorama360: "🔄 360° Aylantiring (Panorama)",
   },
   ru: {
     round: "Раунд",
@@ -66,6 +67,7 @@ const I18N = {
     close: "Очень близко! 👏",
     decent: "Хорошая попытка! 👍",
     far: "Далековато! 🌍",
+    panorama360: "🔄 360° Круговой обзор (Панорама)",
   },
   en: {
     round: "Round",
@@ -92,11 +94,126 @@ const I18N = {
     close: "Very close! 👏",
     decent: "Nice attempt! 👍",
     far: "A bit far off! 🌍",
+    panorama360: "🔄 360° Interactive Panorama",
   }
 };
 
 // Curated Locations Database (50+ handpicked worldwide locations with exact coordinates)
 const LOCATIONS = [
+  {
+    id: "pano_swiss_alps",
+    name: { uz: "Dent de Volion (Yura tog'lari)", ru: "Вершина Дан-де-Вольон (Юра)", en: "Dent de Vaulion (Jura Mountains)" },
+    country: { uz: "Shveytsariya", ru: "Швейцария", en: "Switzerland" },
+    city: { uz: "Vo kantoni", ru: "Кантон Во", en: "Canton of Vaud" },
+    flag: "🇨🇭",
+    lat: 46.6811,
+    lng: 6.3578,
+    driving: "right",
+    type: "streetview",
+    is360: true,
+    panorama: "panoramas/swiss-alps.jpg",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Dent_de_Vaulion_-_360_degree_panorama.jpg/1280px-Dent_de_Vaulion_-_360_degree_panorama.jpg",
+    fact: {
+      uz: "Dent de Vaulion cho'qqisidan bir vaqtning o'zida Shveytsariya va Fransiyaning 7 ta ko'li hamda Monblan ko'rinadi.",
+      ru: "С вершины открывается потрясающий 360-градусный вид на 7 альпийских озёр Швейцарии и Франции, а также Монблан.",
+      en: "From the peak, you get a 360-degree panorama of seven Swiss and French lakes as well as Mont Blanc."
+    }
+  },
+  {
+    id: "pano_atacama_cerro_toco",
+    name: { uz: "Serro Toko cho'qqisi (Atakama)", ru: "Вулкан Серро-Токо (Атакама)", en: "Cerro Toco Peak (Atacama)" },
+    country: { uz: "Chili", ru: "Чили", en: "Chile" },
+    city: { uz: "San-Pedro-de-Atakama", ru: "Сан-Педро-де-Атакама", en: "San Pedro de Atacama" },
+    flag: "🇨🇱",
+    lat: -22.9564,
+    lng: -67.7772,
+    driving: "right",
+    type: "streetview",
+    is360: true,
+    panorama: "panoramas/cerro-toco.jpg",
+    image: "https://pannellum.org/images/cerro-toco-0.jpg",
+    fact: {
+      uz: "Atakama sahrosi dunyodagi eng qurg'oqchil baland tog' cho'li bo'lib, uning manzarasi Mars sayyorasiga o'xshaydi.",
+      ru: "Пустыня Атакама — самое сухое место на планете, её марсианский рельеф привлекает учёных со всего мира.",
+      en: "Atacama is the driest high-altitude desert on Earth, often used by NASA to test Mars rovers."
+    }
+  },
+  {
+    id: "pano_alma_observatory",
+    name: { uz: "ALMA Teleskoplar majmuasi", ru: "Обсерватория ALMA", en: "ALMA Observatory Array" },
+    country: { uz: "Chili", ru: "Чили", en: "Chile" },
+    city: { uz: "Chajnanto platosi", ru: "Плато Чахнантор", en: "Chajnantor Plateau" },
+    flag: "🇨🇱",
+    lat: -23.0293,
+    lng: -67.7548,
+    driving: "right",
+    type: "landmark",
+    is360: true,
+    panorama: "panoramas/alma.jpg",
+    image: "https://pannellum.org/images/alma.jpg",
+    fact: {
+      uz: "ALMA 5 000 metr balandlikda joylashgan bo'lib, koinotning eng qadimiy galaktikalarini tadqiq qiladi.",
+      ru: "Крупнейший в мире комплекс радиотелескопов на высоте 5000 метров исследует глубины далёкого космоса.",
+      en: "Located at 5,000m elevation in the Andes, ALMA is the most powerful radio observatory in the world."
+    }
+  },
+  {
+    id: "pano_boston_beacon_hill",
+    name: { uz: "Charlz-strit (Bikon-Xill)", ru: "Чарльз-стрит (Бикон-Хилл)", en: "Charles Street (Beacon Hill)" },
+    country: { uz: "AQSH", ru: "США", en: "United States" },
+    city: { uz: "Boston", ru: "Бостон", en: "Boston" },
+    flag: "🇺🇸",
+    lat: 42.3582,
+    lng: -71.0706,
+    driving: "right",
+    type: "streetview",
+    is360: true,
+    panorama: "panoramas/charles-street.jpg",
+    image: "https://pannellum.org/images/charles-street.jpg",
+    fact: {
+      uz: "Bostonning tarixiy Bikon-Xill ko'chalari bugungi kungacha asl 19-asr gaz chiroqlari bilan yoritiladi.",
+      ru: "Исторический квартал Бостона с газовыми фонарями XIX века и архитектурой времён Войны за независимость.",
+      en: "Beacon Hill is famous for its narrow gas-lit cobblestone streets and Victorian architecture."
+    }
+  },
+  {
+    id: "pano_boston_jfk_harbor",
+    name: { uz: "Boston bandargohi va JFK majmuasi", ru: "Гавань Бостона и Мемориал Кеннеди", en: "Boston Harbor & JFK Memorial" },
+    country: { uz: "AQSH", ru: "США", en: "United States" },
+    city: { uz: "Boston", ru: "Бостон", en: "Boston" },
+    flag: "🇺🇸",
+    lat: 42.3168,
+    lng: -71.0345,
+    driving: "right",
+    type: "landmark",
+    is360: true,
+    panorama: "panoramas/boston-jfk.jpg",
+    image: "https://pannellum.org/images/jfk.jpg",
+    fact: {
+      uz: "Atlantika okeani qirg'og'ida qad rostlagan ushbu memorial mashhur me'mor I. M. Pei tomonidan loyihalangan.",
+      ru: "Президентский комплекс на побережье Атлантического океана, спроектированный архитектором И. М. Пэем.",
+      en: "Overlooking Dorchester Bay on the Atlantic coast, designed by renowned architect I. M. Pei."
+    }
+  },
+  {
+    id: "pano_baltimore_art_museum",
+    name: { uz: "Baltimor San'at Muzeyi bog'i", ru: "Сад Музея искусств Балтимора", en: "Baltimore Museum of Art Garden" },
+    country: { uz: "AQSH", ru: "США", en: "United States" },
+    city: { uz: "Baltimor", ru: "Балтимор", en: "Baltimore" },
+    flag: "🇺🇸",
+    lat: 39.3262,
+    lng: -76.6198,
+    driving: "right",
+    type: "landmark",
+    is360: true,
+    panorama: "panoramas/baltimore-art.jpg",
+    image: "https://pannellum.org/images/bma-0.jpg",
+    fact: {
+      uz: "Muzey bog'ida dunyoning eng mashhur zamonaviy haykaltaroshlarining 30 dan ortiq durdona asarlari ochiq osmon ostida joylashgan.",
+      ru: "В парке скульптур музея под открытым небом выставлены более 30 шедевров современного искусства.",
+      en: "The sculpture gardens feature over 30 masterworks of modern art across three landscaped acres."
+    }
+  },
   {
     id: "registan",
     name: { uz: "Registon maydoni", ru: "Площадь Регистан", en: "Registan Square" },
@@ -453,6 +570,8 @@ let polyline = null;
 let selectedLatLng = null;
 
 // DOM Elements
+const panoramaViewer = document.getElementById("panoramaViewer");
+let pannellumViewer = null;
 const roundBadge = document.getElementById("roundBadge");
 const scoreBadge = document.getElementById("scoreBadge");
 const locationImg = document.getElementById("locationImg");
@@ -575,9 +694,16 @@ function startNewGame() {
   currentRoundIndex = 0;
   roundResults = [];
   
-  // Shuffle locations and pick 5
-  const shuffled = [...LOCATIONS].sort(() => 0.5 - Math.random());
-  gameRounds = shuffled.slice(0, 5);
+  // Guarantee an exciting mix of interactive 360° panoramas and classic street views
+  const panos = LOCATIONS.filter(l => l.is360);
+  const others = LOCATIONS.filter(l => !l.is360);
+
+  const shuffledPanos = [...panos].sort(() => 0.5 - Math.random());
+  const shuffledOthers = [...others].sort(() => 0.5 - Math.random());
+
+  // Guarantee 2 interactive 360° spherical rounds + 3 landmark/street rounds
+  const selected = [...shuffledPanos.slice(0, 2), ...shuffledOthers.slice(0, 3)].sort(() => 0.5 - Math.random());
+  gameRounds = selected;
 
   gameOverScreen.classList.remove("show");
   resultModal.classList.remove("show");
@@ -613,18 +739,94 @@ function loadRound(index) {
   mapHintText.textContent = t.hintMap;
   map.setView([25, 10], 2);
 
-  // Load Image
+  // Clean up previous 360 viewer if present
+  if (pannellumViewer) {
+    try {
+      pannellumViewer.destroy();
+    } catch (e) {
+      console.warn("Pannellum destroy notice:", e);
+    }
+    pannellumViewer = null;
+  }
+
+  // Load Media (360 Panorama vs Static Street Photo)
   imageLoader.classList.remove("hidden");
-  locationImg.style.opacity = "0";
-  locationImg.onload = () => {
-    imageLoader.classList.add("hidden");
-    locationImg.style.opacity = "1";
-  };
-  locationImg.src = loc.image;
+  const is360 = Boolean(loc.is360 && loc.panorama);
+
+  if (is360) {
+    locationImg.classList.add("hidden");
+    panoramaViewer.classList.remove("hidden");
+
+    if (window.pannellum) {
+      try {
+        pannellumViewer = window.pannellum.viewer("panoramaViewer", {
+          type: "equirectangular",
+          panorama: loc.panorama,
+          autoLoad: true,
+          autoRotate: -1.2,
+          compass: true,
+          showZoomCtrl: true,
+          showFullscreenCtrl: false,
+          mouseZoom: true,
+          hfov: 100,
+          minHfov: 50,
+          maxHfov: 120
+        });
+
+        pannellumViewer.on("load", () => {
+          imageLoader.classList.add("hidden");
+        });
+
+        pannellumViewer.on("error", (err) => {
+          console.warn("Pannellum load failed, falling back to static image:", err);
+          panoramaViewer.classList.add("hidden");
+          locationImg.classList.remove("hidden");
+          locationImg.style.opacity = "0";
+          locationImg.onload = () => {
+            imageLoader.classList.add("hidden");
+            locationImg.style.opacity = "1";
+          };
+          locationImg.src = loc.image;
+        });
+      } catch (err) {
+        console.error("Pannellum init error:", err);
+        panoramaViewer.classList.add("hidden");
+        locationImg.classList.remove("hidden");
+        locationImg.style.opacity = "0";
+        locationImg.onload = () => {
+          imageLoader.classList.add("hidden");
+          locationImg.style.opacity = "1";
+        };
+        locationImg.src = loc.image;
+      }
+    } else {
+      panoramaViewer.classList.add("hidden");
+      locationImg.classList.remove("hidden");
+      locationImg.style.opacity = "0";
+      locationImg.onload = () => {
+        imageLoader.classList.add("hidden");
+        locationImg.style.opacity = "1";
+      };
+      locationImg.src = loc.image;
+    }
+  } else {
+    panoramaViewer.classList.add("hidden");
+    locationImg.classList.remove("hidden");
+    locationImg.style.opacity = "0";
+    locationImg.onload = () => {
+      imageLoader.classList.add("hidden");
+      locationImg.style.opacity = "1";
+    };
+    locationImg.src = loc.image;
+  }
 
   // Clues
   clueDrivingText.textContent = loc.driving === "right" ? t.drivingRight : t.drivingLeft;
-  clueTypeText.textContent = loc.type === "landmark" ? t.landmark : t.streetView;
+  if (is360) {
+    clueTypeText.textContent = t.panorama360 || "🔄 360° Panorama";
+  } else {
+    clueTypeText.textContent = loc.type === "landmark" ? t.landmark : t.streetView;
+  }
 }
 
 // Submit Guess
@@ -775,7 +977,11 @@ function setLanguage(lang) {
     roundBadge.textContent = `${t.round} ${currentRoundIndex + 1}/5`;
     scoreBadge.textContent = `${totalScore.toLocaleString()} ${t.score}`;
     clueDrivingText.textContent = loc.driving === "right" ? t.drivingRight : t.drivingLeft;
-    clueTypeText.textContent = loc.type === "landmark" ? t.landmark : t.streetView;
+    if (loc.is360 && loc.panorama) {
+      clueTypeText.textContent = t.panorama360 || "🔄 360° Panorama";
+    } else {
+      clueTypeText.textContent = loc.type === "landmark" ? t.landmark : t.streetView;
+    }
     if (!guessMarker) {
       mapHintText.textContent = t.hintMap;
     }
@@ -793,6 +999,9 @@ expandPhotoBtn.addEventListener("click", () => {
   expandPhotoBtn.textContent = photoContainer.classList.contains("fullscreen") ? "✕" : "🔍";
   setTimeout(() => {
     if (map) map.invalidateSize();
+    if (pannellumViewer && typeof pannellumViewer.resize === "function") {
+      pannellumViewer.resize();
+    }
   }, 350);
 });
 
