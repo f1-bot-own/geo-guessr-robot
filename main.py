@@ -53,10 +53,16 @@ except Exception as exc:
     print(msg, file=sys.stdout)
     sys.stderr.flush()
     sys.stdout.flush()
-    if __name__ == "__main__" and "unittest" not in sys.modules and not os.getenv("TESTING"):
+    if __name__ == "__main__" and not any("unittest" in str(a) or "pytest" in str(a) for a in sys.argv):
         time.sleep(3600)
         sys.exit(1)
     raise
+
+def is_testing_env() -> bool:
+    """Return True only if actively executing a unit test suite."""
+    if os.getenv("TESTING"):
+        return True
+    return any("unittest" in str(a) or "pytest" in str(a) for a in sys.argv)
 
 
 def is_bot_token_valid(token: Optional[str]) -> bool:
@@ -119,7 +125,7 @@ async def main():
 
     # Start embedded web server for Telegram Mini App immediately
     runner = None
-    if "unittest" not in sys.modules and not os.getenv("TESTING"):
+    if not is_testing_env():
         try:
             from webapp.server import start_web_server
             runner, sites = await start_web_server(port=config.WEBAPP_PORT, host="0.0.0.0", db=db)
@@ -141,7 +147,7 @@ async def main():
         print(err_msg, file=sys.stdout, flush=True)
         print(err_msg, file=sys.stderr, flush=True)
         # Prevent tight restart loop in Railway container
-        if "unittest" not in sys.modules and not os.getenv("TESTING"):
+        if not is_testing_env():
             await asyncio.sleep(3600)
         return
 
@@ -154,7 +160,7 @@ async def main():
     bot["db"] = db
 
     # Live connection test with Telegram (only in live runtime, skipped in unit tests)
-    if "unittest" not in sys.modules and not os.getenv("TESTING"):
+    if not is_testing_env():
         try:
             bot_user = await bot.get_me()
             conn_ok = f"✅ Telegram bot muvaffaqiyatli ulandi: @{bot_user.username} (ID: {bot_user.id})"
@@ -193,7 +199,7 @@ async def main():
     logger.info("Bot started successfully. Waiting for updates...")
     print("Bot started successfully. Waiting for updates...", file=sys.stdout, flush=True)
     try:
-        if "unittest" not in sys.modules and not os.getenv("TESTING"):
+        if not is_testing_env():
             try:
                 await bot.delete_webhook(drop_pending_updates=True)
             except Exception as wh_err:
@@ -223,6 +229,6 @@ if __name__ == "__main__":
         print(msg, file=sys.stdout)
         sys.stderr.flush()
         sys.stdout.flush()
-        if "unittest" not in sys.modules and not os.getenv("TESTING"):
+        if not is_testing_env():
             time.sleep(3600)
         sys.exit(1)
