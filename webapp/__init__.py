@@ -1,0 +1,3 @@
+"""
+GeoGuessr Mini App package.
+"""
