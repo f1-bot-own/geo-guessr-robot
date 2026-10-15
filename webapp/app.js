@@ -232,6 +232,7 @@ const LOCATIONS = [
     type: "landmark",
     is360: true,
     panorama: "panoramas/milan_duomo.jpg",
+    image: "panoramas/milan_duomo.jpg",
     fact: {
       uz: "Milan sobori dunyodagi 5-o'rindagi eng yirik nasroniy ibodatxonasidir va 6 asr davomida qurilgan.",
       ru: "Миланский собор Дуомо из белого мрамора строился почти шесть столетий.",
@@ -250,6 +251,7 @@ const LOCATIONS = [
     type: "streetview",
     is360: true,
     panorama: "panoramas/france_provence.jpg",
+    image: "panoramas/france_provence.jpg",
     fact: {
       uz: "Provans quyoshli kungaboqar va lavanda dalalari, uzumzorlari va o'rta asr qishloqlari bilan dunyoga mashhur.",
       ru: "Прованс всемирно известен своими лавандовыми и подсолнуховыми полями, вдохновлявшими Ван Гога.",
@@ -268,6 +270,7 @@ const LOCATIONS = [
     type: "streetview",
     is360: true,
     panorama: "panoramas/france_puydesancy.jpg",
+    image: "panoramas/france_puydesancy.jpg",
     fact: {
       uz: "Pyui-de-Sansi — qadimiy o'chgan vulqon bo'lib, Fransiya Markaziy massividagi eng baland nuqtadir (1886 m).",
       ru: "Высочайшая точка Центрального массива Франции (1886 м), древний стратовулкан.",
@@ -286,6 +289,7 @@ const LOCATIONS = [
     type: "streetview",
     is360: true,
     panorama: "panoramas/norway_snow.jpg",
+    image: "panoramas/norway_snow.jpg",
     fact: {
       uz: "Norvegiyaning qorli o'rmonlari qishki olimpiada sport turlarining vatani sanaladi.",
       ru: "Норвежские хвойные леса и заснеженные фьорды — столица зимних видов спорта.",
@@ -304,6 +308,7 @@ const LOCATIONS = [
     type: "landmark",
     is360: true,
     panorama: "panoramas/baltimore_garden.jpg",
+    image: "panoramas/baltimore_garden.jpg",
     fact: {
       uz: "Ushbu xiyobonda Aleksandr Kolder va Genri Mur kabi asr ustalari ijodiga mansub monumentlar joylashgan.",
       ru: "Прогулочные аллеи с работами классиков модерна, включая Александра Колдера и Генри Мура.",
@@ -322,6 +327,7 @@ const LOCATIONS = [
     type: "streetview",
     is360: true,
     panorama: "panoramas/forest_canopy.jpg",
+    image: "panoramas/forest_canopy.jpg",
     fact: {
       uz: "Amazonka o'rmonlari 'Yer sayyorasining o'pkasi' deb ataladi va sayyoramizdagi turlarning 10% dan ortig'iga boshpana beradi.",
       ru: "Джунгли Амазонки — «лёгкие планеты», дом для более чем 10% всех видов флоры и фауны Земли.",
@@ -345,7 +351,7 @@ let polyline = null;
 let selectedLatLng = null;
 
 // DOM Elements
-const panoramaViewer = document.getElementById("panoramaViewer");
+let panoramaViewer = document.getElementById("panoramaViewer");
 let pannellumViewer = null;
 const roundBadge = document.getElementById("roundBadge");
 const scoreBadge = document.getElementById("scoreBadge");
@@ -428,6 +434,9 @@ function initMap() {
   // Esri World Street Map (GeoGuessr-style crisp borders, clear country labels, 100% free)
   currentTileLayer = L.tileLayer(TILE_ESRI, {
     maxZoom: 19,
+    keepBuffer: 6,
+    updateWhenIdle: false,
+    updateInterval: 50,
     attribution: '&copy; Esri World Street Map'
   }).addTo(map);
 
@@ -452,6 +461,9 @@ function toggleMapLayer() {
   const url = isSatellite ? TILE_SAT : TILE_ESRI;
   currentTileLayer = L.tileLayer(url, {
     maxZoom: 19,
+    keepBuffer: 6,
+    updateWhenIdle: false,
+    updateInterval: 50,
     attribution: isSatellite ? '&copy; Esri Satellite' : '&copy; Esri World Street'
   }).addTo(map);
 
@@ -502,6 +514,14 @@ function startNewGame() {
   const shuffled = [...LOCATIONS].sort(() => 0.5 - Math.random());
   gameRounds = shuffled.slice(0, 5);
 
+  // Preload all 5 rounds images immediately for ultra-fast round transitions
+  gameRounds.forEach(r => {
+    if (r.panorama) {
+      const preloadImg = new Image();
+      preloadImg.src = r.panorama;
+    }
+  });
+
   gameOverScreen.classList.remove("show");
   resultModal.classList.remove("show");
 
@@ -531,7 +551,7 @@ function loadRound(index) {
   map.setView([20, 10], 2);
   setTimeout(() => {
     if (map) map.invalidateSize();
-  }, 200);
+  }, 100);
 
   // Clean up previous 360 viewer if present
   if (pannellumViewer) {
@@ -543,8 +563,32 @@ function loadRound(index) {
     pannellumViewer = null;
   }
 
-  // Load Media (360 Panorama vs Static Street Photo)
+  // Cleanly replace the panoramaViewer DOM node to guarantee fresh WebGL context
+  const imageWrapper = document.getElementById("imageWrapper");
+  let existingViewer = document.getElementById("panoramaViewer");
+  if (existingViewer) {
+    existingViewer.remove();
+  }
+  panoramaViewer = document.createElement("div");
+  panoramaViewer.id = "panoramaViewer";
+  panoramaViewer.className = "panorama-viewer";
+  imageWrapper.insertBefore(panoramaViewer, imageLoader);
+
+  // Show loader overlay
   imageLoader.classList.remove("hidden");
+  let loaderHidden = false;
+  const hideLoader = () => {
+    if (!loaderHidden) {
+      loaderHidden = true;
+      imageLoader.classList.add("hidden");
+    }
+  };
+
+  // Fail-safe timeout: loader spinner NEVER hangs longer than 1000ms
+  const loaderTimeout = setTimeout(() => {
+    hideLoader();
+  }, 1000);
+
   const is360 = Boolean(loc.is360 && loc.panorama);
 
   if (is360) {
@@ -568,50 +612,74 @@ function loadRound(index) {
         });
 
         pannellumViewer.on("load", () => {
-          imageLoader.classList.add("hidden");
+          clearTimeout(loaderTimeout);
+          hideLoader();
         });
 
         pannellumViewer.on("error", (err) => {
-          console.warn("Pannellum load failed, falling back to static image:", err);
+          console.warn("Pannellum load failed, falling back to static view:", err);
+          clearTimeout(loaderTimeout);
           panoramaViewer.classList.add("hidden");
           locationImg.classList.remove("hidden");
           locationImg.style.opacity = "0";
           locationImg.onload = () => {
-            imageLoader.classList.add("hidden");
+            hideLoader();
             locationImg.style.opacity = "1";
           };
-          locationImg.src = loc.image;
+          locationImg.onerror = () => {
+            hideLoader();
+          };
+          locationImg.src = loc.image || loc.panorama;
         });
+
+        // Fast-path: If viewer is already loaded from cache
+        if (pannellumViewer.isLoaded && pannellumViewer.isLoaded()) {
+          clearTimeout(loaderTimeout);
+          hideLoader();
+        }
       } catch (err) {
         console.error("Pannellum init error:", err);
+        clearTimeout(loaderTimeout);
         panoramaViewer.classList.add("hidden");
         locationImg.classList.remove("hidden");
         locationImg.style.opacity = "0";
         locationImg.onload = () => {
-          imageLoader.classList.add("hidden");
+          hideLoader();
           locationImg.style.opacity = "1";
         };
-        locationImg.src = loc.image;
+        locationImg.onerror = () => {
+          hideLoader();
+        };
+        locationImg.src = loc.image || loc.panorama;
       }
     } else {
+      clearTimeout(loaderTimeout);
       panoramaViewer.classList.add("hidden");
       locationImg.classList.remove("hidden");
       locationImg.style.opacity = "0";
       locationImg.onload = () => {
-        imageLoader.classList.add("hidden");
+        hideLoader();
         locationImg.style.opacity = "1";
       };
-      locationImg.src = loc.image;
+      locationImg.onerror = () => {
+        hideLoader();
+      };
+      locationImg.src = loc.image || loc.panorama;
     }
   } else {
     panoramaViewer.classList.add("hidden");
     locationImg.classList.remove("hidden");
     locationImg.style.opacity = "0";
     locationImg.onload = () => {
-      imageLoader.classList.add("hidden");
+      clearTimeout(loaderTimeout);
+      hideLoader();
       locationImg.style.opacity = "1";
     };
-    locationImg.src = loc.image;
+    locationImg.onerror = () => {
+      clearTimeout(loaderTimeout);
+      hideLoader();
+    };
+    locationImg.src = loc.image || loc.panorama;
   }
 
   // Clues
@@ -800,14 +868,38 @@ if (mapLayerToggle) {
 
 const mapSizeToggle = document.getElementById("mapSizeToggle");
 const mapContainer = document.getElementById("mapContainer");
+if (mapContainer) {
+  let resizeTimer = null;
+  const triggerMapResize = () => {
+    if (map) {
+      map.invalidateSize({ animate: false });
+    }
+  };
+
+  // Immediate map resize when hovering or animating (instant responsiveness)
+  mapContainer.addEventListener("mouseenter", () => {
+    clearTimeout(resizeTimer);
+    triggerMapResize();
+    resizeTimer = setTimeout(triggerMapResize, 260);
+  });
+
+  mapContainer.addEventListener("mouseleave", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(triggerMapResize, 260);
+  });
+
+  mapContainer.addEventListener("transitionend", triggerMapResize);
+}
+
 if (mapSizeToggle && mapContainer) {
   mapSizeToggle.addEventListener("click", (e) => {
     e.stopPropagation();
     mapContainer.classList.toggle("maximized");
     mapSizeToggle.textContent = mapContainer.classList.contains("maximized") ? "🗗" : "⛶";
+    if (map) map.invalidateSize({ animate: false });
     setTimeout(() => {
-      if (map) map.invalidateSize();
-    }, 350);
+      if (map) map.invalidateSize({ animate: false });
+    }, 260);
   });
 }
 
@@ -817,9 +909,13 @@ if (mobileMapBtn && mapContainer) {
     mapContainer.classList.remove("collapsed");
     mapContainer.classList.add("expanded");
     mobileMapBtn.classList.add("hidden");
+    if (map) map.invalidateSize({ animate: false });
     setTimeout(() => {
-      if (map) map.invalidateSize();
-    }, 350);
+      if (map) map.invalidateSize({ animate: false });
+    }, 180);
+    setTimeout(() => {
+      if (map) map.invalidateSize({ animate: false });
+    }, 320);
   });
 }
 
