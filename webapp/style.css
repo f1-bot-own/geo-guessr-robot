@@ -106,38 +106,29 @@ body, html {
   color: #0f172a;
 }
 
-/* Main Split View */
+/* Main Game Area: Fullscreen 360 Viewport with Floating Interactive Map */
 .game-view {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  width: 100%;
   height: calc(100% - 52px);
-  position: relative;
   overflow: hidden;
-}
-
-/* Photo Viewport */
-.photo-container {
-  flex: 1;
-  min-height: 40%;
-  max-height: 50%;
-  position: relative;
   background: #020617;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.photo-container.fullscreen {
+/* Photo / 360 Panorama Viewport: 100% Fullscreen Coverage */
+.photo-container {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  max-height: 100%;
-  z-index: 1050;
+  z-index: 1;
+  background: #020617;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .image-wrapper {
@@ -271,12 +262,26 @@ body, html {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* Map Section */
+/* Floating GeoGuessr Map Container */
 .map-container {
-  flex: 1;
-  position: relative;
-  background: #0f172a;
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 380px;
+  height: 280px;
+  z-index: 100;
+  border-radius: 18px;
   overflow: hidden;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 24px rgba(56, 189, 248, 0.2);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.2s ease,
+              box-shadow 0.3s ease;
 }
 
 #map {
@@ -285,32 +290,116 @@ body, html {
   z-index: 1;
 }
 
-.map-layer-toggle {
+/* Desktop Hover Expansion */
+@media (min-width: 768px) {
+  .map-container:hover,
+  .map-container.expanded {
+    width: 600px;
+    height: 440px;
+    border-color: rgba(56, 189, 248, 0.9);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 32px rgba(56, 189, 248, 0.35);
+  }
+
+  .map-container.maximized {
+    width: min(1000px, calc(100vw - 40px)) !important;
+    height: min(720px, calc(100vh - 100px)) !important;
+  }
+}
+
+/* Mobile Screens */
+@media (max-width: 767px) {
+  .map-container {
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    height: 240px;
+    border-radius: 16px;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), height 0.35s ease;
+  }
+
+  .map-container.collapsed {
+    transform: translateY(calc(100% + 20px));
+  }
+
+  .map-container.expanded {
+    height: 60vh;
+  }
+
+  .mobile-map-btn {
+    display: flex !important;
+  }
+}
+
+.map-top-controls {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   z-index: 1000;
+  pointer-events: none;
+}
+
+.map-layer-toggle,
+.map-size-toggle {
+  pointer-events: auto;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #f8fafc;
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 5px;
 }
 
-.map-layer-toggle:hover {
+.map-size-toggle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.map-layer-toggle:hover,
+.map-size-toggle:hover {
   background: rgba(30, 41, 59, 0.95);
   border-color: var(--accent-color);
+  color: var(--accent-color);
   transform: translateY(-1px);
+}
+
+.mobile-map-btn {
+  display: none;
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 95;
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 12px 20px;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.5);
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.mobile-map-btn.hidden {
+  display: none !important;
 }
 
 /* Leaflet Dark Styles Overrides */
@@ -337,12 +426,12 @@ body, html {
 /* Action Bar Floating over Map */
 .map-action-bar {
   position: absolute;
-  bottom: 14px;
-  left: 14px;
-  right: 14px;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   z-index: 1000;
   pointer-events: none;
 }
@@ -352,9 +441,9 @@ body, html {
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 5px 12px;
-  border-radius: 14px;
-  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
   color: var(--hint-color);
   border: 1px solid var(--card-border);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -364,26 +453,37 @@ body, html {
 .guess-btn {
   pointer-events: auto;
   width: 100%;
-  height: 48px;
+  height: 44px;
   background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
   border: none;
   border-radius: 12px;
-  color: #04101e;
-  font-size: 16px;
+  color: #fff;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+}
+
+.guess-btn:not(:disabled) {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.5);
+  animation: pulse-green 1.8s infinite;
+}
+
+@keyframes pulse-green {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 .guess-btn:disabled {
-  background: #334155;
-  color: #64748b;
-  box-shadow: none;
+  opacity: 0.5;
   cursor: not-allowed;
+  filter: grayscale(0.8);
 }
 
 .guess-btn:not(:disabled):active {

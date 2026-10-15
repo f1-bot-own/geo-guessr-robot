@@ -221,343 +221,111 @@ const LOCATIONS = [
     }
   },
   {
-    id: "registan",
-    name: { uz: "Registon maydoni", ru: "Площадь Регистан", en: "Registan Square" },
-    country: { uz: "O'zbekiston", ru: "Узбекистан", en: "Uzbekistan" },
-    city: { uz: "Samarqand", ru: "Самарканд", en: "Samarkand" },
-    flag: "🇺🇿",
-    lat: 39.6548,
-    lng: 66.9757,
-    driving: "right",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/RegistanSquare_Samarkand.jpg/1280px-RegistanSquare_Samarkand.jpg",
-    fact: {
-      uz: "Registon maydoni uchta qadimiy madrasadan iborat: Ulug'bek, Sherdor va Tillakori.",
-      ru: "Регистан — главная площадь Самарканда с тремя величественными медресе XV–XVII веков.",
-      en: "Registan Square features three iconic madrasahs dating back to the 15th-17th centuries."
-    }
-  },
-  {
-    id: "eiffel_tower",
-    name: { uz: "Eyfel minorasi", ru: "Эйфелева башня", en: "Eiffel Tower" },
-    country: { uz: "Fransiya", ru: "Франция", en: "France" },
-    city: { uz: "Parij", ru: "Париж", en: "Paris" },
-    flag: "🇫🇷",
-    lat: 48.8584,
-    lng: 2.2945,
-    driving: "right",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Tour_Eiffel_Wikimedia_Commons_%28cropped%29.jpg/1280px-Tour_Eiffel_Wikimedia_Commons_%28cropped%29.jpg",
-    fact: {
-      uz: "Yoz faslida metall qizib kengayishi sababli minora 15 santimetrgacha balandlashadi.",
-      ru: "Летом металл расширяется на солнце, и башня становится выше примерно на 15 см.",
-      en: "Thermal expansion makes the tower grow up to 15 cm taller during summer."
-    }
-  },
-  {
-    id: "times_square",
-    name: { uz: "Tayms-skver", ru: "Таймс-сквер", en: "Times Square" },
-    country: { uz: "AQSH", ru: "США", en: "United States" },
-    city: { uz: "Nyu-York", ru: "Нью-Йорк", en: "New York City" },
-    flag: "🇺🇸",
-    lat: 40.7580,
-    lng: -73.9855,
-    driving: "right",
-    type: "streetview",
-    image: "https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&fit=crop&w=1200&q=80",
-    fact: {
-      uz: "Dunyoning eng gavjum chorrahalaridan biri, har kuni 300 000 dan ortiq piyoda o'tadi.",
-      ru: "Сердце Манхэттена с гигантскими неоновыми экранами, центр театрального квартала.",
-      en: "Known as 'The Crossroads of the World', visited by over 300,000 pedestrians daily."
-    }
-  },
-  {
-    id: "colosseum",
-    name: { uz: "Rim Kolizeyi", ru: "Римский Колизей", en: "The Colosseum" },
+    id: "pano_milan_duomo",
+    name: { uz: "Sobor maydoni (Piazza del Duomo)", ru: "Соборная площадь (Пьяцца-дель-Дуомо)", en: "Piazza del Duomo" },
     country: { uz: "Italiya", ru: "Италия", en: "Italy" },
-    city: { uz: "Rim", ru: "Рим", en: "Rome" },
+    city: { uz: "Milan", ru: "Милан", en: "Milan" },
     flag: "🇮🇹",
-    lat: 41.8902,
-    lng: 12.4922,
+    lat: 45.4641,
+    lng: 9.1895,
     driving: "right",
     type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Colosseo_2020.jpg/1280px-Colosseo_2020.jpg",
+    is360: true,
+    panorama: "panoramas/milan_duomo.jpg",
     fact: {
-      uz: "Qadimgi dunyoning eng ulkan amfiteatri, 50 000 dan ziyod tomoshabin sig'dirgan.",
-      ru: "Крупнейший амфитеатр античного мира, вмещавший более 50 000 зрителей.",
-      en: "The largest ancient amphitheatre ever built, hosting gladiator battles for centuries."
+      uz: "Milan sobori dunyodagi 5-o'rindagi eng yirik nasroniy ibodatxonasidir va 6 asr davomida qurilgan.",
+      ru: "Миланский собор Дуомо из белого мрамора строился почти шесть столетий.",
+      en: "The Milan Cathedral took nearly six centuries to complete and is the 5th largest church in the world."
     }
   },
   {
-    id: "shibuya_crossing",
-    name: { uz: "Shibuya chorrahasi", ru: "Перекрёсток Сибуя", en: "Shibuya Crossing" },
-    country: { uz: "Yaponiya", ru: "Япония", en: "Japan" },
-    city: { uz: "Tokio", ru: "Токио", en: "Tokyo" },
-    flag: "🇯🇵",
-    lat: 35.6595,
-    lng: 139.7005,
-    driving: "left",
+    id: "pano_france_provence",
+    name: { uz: "Kungaboqar vodiysi (Provans)", ru: "Долина подсолнухов (Прованс)", en: "Sunflower Valleys (Provence)" },
+    country: { uz: "Fransiya", ru: "Франция", en: "France" },
+    city: { uz: "Provans", ru: "Прованс", en: "Provence" },
+    flag: "🇫🇷",
+    lat: 43.8845,
+    lng: 4.8870,
+    driving: "right",
     type: "streetview",
-    image: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=1200&q=80",
+    is360: true,
+    panorama: "panoramas/france_provence.jpg",
     fact: {
-      uz: "Bitta yashil chiroqda 3 000 gacha odam bir vaqtning o'zida ko'chani kesib o'tadi.",
-      ru: "Один из самых оживлённых перекрёстков в мире, левостороннее движение.",
-      en: "Up to 3,000 people cross this intersection simultaneously on a single green light."
+      uz: "Provans quyoshli kungaboqar va lavanda dalalari, uzumzorlari va o'rta asr qishloqlari bilan dunyoga mashhur.",
+      ru: "Прованс всемирно известен своими лавандовыми и подсолнуховыми полями, вдохновлявшими Ван Гога.",
+      en: "Provence is renowned for its sun-drenched sunflower fields that famously inspired Vincent van Gogh."
     }
   },
   {
-    id: "taj_mahal",
-    name: { uz: "Toj Mahal", ru: "Тадж-Махал", en: "Taj Mahal" },
-    country: { uz: "Hindiston", ru: "Индия", en: "India" },
-    city: { uz: "Agra", ru: "Агра", en: "Agra" },
-    flag: "🇮🇳",
-    lat: 27.1751,
-    lng: 78.0421,
-    driving: "left",
+    id: "pano_france_puydesancy",
+    name: { uz: "Pyui-de-Sansi cho'qqisi", ru: "Вершина Пюи-де-Санси", en: "Puy de Sancy Peak" },
+    country: { uz: "Fransiya", ru: "Франция", en: "France" },
+    city: { uz: "Overn tog'lari", ru: "Овернь", en: "Auvergne" },
+    flag: "🇫🇷",
+    lat: 45.5283,
+    lng: 2.8122,
+    driving: "right",
+    type: "streetview",
+    is360: true,
+    panorama: "panoramas/france_puydesancy.jpg",
+    fact: {
+      uz: "Pyui-de-Sansi — qadimiy o'chgan vulqon bo'lib, Fransiya Markaziy massividagi eng baland nuqtadir (1886 m).",
+      ru: "Высочайшая точка Центрального массива Франции (1886 м), древний стратовулкан.",
+      en: "Highest point of the Massif Central in France at 1,886m, an ancient dormant stratovolcano."
+    }
+  },
+  {
+    id: "pano_norway_snow",
+    name: { uz: "Skandinaviya qorli taygasi", ru: "Скандинавская снежная тайга", en: "Scandinavian Snow Forest" },
+    country: { uz: "Norvegiya", ru: "Норвегия", en: "Norway" },
+    city: { uz: "Lillexammer", ru: "Лиллехаммер", en: "Lillehammer" },
+    flag: "🇳🇴",
+    lat: 61.1153,
+    lng: 10.4662,
+    driving: "right",
+    type: "streetview",
+    is360: true,
+    panorama: "panoramas/norway_snow.jpg",
+    fact: {
+      uz: "Norvegiyaning qorli o'rmonlari qishki olimpiada sport turlarining vatani sanaladi.",
+      ru: "Норвежские хвойные леса и заснеженные фьорды — столица зимних видов спорта.",
+      en: "Lillehammer hosted the 1994 Winter Olympics amidst these dense snow-laden Nordic forests."
+    }
+  },
+  {
+    id: "pano_baltimore_garden",
+    name: { uz: "Baltimor Haykaltaroshlik xiyoboni", ru: "Парк скульптур Балтимора", en: "Baltimore Sculpture Promenade" },
+    country: { uz: "AQSH", ru: "США", en: "United States" },
+    city: { uz: "Baltimor", ru: "Балтимор", en: "Baltimore" },
+    flag: "🇺🇸",
+    lat: 39.3255,
+    lng: -76.6195,
+    driving: "right",
     type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Taj_Mahal_%28Edited%29.jpeg/1280px-Taj_Mahal_%28Edited%29.jpeg",
+    is360: true,
+    panorama: "panoramas/baltimore_garden.jpg",
     fact: {
-      uz: "Oq marmardan bunyod etilgan maqbara, Shoh Jahon suyukli xotini xotirasiga qurdirgan.",
-      ru: "Шедевр могольской архитектуры из белого мрамора, меняющий оттенок на солнце.",
-      en: "Ivory-white marble mausoleum commissioned by Mughal emperor Shah Jahan."
+      uz: "Ushbu xiyobonda Aleksandr Kolder va Genri Mur kabi asr ustalari ijodiga mansub monumentlar joylashgan.",
+      ru: "Прогулочные аллеи с работами классиков модерна, включая Александра Колдера и Генри Мура.",
+      en: "Features world-famous outdoor monumental sculptures by masters such as Alexander Calder."
     }
   },
   {
-    id: "sydney_opera",
-    name: { uz: "Sidney Opera Teatri", ru: "Сиднейский оперный театр", en: "Sydney Opera House" },
-    country: { uz: "Avstraliya", ru: "Австралия", en: "Australia" },
-    city: { uz: "Sidney", ru: "Сидней", en: "Sydney" },
-    flag: "🇦🇺",
-    lat: -33.8568,
-    lng: 151.2153,
-    driving: "left",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Sydney_Opera_House_-_Dec_2008.jpg/1280px-Sydney_Opera_House_-_Dec_2008.jpg",
-    fact: {
-      uz: "Uning yelkan shaklidagi tomi 1 milliondan ortiq shved keramik plitkalari bilan qoplangan.",
-      ru: "Кровля в форме ракушек покрыта более чем 1 миллионом керамических плиток.",
-      en: "Its iconic sail-like roof structure is covered in over 1 million ceramic tiles."
-    }
-  },
-  {
-    id: "christ_redeemer",
-    name: { uz: "Xaloskor Iso haykali", ru: "Статуя Христа-Искупителя", en: "Christ the Redeemer" },
+    id: "pano_brazil_amazon_forest",
+    name: { uz: "Amazoniya tropik yomg'irli o'rmonlari", ru: "Тропические леса Амазонии", en: "Amazon Rainforest Canopy" },
     country: { uz: "Braziliya", ru: "Бразилия", en: "Brazil" },
-    city: { uz: "Rio-de-Janeyro", ru: "Рио-де-Жанейро", en: "Rio de Janeiro" },
+    city: { uz: "Amazonas", ru: "Амазонас", en: "Amazonas" },
     flag: "🇧🇷",
-    lat: -22.9519,
-    lng: -43.2105,
-    driving: "right",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Aerial_view_of_the_Statue_of_Christ_the_Redeemer.jpg/1280px-Aerial_view_of_the_Statue_of_Christ_the_Redeemer.jpg",
-    fact: {
-      uz: "Korkovadu tog'i cho'qqisida qad rostlagan, balandligi 38 metrni tashkil etadi.",
-      ru: "Монумент высотой 38 метров возвышается над Рио на вершине горы Корковаду.",
-      en: "Stands 38 meters tall atop the 700-meter Corcovado mountain overlooking Rio."
-    }
-  },
-  {
-    id: "pyramids_giza",
-    name: { uz: "Giza Piramidalari", ru: "Пирамиды Гизы", en: "Pyramids of Giza" },
-    country: { uz: "Misr", ru: "Египет", en: "Egypt" },
-    city: { uz: "Giza / Qohira", ru: "Гиза / Каир", en: "Giza" },
-    flag: "🇪🇬",
-    lat: 29.9792,
-    lng: 31.1342,
-    driving: "right",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/All_Gizah_Pyramids.jpg/1280px-All_Gizah_Pyramids.jpg",
-    fact: {
-      uz: "Qadimgi dunyoning yetti mo'jizasidan bugungi kungacha saqlanib qolgan yagona obida.",
-      ru: "Единственное из семи чудес древнего мира, сохранившееся до наших дней.",
-      en: "The only surviving wonder of the ancient world, built over 4,500 years ago."
-    }
-  },
-  {
-    id: "burj_khalifa",
-    name: { uz: "Burj Xalifa", ru: "Бурдж-Халифа", en: "Burj Khalifa" },
-    country: { uz: "BAA", ru: "ОАЭ", en: "United Arab Emirates" },
-    city: { uz: "Dubay", ru: "Дубай", en: "Dubai" },
-    flag: "🇦🇪",
-    lat: 25.1972,
-    lng: 55.2744,
+    lat: -3.1190,
+    lng: -60.0217,
     driving: "right",
     type: "streetview",
-    image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
+    is360: true,
+    panorama: "panoramas/forest_canopy.jpg",
     fact: {
-      uz: "Balandligi 828 metr bo'lgan dunyodagi eng baland bino va inshoot.",
-      ru: "Самое высокое здание в мире (828 метров), насчитывает 163 этажа.",
-      en: "The tallest artificial structure in the world, soaring 828 meters into the sky."
-    }
-  },
-  {
-    id: "chorsu_bazaar",
-    name: { uz: "Chorsu bozori", ru: "Базар Чорсу", en: "Chorsu Bazaar" },
-    country: { uz: "O'zbekiston", ru: "Узбекистан", en: "Uzbekistan" },
-    city: { uz: "Toshkent", ru: "Ташкент", en: "Tashkent" },
-    flag: "🇺🇿",
-    lat: 41.3275,
-    lng: 69.2401,
-    driving: "right",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Chorsu_bazaar_Tashkent.jpg/1280px-Chorsu_bazaar_Tashkent.jpg",
-    fact: {
-      uz: "Ulkan feruzarang gumbaz ostidagi Toshkentning eng mashhur va qadimiy sharqona bozori.",
-      ru: "Один из старейших рынков Центральной Азии под монументальным бирюзовым куполом.",
-      en: "One of the oldest traditional bazaars in Central Asia beneath a monumental blue dome."
-    }
-  },
-  {
-    id: "golden_gate",
-    name: { uz: "Oltin Darvoza Ko'prigi", ru: "Мост Золотые Ворота", en: "Golden Gate Bridge" },
-    country: { uz: "AQSH", ru: "США", en: "United States" },
-    city: { uz: "San-Fransisko", ru: "Сан-Франциско", en: "San Francisco" },
-    flag: "🇺🇸",
-    lat: 37.8199,
-    lng: -122.4783,
-    driving: "right",
-    type: "streetview",
-    image: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=1200&q=80",
-    fact: {
-      uz: "Ko'prikning o'ziga xos to'q sariq rangi 'Xalqaro to'q sariq' deb ataladi.",
-      ru: "Знаменитый висячий мост через пролив Золотые Ворота с уникальным оранжевым цветом.",
-      en: "Painted in 'International Orange' to enhance visibility through thick Pacific fog."
-    }
-  },
-  {
-    id: "route66_az",
-    name: { uz: "Tarixiy 66-yo'l", ru: "Трасса 66", en: "Historic Route 66" },
-    country: { uz: "AQSH", ru: "США", en: "United States" },
-    city: { uz: "Arizona", ru: "Аризона", en: "Arizona" },
-    flag: "🇺🇸",
-    lat: 35.2828,
-    lng: -113.5658,
-    driving: "right",
-    type: "streetview",
-    image: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1200&q=80",
-    fact: {
-      uz: "Amerika avtomobil madaniyatining bosh belgisi bo'lgan 'Onalar yo'li'.",
-      ru: "Легендарная трасса США, соединившая Чикаго и Лос-Анджелес через бескрайние прерии.",
-      en: "Nicknamed the 'Mother Road', spanning across 8 states from Chicago to California."
-    }
-  },
-  {
-    id: "big_ben",
-    name: { uz: "Big Ben va Vestminster", ru: "Биг-Бен и Вестминстер", en: "Big Ben & Westminster" },
-    country: { uz: "Buyuk Britaniya", ru: "Великобритания", en: "United Kingdom" },
-    city: { uz: "London", ru: "Лондон", en: "London" },
-    flag: "🇬🇧",
-    lat: 51.5007,
-    lng: -0.1246,
-    driving: "left",
-    type: "landmark",
-    image: "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?auto=format&fit=crop&w=1200&q=80",
-    fact: {
-      uz: "Temza daryosi bo'yidagi mashhur soat minorasi, chap tomonlama harakat.",
-      ru: "Знаменитая башня Елизаветы на берегу Темзы. В Великобритании левостороннее движение.",
-      en: "Officially named Elizabeth Tower, standing beside the River Thames in London."
-    }
-  },
-  {
-    id: "brandenburg_gate",
-    name: { uz: "Brandenburg darvozasi", ru: "Бранденбургские ворота", en: "Brandenburg Gate" },
-    country: { uz: "Germaniya", ru: "Германия", en: "Germany" },
-    city: { uz: "Berlin", ru: "Берлин", en: "Berlin" },
-    flag: "🇩🇪",
-    lat: 52.5163,
-    lng: 13.3777,
-    driving: "right",
-    type: "landmark",
-    image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=1200&q=80",
-    fact: {
-      uz: "Berlinning bosh ramzi, 1791 yilda neoklassik uslubda barpo etilgan.",
-      ru: "Символ объединения Германии и один из шедевров берлинского классицизма.",
-      en: "18th-century neoclassical monument and an enduring symbol of European peace and unity."
-    }
-  },
-  {
-    id: "hagia_sophia",
-    name: { uz: "Ayasofya", ru: "Собор Святой Софии", en: "Hagia Sophia" },
-    country: { uz: "Turkiya", ru: "Турция", en: "Turkey" },
-    city: { uz: "Istanbul", ru: "Стамбул", en: "Istanbul" },
-    flag: "🇹🇷",
-    lat: 41.0086,
-    lng: 28.9802,
-    driving: "right",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Hagia_Sophia_Mars_2013.jpg/1280px-Hagia_Sophia_Mars_2013.jpg",
-    fact: {
-      uz: "Qariyb 1 500 yillik tarixga ega, Vizantiya va Usmonli madaniyatining durdonasi.",
-      ru: "Величественный собор и мечеть с полуторатысячелетней историей на берегу Босфора.",
-      en: "Built in 537 AD, served as a cathedral, mosque, and museum over 1,500 years."
-    }
-  },
-  {
-    id: "sagrada_familia",
-    name: { uz: "Sagrada Familia", ru: "Саграда Фамилия", en: "Sagrada Família" },
-    country: { uz: "Ispaniya", ru: "Испания", en: "Spain" },
-    city: { uz: "Barselona", ru: "Барселона", en: "Barcelona" },
-    flag: "🇪🇸",
-    lat: 41.4036,
-    lng: 2.1744,
-    driving: "right",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Sagrada_Familia_01.jpg/1280px-Sagrada_Familia_01.jpg",
-    fact: {
-      uz: "Antoni Gaudi tomonidan loyihalashtirilgan, qurilishi 140 yildan ortiq davom etmoqda.",
-      ru: "Шедевр Антонио Гауди, строительство которого продолжается с 1882 года.",
-      en: "Masterpiece of Antoni Gaudí, under continuous construction since 1882."
-    }
-  },
-  {
-    id: "marina_bay_sands",
-    name: { uz: "Marina Bay Sands", ru: "Марина Бэй Сэндс", en: "Marina Bay Sands" },
-    country: { uz: "Singapur", ru: "Сингапур", en: "Singapore" },
-    city: { uz: "Singapur", ru: "Сингапур", en: "Singapore" },
-    flag: "🇸🇬",
-    lat: 1.2838,
-    lng: 103.8591,
-    driving: "left",
-    type: "streetview",
-    image: "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1200&q=80",
-    fact: {
-      uz: "Uchta bino ustidagi osmon bog'i va suzish havzasi bilan mashhur osmono'par majmua.",
-      ru: "Уникальный комплекс с небесным парком на высоте 200 метров. Левостороннее движение.",
-      en: "Integrated resort known for its world-famous cantilevered SkyPark and infinity pool."
-    }
-  },
-  {
-    id: "great_wall",
-    name: { uz: "Buyuk Xitoy Devori", ru: "Великая Китайская стена", en: "Great Wall of China" },
-    country: { uz: "Xitoy", ru: "Китай", en: "China" },
-    city: { uz: "Pekin yaqinida", ru: "Окрестности Пекина", en: "Near Beijing" },
-    flag: "🇨🇳",
-    lat: 40.4319,
-    lng: 116.5704,
-    driving: "right",
-    type: "landmark",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/The_Great_Wall_of_China_at_Jinshanling-edit.jpg/1280px-The_Great_Wall_of_China_at_Jinshanling-edit.jpg",
-    fact: {
-      uz: "Barcha tarmoqlari bilan umumiy uzunligi 21 000 kilometrdan oshadi.",
-      ru: "Общая протяжённость со всеми ответвлениями превышает 21 000 км.",
-      en: "Total length with all defensive branches exceeds 21,000 kilometers."
-    }
-  },
-  {
-    id: "machu_picchu",
-    name: { uz: "Machu-Pikchu", ru: "Мачу-Пикчу", en: "Machu Picchu" },
-    country: { uz: "Peru", ru: "Перу", en: "Peru" },
-    city: { uz: "Kusko", ru: "Куско", en: "Cusco Region" },
-    flag: "🇵🇪",
-    lat: -13.1631,
-    lng: -72.5450,
-    driving: "right",
-    type: "landmark",
-    image: "https://images.unsplash.com/photo-1526392060635-9d6019884377?auto=format&fit=crop&w=1200&q=80",
-    fact: {
-      uz: "And tog'larida 2 430 metr balandlikda joylashgan inka sivilizatsiyasi shahri.",
-      ru: "Таинственный город инков на вершине горного хребта в Андах на высоте 2 430 м.",
-      en: "15th-century Inca citadel situated on a mountain ridge 2,430 meters above sea level."
+      uz: "Amazonka o'rmonlari 'Yer sayyorasining o'pkasi' deb ataladi va sayyoramizdagi turlarning 10% dan ortig'iga boshpana beradi.",
+      ru: "Джунгли Амазонки — «лёгкие планеты», дом для более чем 10% всех видов флоры и фауны Земли.",
+      en: "The Amazon produces 20% of Earth's oxygen and is home to 1 in 10 known species on the planet."
     }
   }
 ];
@@ -570,6 +338,7 @@ let totalScore = 0;
 let roundResults = [];
 
 let map = null;
+let markersGroup = null;
 let guessMarker = null;
 let trueMarker = null;
 let polyline = null;
@@ -642,7 +411,7 @@ function createCustomPin(emoji, isTrueLocation = false) {
 let currentTileLayer = null;
 let isSatellite = false;
 
-const TILE_OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
 const TILE_SAT = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 function initMap() {
@@ -656,11 +425,14 @@ function initMap() {
     attributionControl: false
   });
 
-  // OpenStreetMap standard tiles (crisp continents, boundaries, 100% free with NO API key)
-  currentTileLayer = L.tileLayer(TILE_OSM, {
+  // Esri World Street Map (GeoGuessr-style crisp borders, clear country labels, 100% free)
+  currentTileLayer = L.tileLayer(TILE_ESRI, {
     maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
+    attribution: '&copy; Esri World Street Map'
   }).addTo(map);
+
+  // LayerGroup to guarantee complete cleanup between rounds
+  markersGroup = L.layerGroup().addTo(map);
 
   // Add zoom control top right
   L.control.zoom({ position: "topright" }).addTo(map);
@@ -677,10 +449,10 @@ function toggleMapLayer() {
   if (currentTileLayer) {
     map.removeLayer(currentTileLayer);
   }
-  const url = isSatellite ? TILE_SAT : TILE_OSM;
+  const url = isSatellite ? TILE_SAT : TILE_ESRI;
   currentTileLayer = L.tileLayer(url, {
     maxZoom: 19,
-    attribution: isSatellite ? '&copy; Esri' : '&copy; OpenStreetMap contributors'
+    attribution: isSatellite ? '&copy; Esri Satellite' : '&copy; Esri World Street'
   }).addTo(map);
 
   const t = I18N[currentLang];
@@ -708,7 +480,7 @@ function onMapClick(latlng) {
     guessMarker = L.marker(latlng, {
       icon: createCustomPin("📍", false),
       draggable: true
-    }).addTo(map);
+    }).addTo(markersGroup);
 
     guessMarker.on("dragend", (evt) => {
       selectedLatLng = evt.target.getLatLng();
@@ -720,22 +492,15 @@ function onMapClick(latlng) {
   mapHintText.style.opacity = "0";
 }
 
-// Start Game (5 random rounds)
+// Start Game (5 random rounds - 100% 360° interactive spherical panoramas)
 function startNewGame() {
   totalScore = 0;
   currentRoundIndex = 0;
   roundResults = [];
   
-  // Guarantee an exciting mix of interactive 360° panoramas and classic street views
-  const panos = LOCATIONS.filter(l => l.is360);
-  const others = LOCATIONS.filter(l => !l.is360);
-
-  const shuffledPanos = [...panos].sort(() => 0.5 - Math.random());
-  const shuffledOthers = [...others].sort(() => 0.5 - Math.random());
-
-  // Guarantee 2 interactive 360° spherical rounds + 3 landmark/street rounds
-  const selected = [...shuffledPanos.slice(0, 2), ...shuffledOthers.slice(0, 3)].sort(() => 0.5 - Math.random());
-  gameRounds = selected;
+  // Shuffle all 12 authentic 360° locations and pick 5
+  const shuffled = [...LOCATIONS].sort(() => 0.5 - Math.random());
+  gameRounds = shuffled.slice(0, 5);
 
   gameOverScreen.classList.remove("show");
   resultModal.classList.remove("show");
@@ -751,25 +516,22 @@ function loadRound(index) {
   roundBadge.textContent = `${t.round} ${index + 1}/5`;
   scoreBadge.textContent = `${totalScore.toLocaleString()} ${t.score}`;
 
-  // Reset map markers
-  if (guessMarker) {
-    map.removeLayer(guessMarker);
-    guessMarker = null;
+  // Reset all map markers and polylines completely
+  if (markersGroup) {
+    markersGroup.clearLayers();
   }
-  if (trueMarker) {
-    map.removeLayer(trueMarker);
-    trueMarker = null;
-  }
-  if (polyline) {
-    map.removeLayer(polyline);
-    polyline = null;
-  }
+  guessMarker = null;
+  trueMarker = null;
+  polyline = null;
   selectedLatLng = null;
 
   guessBtn.disabled = true;
   mapHintText.style.opacity = "1";
   mapHintText.textContent = t.hintMap;
-  map.setView([25, 10], 2);
+  map.setView([20, 10], 2);
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+  }, 200);
 
   // Clean up previous 360 viewer if present
   if (pannellumViewer) {
@@ -890,7 +652,7 @@ function submitGuess() {
   // Reveal True Location on Map
   trueMarker = L.marker([loc.lat, loc.lng], {
     icon: createCustomPin("🏁", true)
-  }).addTo(map);
+  }).addTo(markersGroup);
 
   // Draw dashed polyline between Guess and True Location
   polyline = L.polyline([selectedLatLng, [loc.lat, loc.lng]], {
@@ -898,7 +660,7 @@ function submitGuess() {
     weight: 4,
     opacity: 0.9,
     dashArray: "8, 8"
-  }).addTo(map);
+  }).addTo(markersGroup);
 
   // Fit bounds to show both pins
   const bounds = L.latLngBounds([selectedLatLng, [loc.lat, loc.lng]]);
@@ -1034,6 +796,31 @@ btnPlayAgain.addEventListener("click", startNewGame);
 const mapLayerToggle = document.getElementById("mapLayerToggle");
 if (mapLayerToggle) {
   mapLayerToggle.addEventListener("click", toggleMapLayer);
+}
+
+const mapSizeToggle = document.getElementById("mapSizeToggle");
+const mapContainer = document.getElementById("mapContainer");
+if (mapSizeToggle && mapContainer) {
+  mapSizeToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    mapContainer.classList.toggle("maximized");
+    mapSizeToggle.textContent = mapContainer.classList.contains("maximized") ? "🗗" : "⛶";
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 350);
+  });
+}
+
+const mobileMapBtn = document.getElementById("mobileMapBtn");
+if (mobileMapBtn && mapContainer) {
+  mobileMapBtn.addEventListener("click", () => {
+    mapContainer.classList.remove("collapsed");
+    mapContainer.classList.add("expanded");
+    mobileMapBtn.classList.add("hidden");
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 350);
+  });
 }
 
 expandPhotoBtn.addEventListener("click", () => {

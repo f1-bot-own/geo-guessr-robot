@@ -65,12 +65,17 @@
         </button>
       </section>
 
-      <!-- Map Container -->
+      <!-- Map Container (GeoGuessr Floating Widget) -->
       <section class="map-container" id="mapContainer">
         <div id="map"></div>
-        <button class="map-layer-toggle" id="mapLayerToggle" title="Xarita turini o'zgartirish">
-          🛰 Sun'iy yo'ldosh
-        </button>
+        <div class="map-top-controls">
+          <button class="map-layer-toggle" id="mapLayerToggle" title="Xarita turini o'zgartirish">
+            🛰 Sun'iy yo'ldosh
+          </button>
+          <button class="map-size-toggle" id="mapSizeToggle" title="Kattalashtirish / Kichraytirish">
+            ⛶
+          </button>
+        </div>
 
         <!-- Map Controls & Guess Action -->
         <div class="map-action-bar">
@@ -82,6 +87,11 @@
           </button>
         </div>
       </section>
+
+      <!-- Mobile Floating Map Button -->
+      <button class="mobile-map-btn hidden" id="mobileMapBtn">
+        🗺 <span id="mobileMapBtnText">Xarita (Taxmin qilish)</span>
+      </button>
 
     </main>
 
