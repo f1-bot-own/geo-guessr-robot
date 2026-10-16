@@ -162,5 +162,7 @@
   "blur_disabled_alert": "🔍 Blur Reveal disabled (standard clear pictures).",
   "status_enabled": "✅ ON (+300 bonus)",
   "status_disabled": "❌ OFF",
-  "question_blur_coat": "🔍 <b>GeoGuessr: Which country's coat of arms is blurred?</b>\n<i>⚡ Guess early while blurry to earn up to +300 speed bonus!</i>"
+  "question_blur_coat": "🔍 <b>GeoGuessr: Which country's coat of arms is blurred?</b>\n<i>⚡ Guess early while blurry to earn up to +300 speed bonus!</i>",
+  "no_modes_selected_hint": "⚠️ None selected (select modes using buttons below)",
+  "please_select_at_least_one_mode": "⚠️ Please select at least one mode before starting the game!"
 }

@@ -123,13 +123,15 @@ def format_setup_title(session, lang: str) -> str:
     host_name = getattr(session, "host_name", "") or session.user_names.get(session.created_by_user_id) or "Host"
     selected = getattr(session, "selected_modes", [])
     if not selected:
-        selected = [session.mode] if session.mode else ["flag"]
-
-    selected_names = [t(f"mode_{m}", lang) for m in selected if t(f"mode_{m}", lang)]
-    if len(selected_names) <= 3:
-        modes_str = ", ".join(selected_names)
+        modes_str = t("no_modes_selected_hint", lang)
+        count_display = "0"
     else:
-        modes_str = ", ".join(selected_names[:3]) + f" (+{len(selected_names) - 3})"
+        selected_names = [t(f"mode_{m}", lang) for m in selected if t(f"mode_{m}", lang)]
+        if len(selected_names) <= 3:
+            modes_str = ", ".join(selected_names)
+        else:
+            modes_str = ", ".join(selected_names[:3]) + f" (+{len(selected_names) - 3})"
+        count_display = str(len(selected))
 
     is_blur = getattr(session, "is_blur", False)
     blur_status = t("status_enabled", lang) if is_blur else t("status_disabled", lang)
@@ -141,7 +143,7 @@ def format_setup_title(session, lang: str) -> str:
     text = (
         f"⚙️ <b>{t('game_setup_title', lang)}</b>\n"
         f"👑 <b>{t('host_label', lang)}:</b> {host_name}\n\n"
-        f"🎯 <b>{t('selected_modes_label', lang)} ({len(selected)}):</b>\n"
+        f"🎯 <b>{t('selected_modes_label', lang)} ({count_display}):</b>\n"
         f"👉 <i>{modes_str}</i>\n\n"
         f"🔍 <b>Blur:</b> {blur_status}\n"
         f"🌐 <b>{t('btn_continent_label', lang)}:</b> {continent_str}\n"
@@ -182,36 +184,39 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
 
     rounds_cycle = [5, 10, 15, 20, 3]
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
+    all_cat_modes = [
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "president", "historical", "celebrity", "logo"
+    ]
 
     if action == "mode":
-        if not hasattr(session, "selected_modes") or not session.selected_modes:
-            session.selected_modes = ["mix"] if session.mode == "mix" else [session.mode]
+        if not hasattr(session, "selected_modes") or session.selected_modes is None:
+            session.selected_modes = []
 
         if param == "mix":
-            session.selected_modes = ["mix"]
-            session.mode = "mix"
-        elif session.selected_modes == ["mix"] or (session.mode == "mix" and "mix" in session.selected_modes):
+            if set(session.selected_modes) == set(all_cat_modes) or "mix" in session.selected_modes:
+                session.selected_modes = []
+                session.mode = ""
+            else:
+                session.selected_modes = list(all_cat_modes)
+                session.mode = "mix"
+        elif "mix" in session.selected_modes:
             session.selected_modes = [param]
             session.mode = param
         else:
             if param in session.selected_modes:
-                if len(session.selected_modes) <= 1:
-                    await query.answer(t("at_least_one_mode_alert", session.lang), show_alert=True)
-                    return
                 session.selected_modes.remove(param)
             else:
                 session.selected_modes.append(param)
 
             if len(session.selected_modes) == 1:
                 session.mode = session.selected_modes[0]
-            else:
+            elif len(session.selected_modes) > 1:
                 session.mode = "mix"
+            else:
+                session.mode = ""
     elif action == "all":
-        all_modes = [
-            "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
-            "emoji", "contour", "president", "historical", "celebrity", "logo"
-        ]
-        session.selected_modes = list(all_modes)
+        session.selected_modes = list(all_cat_modes)
         session.mode = "mix"
         await query.answer(t("all_modes_selected", session.lang))
     elif action == "flags_only":
@@ -249,6 +254,10 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
             curr_idx = input_modes.index(curr) if curr in input_modes else 0
             session.input_mode = input_modes[(curr_idx + 1) % len(input_modes)]
     elif action == "start":
+        selected = getattr(session, "selected_modes", [])
+        if not selected or len(selected) == 0:
+            await query.answer(t("please_select_at_least_one_mode", session.lang), show_alert=True)
+            return
         await query.answer("🚀 Launching game!")
         try:
             await query.message.delete()
@@ -777,39 +786,48 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
     user_data = await db.get_user(user.id)
     lang = user_data.get("language", "en") if user_data else "en"
     state = game_manager.get_solo_setup_state(user.id)
-    if "selected_modes" not in state or not state["selected_modes"]:
-        init_mode = state.get("mode", "mix")
-        state["selected_modes"] = ["mix"] if init_mode == "mix" else [init_mode]
+    if "selected_modes" not in state or state["selected_modes"] is None:
+        init_mode = state.get("mode", "")
+        if init_mode and init_mode not in ("mix", "blur"):
+            state["selected_modes"] = [init_mode]
+        else:
+            state["selected_modes"] = []
         state["is_blur"] = state.get("is_blur", init_mode == "blur")
 
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
+    all_cat_modes = [
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "president", "historical", "celebrity", "logo"
+    ]
 
     if action == "mode":
+        if "selected_modes" not in state or state["selected_modes"] is None:
+            state["selected_modes"] = []
+
         if param == "mix":
-            state["selected_modes"] = ["mix"]
-            state["mode"] = "mix"
-        elif state.get("selected_modes") == ["mix"] or (state.get("mode") == "mix" and "mix" in state.get("selected_modes", [])):
+            if set(state["selected_modes"]) == set(all_cat_modes) or "mix" in state["selected_modes"]:
+                state["selected_modes"] = []
+                state["mode"] = ""
+            else:
+                state["selected_modes"] = list(all_cat_modes)
+                state["mode"] = "mix"
+        elif "mix" in state["selected_modes"]:
             state["selected_modes"] = [param]
             state["mode"] = param
         else:
             if param in state["selected_modes"]:
-                if len(state["selected_modes"]) <= 1:
-                    await query.answer(t("at_least_one_mode_alert", lang), show_alert=True)
-                    return
                 state["selected_modes"].remove(param)
             else:
                 state["selected_modes"].append(param)
 
             if len(state["selected_modes"]) == 1:
                 state["mode"] = state["selected_modes"][0]
-            else:
+            elif len(state["selected_modes"]) > 1:
                 state["mode"] = "mix"
+            else:
+                state["mode"] = ""
     elif action == "all":
-        all_modes = [
-            "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
-            "emoji", "contour", "president", "historical", "celebrity", "logo"
-        ]
-        state["selected_modes"] = list(all_modes)
+        state["selected_modes"] = list(all_cat_modes)
         state["mode"] = "mix"
         await query.answer(t("all_modes_selected", lang))
     elif action == "flags_only":
@@ -834,6 +852,10 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
         if param in ["buttons", "text", "both"]:
             state["input_mode"] = param
     elif action == "start":
+        selected = state.get("selected_modes")
+        if not selected or len(selected) == 0:
+            await query.answer(t("please_select_at_least_one_mode", lang), show_alert=True)
+            return
         existing = game_manager.get_solo_session(user.id)
         if existing:
             existing.stop()

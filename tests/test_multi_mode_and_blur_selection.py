@@ -162,6 +162,63 @@ class TestMultiModeAndBlurSelection(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(q.mode, GameMode.BLUR)
         self.assertIn("inson", q.text.lower())
 
+    def test_initially_no_buttons_selected_and_zero_modes_displayed(self):
+        """When selected_modes is empty, NO buttons have checkmark and title shows (0)."""
+        kb = get_setup_kb(
+            session_id=self.session.session_id,
+            mode="mix",
+            selected_modes=[],
+            is_blur=False,
+            lang="uz"
+        )
+        buttons = [btn for row in kb.inline_keyboard for btn in row]
+        mode_buttons = [b for b in buttons if b.callback_data.startswith("setup:mode:")]
+        for btn in mode_buttons:
+            self.assertNotIn("✅", btn.text, f"Button {btn.text} should NOT have a checkmark!")
+
+        self.session.selected_modes = []
+        title = format_setup_title(self.session, "uz")
+        self.assertIn("(0)", title)
+        self.assertIn("Hech biri tanlanmagan", title)
+
+    async def test_cannot_start_without_selecting_at_least_one_mode(self):
+        """Pressing Start when selected_modes is empty displays alert and blocks game launch."""
+        self.session.selected_modes = []
+        q_start = MagicMock()
+        q_start.message.chat.id = self.chat_id
+        q_start.from_user.id = self.host_id
+        q_start.data = f"setup:start:{self.session.session_id}"
+        q_start.answer = AsyncMock()
+
+        await cb_game_setup(q_start, self.bot)
+
+        # Must show alert requesting to select at least one mode
+        q_start.answer.assert_called_once()
+        alert_text = q_start.answer.call_args[0][0]
+        self.assertIn("kamida bitta", alert_text)
+        self.assertEqual(self.session.status, "setup")
+
+    async def test_solo_cannot_start_without_selecting_at_least_one_mode(self):
+        """Solo mode also blocks starting if no modes are selected."""
+        user_id = 554433
+        game_manager.set_solo_setup_state(user_id, {"selected_modes": []})
+
+        q_start = MagicMock()
+        q_start.from_user.id = user_id
+        q_start.data = "solo_setup:start"
+        q_start.answer = AsyncMock()
+
+        mock_db = MagicMock()
+        mock_db.get_user = AsyncMock(return_value={"language": "en"})
+        with unittest.mock.patch("handlers.callbacks.get_db", return_value=mock_db):
+            await cb_solo_setup(q_start, self.bot)
+
+        q_start.answer.assert_called_once()
+        alert_text = q_start.answer.call_args[0][0]
+        self.assertIn("at least one mode", alert_text)
+        self.assertIsNone(game_manager.get_solo_session(user_id))
+
 
 if __name__ == "__main__":
     unittest.main()
+

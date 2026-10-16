@@ -132,7 +132,7 @@ async def cmd_game(message: Message, bot: Bot):
     # Create new session in setup mode with host authorization
     user_name = user.first_name or user.username or "Host"
     text_parts = (message.text or "").strip().split()
-    chosen_mode = "mix"
+    chosen_mode = None
     chosen_continent = "all"
     modes = (
         "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
@@ -148,18 +148,18 @@ async def cmd_game(message: Message, bot: Bot):
 
     is_blur_init = (chosen_mode == "blur")
     if is_blur_init:
-        init_selected = ["flag"]
-    elif chosen_mode == "mix":
-        init_selected = ["flag", "capital", "landmark", "president", "historical", "celebrity", "logo"]
-    else:
+        init_selected = []
+    elif chosen_mode and chosen_mode != "mix":
         init_selected = [chosen_mode]
+    else:
+        init_selected = []
 
     session = GameSession(
         chat_id=chat.id,
         created_by_user_id=user.id,
         is_group=True,
         lang=lang,
-        mode=chosen_mode,
+        mode=chosen_mode or "mix",
         total_rounds=config.DEFAULT_ROUNDS,
         round_time=config.DEFAULT_ROUND_TIME,
         host_id=user.id,
@@ -240,7 +240,7 @@ async def cmd_blur(message: Message, bot: Bot):
             chosen_submodes.append(p)
 
     if not chosen_submodes:
-        chosen_submodes = ["flag"]
+        chosen_submodes = []
 
     session = GameSession(
         chat_id=chat.id,

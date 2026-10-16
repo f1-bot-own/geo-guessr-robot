@@ -20,17 +20,25 @@ def get_setup_kb(
 ) -> InlineKeyboardMarkup:
     """Generate game setup parameters keyboard with multi-mode checkboxes, blur toggle, timers, and filters."""
     if selected_modes is None:
-        if mode == "blur":
-            selected_modes = ["flag"]
-            is_blur = True
-        elif mode == "mix":
-            selected_modes = ["mix"]
-        else:
+        if mode and mode not in ("mix", "blur"):
             selected_modes = [mode]
+        elif mode == "blur":
+            selected_modes = []
+            is_blur = True
+        else:
+            selected_modes = []
+
+    all_cat_modes = [
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "president", "historical", "celebrity", "logo"
+    ]
 
     def mode_btn(m_code: str):
         if m_code == "mix":
-            is_sel = ("mix" in (selected_modes or []) or selected_modes == ["mix"])
+            is_sel = (
+                "mix" in (selected_modes or []) or
+                (bool(selected_modes) and set(all_cat_modes).issubset(set(selected_modes)))
+            )
         else:
             is_sel = m_code in (selected_modes or []) and "mix" not in (selected_modes or [])
         prefix = "✅ " if is_sel else ""
@@ -196,17 +204,25 @@ def get_solo_setup_kb(
 ) -> InlineKeyboardMarkup:
     """Generate interactive solo setup lobby keyboard with multi-mode checkboxes and blur toggle."""
     if selected_modes is None:
-        if mode == "blur":
-            selected_modes = ["flag"]
-            is_blur = True
-        elif mode == "mix":
-            selected_modes = ["mix"]
-        else:
+        if mode and mode not in ("mix", "blur"):
             selected_modes = [mode]
+        elif mode == "blur":
+            selected_modes = []
+            is_blur = True
+        else:
+            selected_modes = []
+
+    all_cat_modes = [
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "president", "historical", "celebrity", "logo"
+    ]
 
     def mode_btn(m_code: str):
         if m_code == "mix":
-            is_sel = ("mix" in (selected_modes or []) or selected_modes == ["mix"])
+            is_sel = (
+                "mix" in (selected_modes or []) or
+                (bool(selected_modes) and set(all_cat_modes).issubset(set(selected_modes)))
+            )
         else:
             is_sel = m_code in (selected_modes or []) and "mix" not in (selected_modes or [])
         pfx = "✅ " if is_sel else ""

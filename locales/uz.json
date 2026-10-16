@@ -162,5 +162,7 @@
   "blur_disabled_alert": "🔍 Blur effekti o'chirildi (Oddiy tiniq rasm).",
   "status_enabled": "✅ Yoqilgan (+300 bonus)",
   "status_disabled": "❌ O'chirilgan",
-  "question_blur_coat": "🔍 <b>GeoGuessr: Bu xiralashtirilgan gerb qaysi davlatga tegishli?</b>\n<i>⚡ Xiraligida qanchalik tez topsangiz, shuncha ko'p bonus ball olasiz!</i>"
+  "question_blur_coat": "🔍 <b>GeoGuessr: Bu xiralashtirilgan gerb qaysi davlatga tegishli?</b>\n<i>⚡ Xiraligida qanchalik tez topsangiz, shuncha ko'p bonus ball olasiz!</i>",
+  "no_modes_selected_hint": "⚠️ Hech biri tanlanmagan (quyidagi tugmalardan tanlang)",
+  "please_select_at_least_one_mode": "⚠️ O'yinni boshlashdan oldin kamida bitta rejimni tanlang!"
 }
