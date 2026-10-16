@@ -37,7 +37,10 @@ def get_setup_kb(
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
         [mode_btn("emoji"), mode_btn("contour")],
-        [mode_btn("blur"), mode_btn("mix")],
+        [mode_btn("president"), mode_btn("historical")],
+        [mode_btn("celebrity"), mode_btn("logo")],
+        [mode_btn("person"), mode_btn("blur")],
+        [mode_btn("mix")],
         # Continent Filter button
         [
             InlineKeyboardButton(
@@ -122,7 +125,18 @@ def get_category_selection_kb(
             InlineKeyboardButton(text=t("mode_contour", lang), callback_data=f"{prefix}:contour")
         ],
         [
-            InlineKeyboardButton(text=t("mode_blur", lang), callback_data=f"{prefix}:blur"),
+            InlineKeyboardButton(text=t("mode_president", lang), callback_data=f"{prefix}:president"),
+            InlineKeyboardButton(text=t("mode_historical", lang), callback_data=f"{prefix}:historical")
+        ],
+        [
+            InlineKeyboardButton(text=t("mode_celebrity", lang), callback_data=f"{prefix}:celebrity"),
+            InlineKeyboardButton(text=t("mode_logo", lang), callback_data=f"{prefix}:logo")
+        ],
+        [
+            InlineKeyboardButton(text=t("mode_person", lang), callback_data=f"{prefix}:person"),
+            InlineKeyboardButton(text=t("mode_blur", lang), callback_data=f"{prefix}:blur")
+        ],
+        [
             InlineKeyboardButton(text=t("mode_mix", lang), callback_data=f"{prefix}:mix")
         ],
         [
@@ -172,7 +186,10 @@ def get_solo_setup_kb(
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
         [mode_btn("emoji"), mode_btn("contour")],
-        [mode_btn("blur"), mode_btn("mix")],
+        [mode_btn("president"), mode_btn("historical")],
+        [mode_btn("celebrity"), mode_btn("logo")],
+        [mode_btn("person"), mode_btn("blur")],
+        [mode_btn("mix")],
         # Continent Filter
         [
             InlineKeyboardButton(

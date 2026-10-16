@@ -147,7 +147,10 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         await query.answer(alert_msg, show_alert=True)
         return
 
-    modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "blur", "mix"]
+    modes = [
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
+    ]
     rounds_cycle = [5, 10, 15, 20, 3]
     time_cycle = [30, 60]
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
@@ -662,7 +665,10 @@ async def cb_solo_category(query: CallbackQuery, bot: Bot):
         await query.answer()
         return
 
-    modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "mix"]
+    modes = [
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
+    ]
     chosen_mode = cat if cat in modes else "mix"
 
     existing = game_manager.get_solo_session(user.id)
@@ -704,7 +710,10 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
     lang = user_data.get("language", "en") if user_data else "en"
     state = game_manager.get_solo_setup_state(user.id)
 
-    solo_modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "blur", "mix"]
+    solo_modes = [
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
+    ]
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
 
     if action == "mode":

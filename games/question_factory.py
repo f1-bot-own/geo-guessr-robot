@@ -14,6 +14,26 @@ from gamedata.contours import CONTOUR_DATA, get_contour_url, get_contour_info
 from locales.i18n import t
 from .models import Question, GameMode
 
+try:
+    from gamedata.presidents_data import PRESIDENTS
+except Exception:
+    PRESIDENTS = []
+
+try:
+    from gamedata.historical_data import HISTORICAL_FIGURES
+except Exception:
+    HISTORICAL_FIGURES = []
+
+try:
+    from gamedata.celebrities_data import CELEBRITIES
+except Exception:
+    CELEBRITIES = []
+
+try:
+    from gamedata.logos_data import LOGOS
+except Exception:
+    LOGOS = []
+
 def _matches_continent(country_dict: dict, continent: Optional[str]) -> bool:
     """Check if country belongs to specified continent."""
     if not continent or continent.lower() in ("all", "world", "dunyo", "мир"):
@@ -41,7 +61,7 @@ class QuestionFactory:
         continent: Optional[str] = None
     ) -> Question:
         if mode == GameMode.MIX:
-            chosen_mode = random.choice([
+            candidates = [
                 GameMode.FLAG,
                 GameMode.CAPITAL,
                 GameMode.LANDMARK,
@@ -51,7 +71,16 @@ class QuestionFactory:
                 GameMode.EMOJI,
                 GameMode.CONTOUR,
                 GameMode.BLUR,
-            ])
+            ]
+            if PRESIDENTS:
+                candidates.append(GameMode.PRESIDENT)
+            if HISTORICAL_FIGURES:
+                candidates.append(GameMode.HISTORICAL)
+            if CELEBRITIES:
+                candidates.append(GameMode.CELEBRITY)
+            if LOGOS:
+                candidates.append(GameMode.LOGO)
+            chosen_mode = random.choice(candidates)
             return QuestionFactory.generate(chosen_mode, lang, exclude_codes, continent)
         
         if mode == GameMode.FLAG:
@@ -72,6 +101,16 @@ class QuestionFactory:
             return QuestionFactory._gen_contour(lang, exclude_codes, continent)
         elif mode == GameMode.BLUR:
             return QuestionFactory._gen_blur(lang, exclude_codes, continent)
+        elif mode == GameMode.PRESIDENT:
+            return QuestionFactory._gen_president(lang, exclude_codes, continent)
+        elif mode == GameMode.HISTORICAL:
+            return QuestionFactory._gen_historical(lang, exclude_codes, continent)
+        elif mode == GameMode.CELEBRITY:
+            return QuestionFactory._gen_celebrity(lang, exclude_codes, continent)
+        elif mode == GameMode.PERSON:
+            return QuestionFactory._gen_person(lang, exclude_codes, continent)
+        elif mode == GameMode.LOGO:
+            return QuestionFactory._gen_logo(lang, exclude_codes, continent)
         else:
             return QuestionFactory._gen_flag(lang, exclude_codes, continent)
 
@@ -468,10 +507,36 @@ class QuestionFactory:
     ) -> Question:
         """
         Generate progressive unblur question.
-        75% flags (colors, stripes, emblems), 25% landmarks.
+        Includes Flags, Landmarks, People (Presidents, Historical figures, Stars), and Logos.
         """
-        is_landmark = random.random() < 0.25 and len(LANDMARKS) > 0
-        if is_landmark:
+        has_people = bool(PRESIDENTS or HISTORICAL_FIGURES or CELEBRITIES)
+        has_logos = bool(LOGOS)
+
+        blur_category = "flag"
+        if has_people or has_logos:
+            r = random.random()
+            if r < 0.25 and has_people:
+                blur_category = "person"
+            elif r < 0.45 and has_logos:
+                blur_category = "logo"
+            elif r < 0.65 and len(LANDMARKS) > 0:
+                blur_category = "landmark"
+            else:
+                blur_category = "flag"
+        elif random.random() < 0.25 and len(LANDMARKS) > 0:
+            blur_category = "landmark"
+
+        if blur_category == "person":
+            q = QuestionFactory._gen_person(lang, exclude_codes, continent)
+            q.mode = GameMode.BLUR
+            q.text = t("question_blur_person", lang)
+            return q
+        elif blur_category == "logo":
+            q = QuestionFactory._gen_logo(lang, exclude_codes, continent)
+            q.mode = GameMode.BLUR
+            q.text = t("question_blur_logo", lang)
+            return q
+        elif blur_category == "landmark":
             lm_pool = LANDMARKS
             if continent and continent.lower() not in ("all", "world"):
                 filtered_cont = [l for l in LANDMARKS if _matches_continent(get_country(l["country_code"]) or {}, continent)]
@@ -531,6 +596,223 @@ class QuestionFactory:
                 image_url=target.get("flag_url"),
                 fun_fact=fun_fact
             )
+
+    @staticmethod
+    def _gen_president(
+        lang: str,
+        exclude_codes: Optional[Set[str]] = None,
+        continent: Optional[str] = None
+    ) -> Question:
+        pool = PRESIDENTS
+        if not pool:
+            return QuestionFactory._gen_flag(lang, exclude_codes, continent)
+
+        if exclude_codes:
+            filtered = [p for p in pool if p.get("id") not in exclude_codes]
+            if len(filtered) >= 4:
+                pool = filtered
+
+        target = random.choice(pool)
+        other_presidents = [p for p in pool if p.get("id") != target.get("id")]
+        if len(other_presidents) < 3:
+            other_presidents = pool
+        distractors = random.sample(other_presidents, min(3, len(other_presidents)))
+
+        correct_name = target["name"].get(lang, target["name"]["en"])
+        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
+        if correct_name not in options:
+            options.append(correct_name)
+        while len(options) < 4:
+            options.append(f"Leader {len(options) + 1}")
+        options = options[:4]
+        random.shuffle(options)
+        correct_index = options.index(correct_name)
+
+        text = t("question_president", lang)
+        fun_fact = target.get("fun_fact", {}).get(lang, target.get("fun_fact", {}).get("en", ""))
+        role_info = target.get("role", {}).get(lang, target.get("role", {}).get("en", ""))
+        if role_info and not fun_fact:
+            fun_fact = role_info
+
+        return Question(
+            mode=GameMode.PRESIDENT,
+            text=text,
+            options=options,
+            correct_index=correct_index,
+            correct_answer=correct_name,
+            country_code=target.get("country", {}).get("en", "world"),
+            image_url=target.get("image_url"),
+            fun_fact=fun_fact,
+            aliases=target.get("aliases", [])
+        )
+
+    @staticmethod
+    def _gen_historical(
+        lang: str,
+        exclude_codes: Optional[Set[str]] = None,
+        continent: Optional[str] = None
+    ) -> Question:
+        pool = HISTORICAL_FIGURES
+        if not pool:
+            return QuestionFactory._gen_flag(lang, exclude_codes, continent)
+
+        if exclude_codes:
+            filtered = [h for h in pool if h.get("id") not in exclude_codes]
+            if len(filtered) >= 4:
+                pool = filtered
+
+        target = random.choice(pool)
+        other_figures = [h for h in pool if h.get("id") != target.get("id")]
+        if len(other_figures) < 3:
+            other_figures = pool
+        distractors = random.sample(other_figures, min(3, len(other_figures)))
+
+        correct_name = target["name"].get(lang, target["name"]["en"])
+        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
+        if correct_name not in options:
+            options.append(correct_name)
+        while len(options) < 4:
+            options.append(f"Figure {len(options) + 1}")
+        options = options[:4]
+        random.shuffle(options)
+        correct_index = options.index(correct_name)
+
+        text = t("question_historical", lang)
+        fun_fact = target.get("fun_fact", {}).get(lang, target.get("fun_fact", {}).get("en", ""))
+
+        return Question(
+            mode=GameMode.HISTORICAL,
+            text=text,
+            options=options,
+            correct_index=correct_index,
+            correct_answer=correct_name,
+            country_code="world",
+            image_url=target.get("image_url"),
+            fun_fact=fun_fact,
+            aliases=target.get("aliases", [])
+        )
+
+    @staticmethod
+    def _gen_celebrity(
+        lang: str,
+        exclude_codes: Optional[Set[str]] = None,
+        continent: Optional[str] = None
+    ) -> Question:
+        pool = CELEBRITIES
+        if not pool:
+            return QuestionFactory._gen_flag(lang, exclude_codes, continent)
+
+        if exclude_codes:
+            filtered = [c for c in pool if c.get("id") not in exclude_codes]
+            if len(filtered) >= 4:
+                pool = filtered
+
+        target = random.choice(pool)
+        target_cat = target.get("category", "")
+        same_cat = [c for c in pool if c.get("id") != target.get("id") and c.get("category") == target_cat]
+        if len(same_cat) >= 3:
+            distractors = random.sample(same_cat, 3)
+        else:
+            other_celebs = [c for c in pool if c.get("id") != target.get("id")]
+            distractors = random.sample(other_celebs, min(3, len(other_celebs)))
+
+        correct_name = target["name"].get(lang, target["name"]["en"])
+        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
+        if correct_name not in options:
+            options.append(correct_name)
+        while len(options) < 4:
+            options.append(f"Star {len(options) + 1}")
+        options = options[:4]
+        random.shuffle(options)
+        correct_index = options.index(correct_name)
+
+        text = t("question_celebrity", lang)
+        fun_fact = target.get("fun_fact", {}).get(lang, target.get("fun_fact", {}).get("en", ""))
+
+        return Question(
+            mode=GameMode.CELEBRITY,
+            text=text,
+            options=options,
+            correct_index=correct_index,
+            correct_answer=correct_name,
+            country_code=target.get("country", {}).get("en", "world"),
+            image_url=target.get("image_url"),
+            fun_fact=fun_fact,
+            aliases=target.get("aliases", [])
+        )
+
+    @staticmethod
+    def _gen_person(
+        lang: str,
+        exclude_codes: Optional[Set[str]] = None,
+        continent: Optional[str] = None
+    ) -> Question:
+        """Pick a person from either presidents, historical figures, or celebrities."""
+        available_generators = []
+        if PRESIDENTS:
+            available_generators.append(QuestionFactory._gen_president)
+        if HISTORICAL_FIGURES:
+            available_generators.append(QuestionFactory._gen_historical)
+        if CELEBRITIES:
+            available_generators.append(QuestionFactory._gen_celebrity)
+
+        if not available_generators:
+            return QuestionFactory._gen_flag(lang, exclude_codes, continent)
+
+        gen = random.choice(available_generators)
+        q = gen(lang, exclude_codes, continent)
+        q.mode = GameMode.PERSON
+        q.text = t("question_person", lang)
+        return q
+
+    @staticmethod
+    def _gen_logo(
+        lang: str,
+        exclude_codes: Optional[Set[str]] = None,
+        continent: Optional[str] = None
+    ) -> Question:
+        pool = LOGOS
+        if not pool:
+            return QuestionFactory._gen_flag(lang, exclude_codes, continent)
+
+        if exclude_codes:
+            filtered = [l for l in pool if l.get("id") not in exclude_codes]
+            if len(filtered) >= 4:
+                pool = filtered
+
+        target = random.choice(pool)
+        target_cat = target.get("category", "")
+        same_cat = [l for l in pool if l.get("id") != target.get("id") and l.get("category") == target_cat]
+        if len(same_cat) >= 3:
+            distractors = random.sample(same_cat, 3)
+        else:
+            other_logos = [l for l in pool if l.get("id") != target.get("id")]
+            distractors = random.sample(other_logos, min(3, len(other_logos)))
+
+        correct_name = target["name"].get(lang, target["name"]["en"])
+        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
+        if correct_name not in options:
+            options.append(correct_name)
+        while len(options) < 4:
+            options.append(f"Brand {len(options) + 1}")
+        options = options[:4]
+        random.shuffle(options)
+        correct_index = options.index(correct_name)
+
+        text = t("question_logo", lang)
+        fun_fact = target.get("fun_fact", {}).get(lang, target.get("fun_fact", {}).get("en", ""))
+
+        return Question(
+            mode=GameMode.LOGO,
+            text=text,
+            options=options,
+            correct_index=correct_index,
+            correct_answer=correct_name,
+            country_code=target.get("country_code", "world"),
+            image_url=target.get("image_url"),
+            fun_fact=fun_fact,
+            aliases=target.get("aliases", [])
+        )
 
     @staticmethod
     def create_streetview_question(

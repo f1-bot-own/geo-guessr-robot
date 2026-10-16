@@ -133,7 +133,10 @@ async def cmd_game(message: Message, bot: Bot):
     text_parts = (message.text or "").strip().split()
     chosen_mode = "mix"
     chosen_continent = "all"
-    modes = ("flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "blur", "mix")
+    modes = (
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
+    )
     continents = ("all", "asia", "europe", "africa", "americas", "oceania")
     for part in text_parts[1:]:
         p = part.lower()
@@ -190,6 +193,36 @@ async def cmd_contour(message: Message, bot: Bot):
 async def cmd_blur(message: Message, bot: Bot):
     """Direct shortcut command to launch a Blur Reveal game."""
     message.text = "/game blur"
+    await cmd_game(message, bot)
+
+@router.message(Command("president", "prezident"))
+async def cmd_president(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Presidents & Leaders game."""
+    message.text = "/game president"
+    await cmd_game(message, bot)
+
+@router.message(Command("history", "tarix"))
+async def cmd_history(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Historical Figures game."""
+    message.text = "/game historical"
+    await cmd_game(message, bot)
+
+@router.message(Command("celebrity", "stars", "yulduzlar", "mashhurlar"))
+async def cmd_celebrity(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Celebrities game."""
+    message.text = "/game celebrity"
+    await cmd_game(message, bot)
+
+@router.message(Command("person", "shaxs", "kimbu"))
+async def cmd_person(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Famous People game."""
+    message.text = "/game person"
+    await cmd_game(message, bot)
+
+@router.message(Command("logo", "brend"))
+async def cmd_logo(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Logo Guessr game."""
+    message.text = "/game logo"
     await cmd_game(message, bot)
 
 @router.message(Command("stop"))
@@ -258,7 +291,10 @@ async def cmd_solo(message: Message, bot: Bot):
     chosen_mode = None
     chosen_time = config.DEFAULT_ROUND_TIME
     chosen_input = None
-    modes = ("flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "blur", "mix")
+    modes = (
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
+    )
     input_modes = ("buttons", "text", "both")
 
     for part in text_parts[1:]:

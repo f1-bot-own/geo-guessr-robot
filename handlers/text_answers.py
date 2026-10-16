@@ -57,6 +57,14 @@ def _compile_valid_correct(q) -> set:
         if " " in norm_correct_ans:
             valid_correct.add(norm_correct_ans.replace(" ", ""))
 
+    if getattr(q, "aliases", None):
+        for alias in q.aliases:
+            norm_a = _normalize(alias)
+            if norm_a:
+                valid_correct.add(norm_a)
+                if " " in norm_a:
+                    valid_correct.add(norm_a.replace(" ", ""))
+
     if country:
         cap_names = set()
         if "capital" in country:

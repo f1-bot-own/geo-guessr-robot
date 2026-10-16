@@ -15,9 +15,19 @@ class GameMode:
     EMOJI = "emoji"
     CONTOUR = "contour"
     BLUR = "blur"
+    PRESIDENT = "president"
+    HISTORICAL = "historical"
+    CELEBRITY = "celebrity"
+    PERSON = "person"
+    LOGO = "logo"
     MIX = "mix"
 
-    ALL = [FLAG, CAPITAL, LANDMARK, HIGHER_LOWER, COAT_OF_ARMS, STREETVIEW, EMOJI, CONTOUR, BLUR, MIX]
+    ALL = [
+        FLAG, CAPITAL, LANDMARK, HIGHER_LOWER, COAT_OF_ARMS,
+        STREETVIEW, EMOJI, CONTOUR, BLUR,
+        PRESIDENT, HISTORICAL, CELEBRITY, PERSON, LOGO,
+        MIX
+    ]
 
 @dataclass
 class Question:
@@ -35,3 +45,4 @@ class Question:
     driving_side: Optional[str] = None
     blur_stages: Optional[tuple] = None
     blur_stage: int = 1
+    aliases: Optional[List[str]] = None
