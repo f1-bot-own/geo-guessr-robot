@@ -140,9 +140,10 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         await query.answer(alert_msg, show_alert=True)
         return
 
-    modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "mix"]
+    modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "mix"]
     rounds_cycle = [5, 10, 15, 20, 3]
     time_cycle = [30, 60]
+    continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
 
     if action == "mode":
         if param and param in modes:
@@ -150,6 +151,13 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         else:
             current_idx = modes.index(session.mode) if session.mode in modes else 0
             session.mode = modes[(current_idx + 1) % len(modes)]
+    elif action == "continent":
+        if param and param in continents:
+            session.continent = param
+        else:
+            curr_c = getattr(session, "continent", "all")
+            curr_c_idx = continents.index(curr_c) if curr_c in continents else 0
+            session.continent = continents[(curr_c_idx + 1) % len(continents)]
     elif action == "rounds":
         if param and param.isdigit():
             session.total_rounds = int(param)
@@ -194,7 +202,8 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         rounds=session.total_rounds,
         round_time=session.round_time,
         lang=session.lang,
-        input_mode=getattr(session, "input_mode", "both")
+        input_mode=getattr(session, "input_mode", "both"),
+        continent=getattr(session, "continent", "all")
     )
     try:
         await query.message.edit_reply_markup(reply_markup=kb)
@@ -646,7 +655,7 @@ async def cb_solo_category(query: CallbackQuery, bot: Bot):
         await query.answer()
         return
 
-    modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "mix"]
+    modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "mix"]
     chosen_mode = cat if cat in modes else "mix"
 
     existing = game_manager.get_solo_session(user.id)
@@ -655,13 +664,15 @@ async def cb_solo_category(query: CallbackQuery, bot: Bot):
 
     saved_state = game_manager.get_solo_setup_state(user.id)
     chosen_input_mode = saved_state.get("input_mode", "both")
+    chosen_continent = saved_state.get("continent", "all")
 
     solo_session = SoloGameSession(
         user_id=user.id,
         user_name=user.first_name or "Player",
         lang=lang,
         mode=chosen_mode,
-        input_mode=chosen_input_mode
+        input_mode=chosen_input_mode,
+        continent=chosen_continent
     )
     game_manager.set_solo_session(user.id, solo_session)
     solo_session.next_round()
@@ -686,9 +697,19 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
     lang = user_data.get("language", "en") if user_data else "en"
     state = game_manager.get_solo_setup_state(user.id)
 
+    solo_modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "mix"]
+    continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
+
     if action == "mode":
-        if param in ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "mix"]:
+        if param in solo_modes:
             state["mode"] = param
+    elif action == "continent":
+        if param in continents:
+            state["continent"] = param
+        else:
+            curr_c = state.get("continent", "all")
+            curr_c_idx = continents.index(curr_c) if curr_c in continents else 0
+            state["continent"] = continents[(curr_c_idx + 1) % len(continents)]
     elif action == "time":
         if param and param.isdigit():
             state["round_time"] = int(param)
@@ -705,7 +726,8 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
             lang=lang,
             mode=state.get("mode", "mix"),
             round_time=state.get("round_time", 30),
-            input_mode=state.get("input_mode", "both")
+            input_mode=state.get("input_mode", "both"),
+            continent=state.get("continent", "all")
         )
         game_manager.set_solo_session(user.id, solo_session)
         solo_session.next_round()
@@ -729,7 +751,8 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
         mode=state.get("mode", "mix"),
         round_time=state.get("round_time", 30),
         input_mode=state.get("input_mode", "both"),
-        lang=lang
+        lang=lang,
+        continent=state.get("continent", "all")
     )
     try:
         await query.message.edit_reply_markup(reply_markup=kb)

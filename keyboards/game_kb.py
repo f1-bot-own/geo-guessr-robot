@@ -13,9 +13,10 @@ def get_setup_kb(
     rounds: int = 5,
     round_time: int = 30,
     lang: str = "en",
-    input_mode: str = "both"
+    input_mode: str = "both",
+    continent: str = "all"
 ) -> InlineKeyboardMarkup:
-    """Generate game setup parameters keyboard with explicit categories, 30s/60s timers, and input mode."""
+    """Generate game setup parameters keyboard with explicit categories, 30s/60s timers, input mode, and continent filter."""
     def mode_btn(m_code: str):
         prefix = "✅ " if mode == m_code else ""
         return InlineKeyboardButton(
@@ -35,7 +36,15 @@ def get_setup_kb(
         [mode_btn("flag"), mode_btn("capital")],
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
+        [mode_btn("emoji"), mode_btn("contour")],
         [mode_btn("mix")],
+        # Continent Filter button
+        [
+            InlineKeyboardButton(
+                text=t("btn_continent", lang, continent=t(f"filter_continent_{continent}", lang)),
+                callback_data=f"setup:continent:{session_id}"
+            )
+        ],
         # Explicit 30s / 60s timer buttons
         [
             InlineKeyboardButton(
@@ -109,6 +118,10 @@ def get_category_selection_kb(
             InlineKeyboardButton(text=t("mode_streetview", lang), callback_data=f"{prefix}:streetview")
         ],
         [
+            InlineKeyboardButton(text=t("mode_emoji", lang), callback_data=f"{prefix}:emoji"),
+            InlineKeyboardButton(text=t("mode_contour", lang), callback_data=f"{prefix}:contour")
+        ],
+        [
             InlineKeyboardButton(text=t("mode_mix", lang), callback_data=f"{prefix}:mix")
         ],
         [
@@ -135,7 +148,8 @@ def get_solo_setup_kb(
     mode: str = "mix",
     round_time: int = 30,
     input_mode: str = "both",
-    lang: str = "en"
+    lang: str = "en",
+    continent: str = "all"
 ) -> InlineKeyboardMarkup:
     """Generate interactive solo setup lobby keyboard."""
     def mode_btn(m_code: str):
@@ -156,7 +170,15 @@ def get_solo_setup_kb(
         [mode_btn("flag"), mode_btn("capital")],
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
+        [mode_btn("emoji"), mode_btn("contour")],
         [mode_btn("mix")],
+        # Continent Filter
+        [
+            InlineKeyboardButton(
+                text=t("btn_continent", lang, continent=t(f"filter_continent_{continent}", lang)),
+                callback_data="solo_setup:continent"
+            )
+        ],
         [
             InlineKeyboardButton(
                 text=f"{t30_pfx}{t('btn_timer_30s', lang)}",

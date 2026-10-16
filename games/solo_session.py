@@ -19,7 +19,8 @@ class SoloGameSession:
         lang: str = "en",
         mode: str = GameMode.MIX,
         round_time: int = config.DEFAULT_ROUND_TIME,
-        input_mode: str = "both"
+        input_mode: str = "both",
+        continent: str = "all"
     ):
         self.user_id: int = user_id
         self.user_name: str = user_name
@@ -27,6 +28,7 @@ class SoloGameSession:
         self.mode: str = mode
         self.round_time: int = round_time
         self.input_mode: str = input_mode if input_mode in ("buttons", "text", "both") else "both"
+        self.continent: str = continent or "all"
         
         self.lives: int = 3
         self.score: int = 0
@@ -58,7 +60,8 @@ class SoloGameSession:
         q = QuestionFactory.generate(
             mode=self.mode,
             lang=self.lang,
-            exclude_codes=self.used_country_codes
+            exclude_codes=self.used_country_codes,
+            continent=self.continent
         )
         self.current_question = q
         if q.country_code:

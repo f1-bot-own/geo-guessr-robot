@@ -12,9 +12,11 @@ class GameMode:
     HIGHER_LOWER = "higher_lower"
     COAT_OF_ARMS = "coat_of_arms"
     STREETVIEW = "streetview"
+    EMOJI = "emoji"
+    CONTOUR = "contour"
     MIX = "mix"
 
-    ALL = [FLAG, CAPITAL, LANDMARK, HIGHER_LOWER, COAT_OF_ARMS, STREETVIEW, MIX]
+    ALL = [FLAG, CAPITAL, LANDMARK, HIGHER_LOWER, COAT_OF_ARMS, STREETVIEW, EMOJI, CONTOUR, MIX]
 
 @dataclass
 class Question:

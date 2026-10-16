@@ -132,11 +132,15 @@ async def cmd_game(message: Message, bot: Bot):
     user_name = user.first_name or user.username or "Host"
     text_parts = (message.text or "").strip().split()
     chosen_mode = "mix"
-    modes = ("flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "mix")
+    chosen_continent = "all"
+    modes = ("flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "mix")
+    continents = ("all", "asia", "europe", "africa", "americas", "oceania")
     for part in text_parts[1:]:
         p = part.lower()
         if p in modes:
             chosen_mode = p
+        elif p in continents:
+            chosen_continent = p
 
     session = GameSession(
         chat_id=chat.id,
@@ -147,7 +151,8 @@ async def cmd_game(message: Message, bot: Bot):
         total_rounds=config.DEFAULT_ROUNDS,
         round_time=config.DEFAULT_ROUND_TIME,
         host_id=user.id,
-        host_name=user_name
+        host_name=user_name,
+        continent=chosen_continent
     )
     session.user_names[user.id] = user_name
     game_manager.set_session(chat.id, session)
@@ -158,7 +163,8 @@ async def cmd_game(message: Message, bot: Bot):
         rounds=session.total_rounds,
         round_time=session.round_time,
         lang=lang,
-        input_mode=session.input_mode
+        input_mode=session.input_mode,
+        continent=session.continent
     )
 
     setup_title = t("game_setup_host_title", lang, host=user_name)
@@ -167,6 +173,18 @@ async def cmd_game(message: Message, bot: Bot):
         reply_markup=kb,
         parse_mode="HTML"
     )
+
+@router.message(Command("emoji"))
+async def cmd_emoji(message: Message, bot: Bot):
+    """Direct shortcut command to launch an Emoji Riddle game."""
+    message.text = "/game emoji"
+    await cmd_game(message, bot)
+
+@router.message(Command("contour", "silhouette"))
+async def cmd_contour(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Country Contour game."""
+    message.text = "/game contour"
+    await cmd_game(message, bot)
 
 @router.message(Command("stop"))
 async def cmd_stop(message: Message, bot: Bot):

@@ -4,8 +4,8 @@ Note: For production deployments where /app/data is mounted as a persistent volu
 code should always import from 'gamedata' directly.
 """
 try:
-    from gamedata import countries, landmarks, streetviews, fun_facts
+    from gamedata import countries, landmarks, streetviews, fun_facts, emojis, contours
 except ImportError:
     pass
 
-__all__ = ["countries", "landmarks", "streetviews", "fun_facts"]
+__all__ = ["countries", "landmarks", "streetviews", "fun_facts", "emojis", "contours"]

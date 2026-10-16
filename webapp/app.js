@@ -43,6 +43,13 @@ const I18N = {
     panorama360: "🔄 360° Aylantiring (Panorama)",
     btnSatellite: "🛰 Sun'iy yo'ldosh",
     btnStreet: "🗺 Xarita (Davlatlar)",
+    blurMode: "🔍 Blur Rejim",
+    blurBonus: "⚡ Blur Bonusi",
+    blurFull: "Xira (+1,500)",
+    blurMed: "O'rtacha (+1,000)",
+    blurLow: "Kam (+500)",
+    blurClear: "✨ Tiniq (+0)",
+    blurOff: "Blur: O'chiq",
   },
   ru: {
     round: "Раунд",
@@ -72,6 +79,13 @@ const I18N = {
     panorama360: "🔄 360° Круговой обзор (Панорама)",
     btnSatellite: "🛰 Спутник",
     btnStreet: "🗺 Карта (Страны)",
+    blurMode: "🔍 Размытие",
+    blurBonus: "⚡ Бонус за размытие",
+    blurFull: "Размыто (+1,500)",
+    blurMed: "Средне (+1,000)",
+    blurLow: "Слабо (+500)",
+    blurClear: "✨ Чётко (+0)",
+    blurOff: "Размытие выкл",
   },
   en: {
     round: "Round",
@@ -101,6 +115,13 @@ const I18N = {
     panorama360: "🔄 360° Interactive Panorama",
     btnSatellite: "🛰 Satellite",
     btnStreet: "🗺 Map (Countries)",
+    blurMode: "🔍 Blur Mode",
+    blurBonus: "⚡ Blur Bonus",
+    blurFull: "Blurry (+1,500)",
+    blurMed: "Medium (+1,000)",
+    blurLow: "Low (+500)",
+    blurClear: "✨ Clear (+0)",
+    blurOff: "Blur Off",
   }
 };
 
@@ -382,6 +403,138 @@ const roundsBreakdown = document.getElementById("roundsBreakdown");
 const btnSubmitScore = document.getElementById("btnSubmitScore");
 const btnPlayAgain = document.getElementById("btnPlayAgain");
 
+// Blur / Zoom-In Reveal Elements & State
+const blurToggleBtn = document.getElementById("blurToggleBtn");
+const blurPill = document.getElementById("blurPill");
+const blurPillText = document.getElementById("blurPillText");
+const metricBlurBonus = document.getElementById("metricBlurBonus");
+const lblBlurBonus = document.getElementById("lblBlurBonus");
+const resBlurBonus = document.getElementById("resBlurBonus");
+
+let isBlurMode = true;
+let currentBlurBonus = 1500;
+let blurTimer = null;
+let blurSecondsLeft = 15;
+const BLUR_MAX_SECONDS = 15;
+
+function startBlurReveal() {
+  stopBlurReveal();
+  const imageWrapper = document.getElementById("imageWrapper");
+  const t = I18N[currentLang];
+
+  if (!isBlurMode) {
+    if (imageWrapper) {
+      imageWrapper.classList.remove("blurred-reveal");
+      imageWrapper.style.removeProperty("--blur-amount");
+      imageWrapper.style.removeProperty("--zoom-amount");
+    }
+    if (blurPill) {
+      blurPill.className = "clue-pill blur-pill clear";
+      blurPillText.textContent = t.blurOff;
+    }
+    currentBlurBonus = 0;
+    return;
+  }
+
+  blurSecondsLeft = BLUR_MAX_SECONDS;
+  currentBlurBonus = 1500;
+
+  if (imageWrapper) {
+    imageWrapper.style.setProperty("--blur-amount", "24px");
+    imageWrapper.style.setProperty("--zoom-amount", "1.18");
+    imageWrapper.classList.add("blurred-reveal");
+  }
+
+  updateBlurUI();
+
+  blurTimer = setInterval(() => {
+    blurSecondsLeft--;
+    if (blurSecondsLeft <= 0) {
+      blurSecondsLeft = 0;
+      currentBlurBonus = 0;
+      stopBlurReveal();
+      if (imageWrapper) {
+        imageWrapper.classList.remove("blurred-reveal");
+        imageWrapper.style.setProperty("--blur-amount", "0px");
+        imageWrapper.style.setProperty("--zoom-amount", "1.0");
+      }
+      updateBlurUI();
+      return;
+    }
+
+    const fraction = blurSecondsLeft / BLUR_MAX_SECONDS;
+    const blurPx = Math.round(fraction * 24);
+    const zoom = (1.0 + (fraction * 0.18)).toFixed(2);
+
+    if (imageWrapper) {
+      imageWrapper.style.setProperty("--blur-amount", `${blurPx}px`);
+      imageWrapper.style.setProperty("--zoom-amount", zoom);
+    }
+
+    if (blurSecondsLeft >= 10) {
+      currentBlurBonus = 1500;
+    } else if (blurSecondsLeft >= 5) {
+      currentBlurBonus = 1000;
+    } else {
+      currentBlurBonus = 500;
+    }
+
+    updateBlurUI();
+  }, 1000);
+}
+
+function stopBlurReveal() {
+  if (blurTimer) {
+    clearInterval(blurTimer);
+    blurTimer = null;
+  }
+}
+
+function updateBlurUI() {
+  if (!blurPill || !blurPillText) return;
+  const t = I18N[currentLang];
+
+  if (!isBlurMode) {
+    blurPill.className = "clue-pill blur-pill clear";
+    blurPillText.textContent = t.blurOff;
+    return;
+  }
+
+  if (blurSecondsLeft >= 10) {
+    blurPill.className = "clue-pill blur-pill bonus-high";
+    blurPillText.textContent = `${t.blurFull}`;
+  } else if (blurSecondsLeft >= 5) {
+    blurPill.className = "clue-pill blur-pill bonus-med";
+    blurPillText.textContent = `${t.blurMed}`;
+  } else if (blurSecondsLeft > 0) {
+    blurPill.className = "clue-pill blur-pill";
+    blurPillText.textContent = `${t.blurLow}`;
+  } else {
+    blurPill.className = "clue-pill blur-pill clear";
+    blurPillText.textContent = `${t.blurClear}`;
+  }
+}
+
+function toggleBlurMode() {
+  isBlurMode = !isBlurMode;
+  if (blurToggleBtn) {
+    blurToggleBtn.classList.toggle("active", isBlurMode);
+  }
+  const imageWrapper = document.getElementById("imageWrapper");
+  if (!isBlurMode) {
+    stopBlurReveal();
+    if (imageWrapper) {
+      imageWrapper.classList.remove("blurred-reveal");
+      imageWrapper.style.removeProperty("--blur-amount");
+      imageWrapper.style.removeProperty("--zoom-amount");
+    }
+    currentBlurBonus = 0;
+  } else {
+    startBlurReveal();
+  }
+  updateBlurUI();
+}
+
 // Calculate Distance (Haversine formula in km)
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Earth's radius in km
@@ -535,6 +688,8 @@ function loadRound(index) {
 
   roundBadge.textContent = `${t.round} ${index + 1}/5`;
   scoreBadge.textContent = `${totalScore.toLocaleString()} ${t.score}`;
+
+  startBlurReveal();
 
   // Reset all map markers and polylines completely
   if (markersGroup) {
@@ -703,10 +858,15 @@ function submitGuess() {
     tg.HapticFeedback.impactOccurred("medium");
   }
 
+  // Stop blur countdown & capture bonus
+  stopBlurReveal();
+  const finalBlurBonus = isBlurMode ? currentBlurBonus : 0;
+
   // Calculate distance & points
   const distKm = calculateDistance(selectedLatLng.lat, selectedLatLng.lng, loc.lat, loc.lng);
-  const roundPts = calculateScore(distKm);
-  totalScore += roundPts;
+  const baseRoundPts = calculateScore(distKm);
+  const totalRoundPts = baseRoundPts + finalBlurBonus;
+  totalScore += totalRoundPts;
 
   roundResults.push({
     round: currentRoundIndex + 1,
@@ -714,7 +874,8 @@ function submitGuess() {
     country: loc.country[currentLang] || loc.country.en,
     flag: loc.flag,
     distanceKm: distKm,
-    points: roundPts
+    points: totalRoundPts,
+    blurBonus: finalBlurBonus
   });
 
   // Reveal True Location on Map
@@ -739,8 +900,18 @@ function submitGuess() {
   resLocationName.textContent = loc.name[currentLang] || loc.name.en;
   resCountryName.textContent = `${loc.city[currentLang] || loc.city.en}, ${loc.country[currentLang] || loc.country.en}`;
   resDistance.textContent = `${distKm.toLocaleString()} km`;
-  resPoints.textContent = `+${roundPts.toLocaleString()}`;
+  resPoints.textContent = `+${totalRoundPts.toLocaleString()}`;
   resFunFact.innerHTML = `<b>${t.funFactPrefix}</b> ${loc.fact[currentLang] || loc.fact.en}`;
+
+  // Update Blur Bonus Display in Modal
+  if (metricBlurBonus && resBlurBonus) {
+    if (finalBlurBonus > 0) {
+      resBlurBonus.textContent = `+${finalBlurBonus.toLocaleString()}`;
+      metricBlurBonus.classList.remove("hidden");
+    } else {
+      metricBlurBonus.classList.add("hidden");
+    }
+  }
 
   // Show Modal after brief delay so user sees pins connecting
   setTimeout(() => {
@@ -828,11 +999,13 @@ function setLanguage(lang) {
   document.getElementById("txtLoading").textContent = t.loading;
   document.getElementById("lblDistance").textContent = t.distance;
   document.getElementById("lblPoints").textContent = t.pointsAwarded;
+  if (lblBlurBonus) lblBlurBonus.textContent = t.blurBonus;
   guessBtnText.textContent = t.guessBtn;
   nextRoundBtnText.textContent = t.nextRound;
   document.getElementById("txtGameOver").textContent = t.gameOver;
   btnSubmitScore.textContent = t.submitScore;
   btnPlayAgain.textContent = t.playAgain;
+  updateBlurUI();
 
   if (gameRounds.length > 0 && currentRoundIndex < 5) {
     const loc = gameRounds[currentRoundIndex];
@@ -860,6 +1033,13 @@ guessBtn.addEventListener("click", submitGuess);
 nextRoundBtn.addEventListener("click", onNextRound);
 btnSubmitScore.addEventListener("click", submitScoreToBot);
 btnPlayAgain.addEventListener("click", startNewGame);
+
+if (blurToggleBtn) {
+  blurToggleBtn.addEventListener("click", toggleBlurMode);
+}
+if (blurPill) {
+  blurPill.addEventListener("click", toggleBlurMode);
+}
 
 const mapLayerToggle = document.getElementById("mapLayerToggle");
 if (mapLayerToggle) {

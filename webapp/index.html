@@ -25,6 +25,7 @@
         <span class="score-badge" id="scoreBadge">0 ball</span>
       </div>
       <div class="header-right">
+        <button class="mode-toggle-btn active" id="blurToggleBtn" title="Blur Reveal Rejimi">🔍 Blur</button>
         <div class="lang-selector">
           <button class="lang-btn active" data-lang="uz">UZ</button>
           <button class="lang-btn" data-lang="ru">RU</button>
@@ -49,6 +50,10 @@
 
         <!-- Clues & Meta Bar -->
         <div class="clues-overlay" id="cluesOverlay">
+          <div class="clue-pill blur-pill bonus-high" id="blurPill" title="Xiralik va bonus">
+            <span class="clue-icon">🔍</span>
+            <span id="blurPillText">Xira (+1,500)</span>
+          </div>
           <div class="clue-pill" id="clueDriving">
             <span class="clue-icon">🚗</span>
             <span id="clueDrivingText">Harakat: O'ng</span>
@@ -110,6 +115,10 @@
           <div class="metric-box">
             <span class="metric-label" id="lblDistance">Masofa</span>
             <span class="metric-val" id="resDistance">124 km</span>
+          </div>
+          <div class="metric-box bonus-box" id="metricBlurBonus">
+            <span class="metric-label" id="lblBlurBonus">⚡ Blur Bonusi</span>
+            <span class="metric-val" id="resBlurBonus">+1,500</span>
           </div>
           <div class="metric-box highlight">
             <span class="metric-label" id="lblPoints">To'plangan ball</span>

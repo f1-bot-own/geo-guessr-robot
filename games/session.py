@@ -26,7 +26,8 @@ class GameSession:
         duel_id: Optional[int] = None,
         host_id: Optional[int] = None,
         host_name: str = "",
-        input_mode: str = "both"
+        input_mode: str = "both",
+        continent: str = "all"
     ):
         self.session_id: str = str(uuid.uuid4())[:8]
         self.chat_id: int = chat_id
@@ -39,6 +40,7 @@ class GameSession:
         self.total_rounds: int = total_rounds
         self.round_time: int = round_time
         self.input_mode: str = input_mode if input_mode in ("buttons", "text", "both") else "both"
+        self.continent: str = continent or "all"
         
         # Duel settings
         self.is_duel: bool = is_duel
@@ -76,7 +78,8 @@ class GameSession:
         q = QuestionFactory.generate(
             mode=self.mode,
             lang=self.lang,
-            exclude_codes=self.used_country_codes
+            exclude_codes=self.used_country_codes,
+            continent=self.continent
         )
         self.current_question = q
         if q.country_code:
