@@ -20,7 +20,9 @@ class SoloGameSession:
         mode: str = GameMode.MIX,
         round_time: int = config.DEFAULT_ROUND_TIME,
         input_mode: str = "both",
-        continent: str = "all"
+        continent: str = "all",
+        selected_modes: Optional[List[str]] = None,
+        is_blur: bool = False
     ):
         self.user_id: int = user_id
         self.user_name: str = user_name
@@ -30,6 +32,18 @@ class SoloGameSession:
         self.input_mode: str = input_mode if input_mode in ("buttons", "text", "both") else "both"
         self.continent: str = continent or "all"
         
+        # Multi-mode and blur state
+        if selected_modes:
+            self.selected_modes: List[str] = list(selected_modes)
+        elif mode == GameMode.BLUR:
+            self.selected_modes = [GameMode.FLAG]
+        elif mode == GameMode.MIX:
+            self.selected_modes = ["mix"]
+        else:
+            self.selected_modes = [mode]
+
+        self.is_blur: bool = is_blur or (mode == GameMode.BLUR)
+
         self.lives: int = 3
         self.score: int = 0
         self.round_number: int = 0
@@ -53,18 +67,44 @@ class SoloGameSession:
         self.advancing: bool = False
 
     def next_round(self) -> Question:
-        """Advance to next solo question."""
+        """Advance to next solo question from selected modes."""
         self.round_number += 1
         self.eliminated_options.clear()
         
+        active_modes = [m for m in getattr(self, "selected_modes", []) if m not in ("mix", "blur")]
+        if not active_modes:
+            if self.mode and self.mode not in ("mix", "blur"):
+                active_modes = [self.mode]
+            else:
+                active_modes = [
+                    GameMode.FLAG, GameMode.CAPITAL, GameMode.LANDMARK,
+                    GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.LOGO
+                ]
+        
+        round_mode = random.choice(active_modes)
+
         q = QuestionFactory.generate(
-            mode=self.mode,
+            mode=round_mode,
             lang=self.lang,
             exclude_codes=self.used_country_codes,
             continent=self.continent
         )
+
+        if getattr(self, "is_blur", False) and q and q.image_url:
+            q.mode = GameMode.BLUR
+            if round_mode == GameMode.FLAG:
+                q.text = t("question_blur_flag", self.lang)
+            elif round_mode in (GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.PERSON):
+                q.text = t("question_blur_person", self.lang)
+            elif round_mode == GameMode.LOGO:
+                q.text = t("question_blur_logo", self.lang)
+            elif round_mode == GameMode.LANDMARK:
+                q.text = t("question_blur_landmark", self.lang)
+            elif round_mode == GameMode.COAT_OF_ARMS:
+                q.text = t("question_blur_coat", self.lang)
+
         self.current_question = q
-        if q.country_code:
+        if q and q.country_code:
             self.used_country_codes.add(q.country_code)
         return q
 
@@ -89,7 +129,11 @@ class SoloGameSession:
         
         country = get_country(self.current_question.country_code)
         if not country:
-            return ""
+            if self.current_question.fun_fact:
+                return f"💡 {self.current_question.fun_fact}"
+            elif self.current_question.country_code:
+                return f"💡 {self.current_question.country_code}"
+            return "💡 Hint: Choose carefully!"
         
         continent = country["continent"].get(self.lang, country["continent"]["en"])
 

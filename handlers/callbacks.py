@@ -118,6 +118,39 @@ async def cb_group_answer(query: CallbackQuery, bot: Bot):
         await proceed_after_round(bot, chat_id, session, db)
 
 # ----------------- Game Setup Controls -----------------
+def format_setup_title(session, lang: str) -> str:
+    """Format clear, dynamic game setup header showing active modes, blur, continent, and host."""
+    host_name = getattr(session, "host_name", "") or session.user_names.get(session.created_by_user_id) or "Host"
+    selected = getattr(session, "selected_modes", [])
+    if not selected:
+        selected = [session.mode] if session.mode else ["flag"]
+
+    selected_names = [t(f"mode_{m}", lang) for m in selected if t(f"mode_{m}", lang)]
+    if len(selected_names) <= 3:
+        modes_str = ", ".join(selected_names)
+    else:
+        modes_str = ", ".join(selected_names[:3]) + f" (+{len(selected_names) - 3})"
+
+    is_blur = getattr(session, "is_blur", False)
+    blur_status = t("status_enabled", lang) if is_blur else t("status_disabled", lang)
+    cont = getattr(session, "continent", "all")
+    continent_str = t(f"filter_continent_{cont}", lang)
+    input_m = getattr(session, "input_mode", "both")
+    input_str = t(f"btn_input_{input_m}", lang)
+
+    text = (
+        f"⚙️ <b>{t('game_setup_title', lang)}</b>\n"
+        f"👑 <b>{t('host_label', lang)}:</b> {host_name}\n\n"
+        f"🎯 <b>{t('selected_modes_label', lang)} ({len(selected)}):</b>\n"
+        f"👉 <i>{modes_str}</i>\n\n"
+        f"🔍 <b>Blur:</b> {blur_status}\n"
+        f"🌐 <b>{t('btn_continent_label', lang)}:</b> {continent_str}\n"
+        f"⏱ <b>{t('timer_label', lang)}:</b> {session.round_time}s | 🔢 <b>{t('rounds_label', lang)}:</b> {session.total_rounds}\n"
+        f"🎮 <b>{t('input_label', lang)}:</b> {input_str}\n\n"
+        f"<i>{t('multi_select_hint', lang)}</i>"
+    )
+    return text
+
 @router.callback_query(F.data.startswith("setup:"))
 async def cb_game_setup(query: CallbackQuery, bot: Bot):
     """Handle interactive game setup configuration with host-only authorization."""
@@ -147,20 +180,48 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         await query.answer(alert_msg, show_alert=True)
         return
 
-    modes = [
-        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
-        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
-    ]
     rounds_cycle = [5, 10, 15, 20, 3]
-    time_cycle = [30, 60]
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
 
     if action == "mode":
-        if param and param in modes:
+        if not hasattr(session, "selected_modes") or not session.selected_modes:
+            session.selected_modes = ["mix"] if session.mode == "mix" else [session.mode]
+
+        if param == "mix":
+            session.selected_modes = ["mix"]
+            session.mode = "mix"
+        elif session.selected_modes == ["mix"] or (session.mode == "mix" and "mix" in session.selected_modes):
+            session.selected_modes = [param]
             session.mode = param
         else:
-            current_idx = modes.index(session.mode) if session.mode in modes else 0
-            session.mode = modes[(current_idx + 1) % len(modes)]
+            if param in session.selected_modes:
+                if len(session.selected_modes) <= 1:
+                    await query.answer(t("at_least_one_mode_alert", session.lang), show_alert=True)
+                    return
+                session.selected_modes.remove(param)
+            else:
+                session.selected_modes.append(param)
+
+            if len(session.selected_modes) == 1:
+                session.mode = session.selected_modes[0]
+            else:
+                session.mode = "mix"
+    elif action == "all":
+        all_modes = [
+            "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+            "emoji", "contour", "president", "historical", "celebrity", "logo"
+        ]
+        session.selected_modes = list(all_modes)
+        session.mode = "mix"
+        await query.answer(t("all_modes_selected", session.lang))
+    elif action == "flags_only":
+        session.selected_modes = ["flag"]
+        session.mode = "flag"
+        await query.answer(t("flags_only_selected", session.lang))
+    elif action == "blur":
+        session.is_blur = not getattr(session, "is_blur", False)
+        alert = t("blur_enabled_alert", session.lang) if session.is_blur else t("blur_disabled_alert", session.lang)
+        await query.answer(alert)
     elif action == "continent":
         if param and param in continents:
             session.continent = param
@@ -205,7 +266,7 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
             pass
         return
 
-    # Update keyboard with new settings
+    # Update keyboard and message with new settings
     kb = get_setup_kb(
         session_id=session.session_id,
         mode=session.mode,
@@ -213,13 +274,20 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         round_time=session.round_time,
         lang=session.lang,
         input_mode=getattr(session, "input_mode", "both"),
-        continent=getattr(session, "continent", "all")
+        continent=getattr(session, "continent", "all"),
+        selected_modes=getattr(session, "selected_modes", [session.mode]),
+        is_blur=getattr(session, "is_blur", False)
     )
+    title_text = format_setup_title(session, session.lang)
     try:
-        await query.message.edit_reply_markup(reply_markup=kb)
+        await query.message.edit_text(text=title_text, reply_markup=kb, parse_mode="HTML")
     except Exception:
-        pass
-    await query.answer()
+        try:
+            await query.message.edit_reply_markup(reply_markup=kb)
+        except Exception:
+            pass
+    if action not in ("all", "flags_only", "blur"):
+        await query.answer()
 
 # ----------------- Daily Challenge Answers -----------------
 @router.callback_query(F.data.startswith("daily_ans:"))
@@ -709,16 +777,49 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
     user_data = await db.get_user(user.id)
     lang = user_data.get("language", "en") if user_data else "en"
     state = game_manager.get_solo_setup_state(user.id)
+    if "selected_modes" not in state or not state["selected_modes"]:
+        init_mode = state.get("mode", "mix")
+        state["selected_modes"] = ["mix"] if init_mode == "mix" else [init_mode]
+        state["is_blur"] = state.get("is_blur", init_mode == "blur")
 
-    solo_modes = [
-        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
-        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
-    ]
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
 
     if action == "mode":
-        if param in solo_modes:
+        if param == "mix":
+            state["selected_modes"] = ["mix"]
+            state["mode"] = "mix"
+        elif state.get("selected_modes") == ["mix"] or (state.get("mode") == "mix" and "mix" in state.get("selected_modes", [])):
+            state["selected_modes"] = [param]
             state["mode"] = param
+        else:
+            if param in state["selected_modes"]:
+                if len(state["selected_modes"]) <= 1:
+                    await query.answer(t("at_least_one_mode_alert", lang), show_alert=True)
+                    return
+                state["selected_modes"].remove(param)
+            else:
+                state["selected_modes"].append(param)
+
+            if len(state["selected_modes"]) == 1:
+                state["mode"] = state["selected_modes"][0]
+            else:
+                state["mode"] = "mix"
+    elif action == "all":
+        all_modes = [
+            "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+            "emoji", "contour", "president", "historical", "celebrity", "logo"
+        ]
+        state["selected_modes"] = list(all_modes)
+        state["mode"] = "mix"
+        await query.answer(t("all_modes_selected", lang))
+    elif action == "flags_only":
+        state["selected_modes"] = ["flag"]
+        state["mode"] = "flag"
+        await query.answer(t("flags_only_selected", lang))
+    elif action == "blur":
+        state["is_blur"] = not state.get("is_blur", False)
+        alert = t("blur_enabled_alert", lang) if state["is_blur"] else t("blur_disabled_alert", lang)
+        await query.answer(alert)
     elif action == "continent":
         if param in continents:
             state["continent"] = param
@@ -743,7 +844,9 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
             mode=state.get("mode", "mix"),
             round_time=state.get("round_time", 30),
             input_mode=state.get("input_mode", "both"),
-            continent=state.get("continent", "all")
+            continent=state.get("continent", "all"),
+            selected_modes=state.get("selected_modes"),
+            is_blur=state.get("is_blur", False)
         )
         game_manager.set_solo_session(user.id, solo_session)
         solo_session.next_round()
@@ -768,13 +871,16 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
         round_time=state.get("round_time", 30),
         input_mode=state.get("input_mode", "both"),
         lang=lang,
-        continent=state.get("continent", "all")
+        continent=state.get("continent", "all"),
+        selected_modes=state.get("selected_modes"),
+        is_blur=state.get("is_blur", False)
     )
     try:
         await query.message.edit_reply_markup(reply_markup=kb)
     except Exception:
         pass
-    await query.answer()
+    if action not in ("all", "flags_only", "blur"):
+        await query.answer()
 
 # ----------------- Duel Acceptance -----------------
 @router.callback_query(F.data.startswith("duel:"))

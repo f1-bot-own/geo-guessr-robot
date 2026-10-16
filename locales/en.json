@@ -145,5 +145,22 @@
   "btn_miniapp": "🗺️ GeoGuessr (Mini App)",
   "btn_miniapp_launch": "🚀 Play on Map (Mini App)",
   "miniapp_intro": "🗺️ <b>GeoGuessr Mini App — Interactive Map Challenge!</b>\n\nInspect the street view or landmark photo and drop a pin on the world map!\n\n🎯 <b>Rules:</b>\n• 5 exciting rounds per game\n• The closer your guess is, the more points you earn (up to 5,000 pts)\n• Max possible score: 25,000 points!\n\n👇 Tap the button below to launch the Mini App:",
-  "miniapp_result_msg": "🎉 <b>Awesome game! Mini App score recorded:</b>\n\n🏆 Final Score: <b>{score} / 25,000</b>\n🎖 Rank: <b>{rank}</b>\n⭐ You earned <b>+{xp} XP</b>!\n\n<i>To play another round, launch the Mini App again!</i>"
+  "miniapp_result_msg": "🎉 <b>Awesome game! Mini App score recorded:</b>\n\n🏆 Final Score: <b>{score} / 25,000</b>\n🎖 Rank: <b>{rank}</b>\n⭐ You earned <b>+{xp} XP</b>!\n\n<i>To play another round, launch the Mini App again!</i>",
+  "host_label": "Host",
+  "selected_modes_label": "Selected modes",
+  "btn_continent_label": "Continent",
+  "timer_label": "Round time",
+  "rounds_label": "Rounds",
+  "input_label": "Input mode",
+  "multi_select_hint": "👇 Tap buttons to toggle your desired game modes (multi-selection supported):",
+  "btn_select_all_modes": "🔘 All Modes (Mix)",
+  "btn_only_flags": "🏳️ Flags Only",
+  "at_least_one_mode_alert": "⚠️ At least one mode must be selected!",
+  "all_modes_selected": "🔘 All modes selected!",
+  "flags_only_selected": "🏳️ Flags only selected!",
+  "blur_enabled_alert": "🔍 Blur Reveal enabled! Photo questions will gradually sharpen with +300 speed bonus!",
+  "blur_disabled_alert": "🔍 Blur Reveal disabled (standard clear pictures).",
+  "status_enabled": "✅ ON (+300 bonus)",
+  "status_disabled": "❌ OFF",
+  "question_blur_coat": "🔍 <b>GeoGuessr: Which country's coat of arms is blurred?</b>\n<i>⚡ Guess early while blurry to earn up to +300 speed bonus!</i>"
 }

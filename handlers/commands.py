@@ -28,6 +28,7 @@ import config
 router = Router()
 
 from .bot_compat import get_db
+from .callbacks import format_setup_title
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, bot: Bot):
@@ -145,6 +146,14 @@ async def cmd_game(message: Message, bot: Bot):
         elif p in continents:
             chosen_continent = p
 
+    is_blur_init = (chosen_mode == "blur")
+    if is_blur_init:
+        init_selected = ["flag"]
+    elif chosen_mode == "mix":
+        init_selected = ["flag", "capital", "landmark", "president", "historical", "celebrity", "logo"]
+    else:
+        init_selected = [chosen_mode]
+
     session = GameSession(
         chat_id=chat.id,
         created_by_user_id=user.id,
@@ -155,7 +164,9 @@ async def cmd_game(message: Message, bot: Bot):
         round_time=config.DEFAULT_ROUND_TIME,
         host_id=user.id,
         host_name=user_name,
-        continent=chosen_continent
+        continent=chosen_continent,
+        selected_modes=init_selected,
+        is_blur=is_blur_init
     )
     session.user_names[user.id] = user_name
     game_manager.set_session(chat.id, session)
@@ -167,10 +178,12 @@ async def cmd_game(message: Message, bot: Bot):
         round_time=session.round_time,
         lang=lang,
         input_mode=session.input_mode,
-        continent=session.continent
+        continent=session.continent,
+        selected_modes=session.selected_modes,
+        is_blur=session.is_blur
     )
 
-    setup_title = t("game_setup_host_title", lang, host=user_name)
+    setup_title = format_setup_title(session, lang)
     await message.answer(
         text=setup_title,
         reply_markup=kb,
@@ -191,9 +204,79 @@ async def cmd_contour(message: Message, bot: Bot):
 
 @router.message(Command("blur", "xira"))
 async def cmd_blur(message: Message, bot: Bot):
-    """Direct shortcut command to launch a Blur Reveal game."""
-    message.text = "/game blur"
-    await cmd_game(message, bot)
+    """Direct shortcut command to launch a Blur Reveal game with multi-mode selection."""
+    db = get_db(bot)
+    chat = message.chat
+    user = message.from_user
+
+    if chat.type not in ("group", "supergroup"):
+        user_data = await db.get_user(user.id)
+        lang = user_data.get("language", "en") if user_data else "en"
+        bot_info = await bot.get_me()
+        await message.answer(
+            text=t("choose_game_type", lang),
+            reply_markup=get_game_type_kb(lang, bot_username=bot_info.username),
+            parse_mode="HTML"
+        )
+        return
+
+    active_session = game_manager.get_session(chat.id)
+    lang = await db.get_chat_language(chat.id)
+
+    if active_session and active_session.status in ("in_progress", "setup", "between_rounds"):
+        await message.reply(text=t("game_already_active", lang), parse_mode="HTML")
+        return
+
+    user_name = user.first_name or user.username or "Host"
+    text_parts = (message.text or "").strip().split()
+    chosen_submodes = []
+    modes = (
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "president", "historical", "celebrity", "person", "logo"
+    )
+    for part in text_parts[1:]:
+        p = part.lower()
+        if p in modes:
+            chosen_submodes.append(p)
+
+    if not chosen_submodes:
+        chosen_submodes = ["flag"]
+
+    session = GameSession(
+        chat_id=chat.id,
+        created_by_user_id=user.id,
+        is_group=True,
+        lang=lang,
+        mode="blur",
+        total_rounds=config.DEFAULT_ROUNDS,
+        round_time=config.DEFAULT_ROUND_TIME,
+        host_id=user.id,
+        host_name=user_name,
+        continent="all",
+        selected_modes=chosen_submodes,
+        is_blur=True
+    )
+    session.user_names[user.id] = user_name
+    game_manager.set_session(chat.id, session)
+
+    kb = get_setup_kb(
+        session_id=session.session_id,
+        mode=session.mode,
+        rounds=session.total_rounds,
+        round_time=session.round_time,
+        lang=lang,
+        input_mode=session.input_mode,
+        continent=session.continent,
+        selected_modes=session.selected_modes,
+        is_blur=True
+    )
+
+    setup_title = format_setup_title(session, lang)
+    await message.answer(
+        text=setup_title,
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
 
 @router.message(Command("president", "prezident"))
 async def cmd_president(message: Message, bot: Bot):

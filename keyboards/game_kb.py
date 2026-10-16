@@ -2,7 +2,7 @@
 Game Keyboards for Group Matches, Setup, Solo, and Duels.
 """
 
-from typing import List, Set
+from typing import List, Set, Optional, Dict, Any
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from locales.i18n import t
 from games.models import GameMode
@@ -14,11 +14,26 @@ def get_setup_kb(
     round_time: int = 30,
     lang: str = "en",
     input_mode: str = "both",
-    continent: str = "all"
+    continent: str = "all",
+    selected_modes: Optional[List[str]] = None,
+    is_blur: bool = False
 ) -> InlineKeyboardMarkup:
-    """Generate game setup parameters keyboard with explicit categories, 30s/60s timers, input mode, and continent filter."""
+    """Generate game setup parameters keyboard with multi-mode checkboxes, blur toggle, timers, and filters."""
+    if selected_modes is None:
+        if mode == "blur":
+            selected_modes = ["flag"]
+            is_blur = True
+        elif mode == "mix":
+            selected_modes = ["mix"]
+        else:
+            selected_modes = [mode]
+
     def mode_btn(m_code: str):
-        prefix = "✅ " if mode == m_code else ""
+        if m_code == "mix":
+            is_sel = ("mix" in (selected_modes or []) or selected_modes == ["mix"])
+        else:
+            is_sel = m_code in (selected_modes or []) and "mix" not in (selected_modes or [])
+        prefix = "✅ " if is_sel else ""
         return InlineKeyboardButton(
             text=f"{prefix}{t(f'mode_{m_code}', lang)}",
             callback_data=f"setup:mode:{m_code}:{session_id}"
@@ -31,16 +46,27 @@ def get_setup_kb(
     btn_text_pfx = "✅ " if input_mode == "text" else ""
     btn_both_pfx = "✅ " if input_mode == "both" else ""
 
+    blur_status = t("status_enabled", lang) if is_blur else t("status_disabled", lang)
+    blur_btn_text = f"🔍 Blur: {blur_status}"
+
     keyboard = [
-        # Explicit Category selection buttons
+        # Explicit Multi-Mode Category selection checkboxes
         [mode_btn("flag"), mode_btn("capital")],
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
         [mode_btn("emoji"), mode_btn("contour")],
         [mode_btn("president"), mode_btn("historical")],
         [mode_btn("celebrity"), mode_btn("logo")],
-        [mode_btn("person"), mode_btn("blur")],
         [mode_btn("mix")],
+        # Presets: All modes / Flags only
+        [
+            InlineKeyboardButton(text=t("btn_select_all_modes", lang), callback_data=f"setup:all:{session_id}"),
+            InlineKeyboardButton(text=t("btn_only_flags", lang), callback_data=f"setup:flags_only:{session_id}")
+        ],
+        # Blur Effect ON / OFF toggle
+        [
+            InlineKeyboardButton(text=blur_btn_text, callback_data=f"setup:blur:{session_id}")
+        ],
         # Continent Filter button
         [
             InlineKeyboardButton(
@@ -164,11 +190,26 @@ def get_solo_setup_kb(
     round_time: int = 30,
     input_mode: str = "both",
     lang: str = "en",
-    continent: str = "all"
+    continent: str = "all",
+    selected_modes: Optional[List[str]] = None,
+    is_blur: bool = False
 ) -> InlineKeyboardMarkup:
-    """Generate interactive solo setup lobby keyboard."""
+    """Generate interactive solo setup lobby keyboard with multi-mode checkboxes and blur toggle."""
+    if selected_modes is None:
+        if mode == "blur":
+            selected_modes = ["flag"]
+            is_blur = True
+        elif mode == "mix":
+            selected_modes = ["mix"]
+        else:
+            selected_modes = [mode]
+
     def mode_btn(m_code: str):
-        pfx = "✅ " if mode == m_code else ""
+        if m_code == "mix":
+            is_sel = ("mix" in (selected_modes or []) or selected_modes == ["mix"])
+        else:
+            is_sel = m_code in (selected_modes or []) and "mix" not in (selected_modes or [])
+        pfx = "✅ " if is_sel else ""
         return InlineKeyboardButton(
             text=f"{pfx}{t(f'mode_{m_code}', lang)}",
             callback_data=f"solo_setup:mode:{m_code}"
@@ -181,15 +222,27 @@ def get_solo_setup_kb(
     btn_text_pfx = "✅ " if input_mode == "text" else ""
     btn_both_pfx = "✅ " if input_mode == "both" else ""
 
+    blur_status = t("status_enabled", lang) if is_blur else t("status_disabled", lang)
+    blur_btn_text = f"🔍 Blur: {blur_status}"
+
     keyboard = [
+        # Explicit Multi-Mode Category selection checkboxes
         [mode_btn("flag"), mode_btn("capital")],
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
         [mode_btn("emoji"), mode_btn("contour")],
         [mode_btn("president"), mode_btn("historical")],
         [mode_btn("celebrity"), mode_btn("logo")],
-        [mode_btn("person"), mode_btn("blur")],
         [mode_btn("mix")],
+        # Presets: All modes / Flags only
+        [
+            InlineKeyboardButton(text=t("btn_select_all_modes", lang), callback_data="solo_setup:all"),
+            InlineKeyboardButton(text=t("btn_only_flags", lang), callback_data="solo_setup:flags_only")
+        ],
+        # Blur Effect ON / OFF toggle
+        [
+            InlineKeyboardButton(text=blur_btn_text, callback_data="solo_setup:blur")
+        ],
         # Continent Filter
         [
             InlineKeyboardButton(

@@ -4,11 +4,13 @@ Manages rounds, countdowns, scores, and winner calculations.
 """
 
 import time
+import random
 import asyncio
 import uuid
 from typing import Dict, Set, Optional, Tuple, List, Any
 from .models import Question, GameMode
 from .question_factory import QuestionFactory
+from locales.i18n import t
 import config
 
 class GameSession:
@@ -27,7 +29,9 @@ class GameSession:
         host_id: Optional[int] = None,
         host_name: str = "",
         input_mode: str = "both",
-        continent: str = "all"
+        continent: str = "all",
+        selected_modes: Optional[List[str]] = None,
+        is_blur: bool = False
     ):
         self.session_id: str = str(uuid.uuid4())[:8]
         self.chat_id: int = chat_id
@@ -41,6 +45,18 @@ class GameSession:
         self.round_time: int = round_time
         self.input_mode: str = input_mode if input_mode in ("buttons", "text", "both") else "both"
         self.continent: str = continent or "all"
+        
+        # Multi-mode and blur state
+        if selected_modes:
+            self.selected_modes: List[str] = list(selected_modes)
+        elif mode == GameMode.BLUR:
+            self.selected_modes = [GameMode.FLAG]
+        elif mode == GameMode.MIX:
+            self.selected_modes = ["mix"]
+        else:
+            self.selected_modes = [mode]
+
+        self.is_blur: bool = is_blur or (mode == GameMode.BLUR)
         
         # Duel settings
         self.is_duel: bool = is_duel
@@ -71,18 +87,44 @@ class GameSession:
         return self.next_round()
 
     def next_round(self) -> Question:
-        """Advance to next round and generate fresh question."""
+        """Advance to next round and generate fresh question from selected modes."""
         self.current_round += 1
         self.answered_users_wrong.clear()
         
+        active_modes = [m for m in getattr(self, "selected_modes", []) if m not in ("mix", "blur")]
+        if not active_modes:
+            if self.mode and self.mode not in ("mix", "blur"):
+                active_modes = [self.mode]
+            else:
+                active_modes = [
+                    GameMode.FLAG, GameMode.CAPITAL, GameMode.LANDMARK,
+                    GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.LOGO
+                ]
+        
+        round_mode = random.choice(active_modes)
+
         q = QuestionFactory.generate(
-            mode=self.mode,
+            mode=round_mode,
             lang=self.lang,
             exclude_codes=self.used_country_codes,
             continent=self.continent
         )
+
+        if getattr(self, "is_blur", False) and q and q.image_url:
+            q.mode = GameMode.BLUR
+            if round_mode == GameMode.FLAG:
+                q.text = t("question_blur_flag", self.lang)
+            elif round_mode in (GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.PERSON):
+                q.text = t("question_blur_person", self.lang)
+            elif round_mode == GameMode.LOGO:
+                q.text = t("question_blur_logo", self.lang)
+            elif round_mode == GameMode.LANDMARK:
+                q.text = t("question_blur_landmark", self.lang)
+            elif round_mode == GameMode.COAT_OF_ARMS:
+                q.text = t("question_blur_coat", self.lang)
+
         self.current_question = q
-        if q.country_code:
+        if q and q.country_code:
             self.used_country_codes.add(q.country_code)
             
         self.round_start_time = time.time()

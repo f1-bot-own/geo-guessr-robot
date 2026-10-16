@@ -145,5 +145,22 @@
   "btn_miniapp": "🗺️ GeoGuessr (Mini App)",
   "btn_miniapp_launch": "🚀 Xaritada o'ynash (Mini App)",
   "miniapp_intro": "🗺️ <b>GeoGuessr Mini App — Interaktiv Xarita O'yini!</b>\n\nEkrandagi manzara yoki obida qaysi davlatda ekanligini xaritada belgilang (pin qo'ying)!\n\n🎯 <b>Qoidalar:</b>\n• Har bir o'yinda 5 ta qiziqarli raund\n• Belgilagan joyingiz qanchalik yaqin bo'lsa, shunchalik ko'p ball (5 000 gacha)\n• Maksimal natija: 25 000 ball!\n\n👇 O'yinni boshlash uchun quyidagi tugmani bosing:",
-  "miniapp_result_msg": "🎉 <b>Ajoyib o'yin! Mini App natijangiz saqlandi:</b>\n\n🏆 To'plangan ball: <b>{score} / 25 000</b>\n🎖 Daraja: <b>{rank}</b>\n⭐ Sizga <b>+{xp} XP</b> berildi!\n\n<i>Yana o'ynash uchun Mini Appni qayta ishga tushiring!</i>"
+  "miniapp_result_msg": "🎉 <b>Ajoyib o'yin! Mini App natijangiz saqlandi:</b>\n\n🏆 To'plangan ball: <b>{score} / 25 000</b>\n🎖 Daraja: <b>{rank}</b>\n⭐ Sizga <b>+{xp} XP</b> berildi!\n\n<i>Yana o'ynash uchun Mini Appni qayta ishga tushiring!</i>",
+  "host_label": "Tashkilotchi",
+  "selected_modes_label": "Tanlangan rejimlar",
+  "btn_continent_label": "Qit'a",
+  "timer_label": "Raund vaqti",
+  "rounds_label": "Raundlar soni",
+  "input_label": "Javob berish",
+  "multi_select_hint": "👇 Rejimlarni yoqish/o'chirish uchun tugmalarni bosing (bir nechta tanlash mumkin):",
+  "btn_select_all_modes": "🔘 Barcha rejimlar (Hammasi)",
+  "btn_only_flags": "🏳️ Faqat bayroqlar",
+  "at_least_one_mode_alert": "⚠️ Kamida bitta rejim tanlangan bo'lishi kerak!",
+  "all_modes_selected": "🔘 Barcha rejimlar tanlandi!",
+  "flags_only_selected": "🏳️ Faqat bayroqlar tanlandi!",
+  "blur_enabled_alert": "🔍 Blur effekti yoqildi! Tanlangan rasmli savollar xiradan ochilib boradi va +300 bonus beradi!",
+  "blur_disabled_alert": "🔍 Blur effekti o'chirildi (Oddiy tiniq rasm).",
+  "status_enabled": "✅ Yoqilgan (+300 bonus)",
+  "status_disabled": "❌ O'chirilgan",
+  "question_blur_coat": "🔍 <b>GeoGuessr: Bu xiralashtirilgan gerb qaysi davlatga tegishli?</b>\n<i>⚡ Xiraligida qanchalik tez topsangiz, shuncha ko'p bonus ball olasiz!</i>"
 }
