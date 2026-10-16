@@ -9,13 +9,14 @@ import logging
 from typing import Optional, List, Callable, Union, Any, Dict
 import aiohttp
 from aiogram import Bot
-from aiogram.types import InlineKeyboardMarkup, Message, BufferedInputFile
+from aiogram.types import InlineKeyboardMarkup, Message, BufferedInputFile, InputMediaPhoto
 from aiogram.exceptions import TelegramRetryAfter, TelegramBadRequest
 from locales.i18n import t, format_countdown
 from .models import Question, GameMode
 from .session import GameSession
 from .solo_session import SoloGameSession
 from .daily_session import DailyChallengeSession
+from .blur_engine import get_blur_stages
 from .manager import game_manager
 from keyboards.game_kb import get_question_kb, get_solo_question_kb, get_daily_question_kb
 from database.db import format_user_mention
@@ -202,7 +203,7 @@ async def send_resilient_photo(
     return None
 
 
-def get_countdown_checkpoints(duration: int) -> List[int]:
+def get_countdown_checkpoints(duration: int, is_blur: bool = False) -> List[int]:
     """
     Returns descending list of remaining seconds at which to edit question post.
     Intervals are chosen safely (every 3-5s or 10s) to avoid Telegram 429 FloodWait.
@@ -228,6 +229,14 @@ def get_countdown_checkpoints(duration: int) -> List[int]:
     else:
         # 4 or 5 seconds
         checkpoints.add(2)
+
+    if is_blur and duration >= 8:
+        s2 = int(duration * 0.65)
+        s3 = int(duration * 0.35)
+        if 2 < s2 < duration:
+            checkpoints.add(s2)
+        if 2 < s3 < duration:
+            checkpoints.add(s3)
         
     return sorted(checkpoints, reverse=True)
 
@@ -247,7 +256,11 @@ def format_group_question_text(session: GameSession, remaining_time: Optional[in
         time=current_time
     )
     countdown_str = format_countdown(current_time, session.lang)
-    return f"{header}\n\n{q.text}\n\n{countdown_str}"
+    blur_note = ""
+    if q.mode == GameMode.BLUR:
+        stage = getattr(q, "blur_stage", 1)
+        blur_note = f"\n\n{t(f'blur_stage_{stage}', session.lang)}"
+    return f"{header}\n\n{q.text}{blur_note}\n\n{countdown_str}"
 
 def format_solo_question_text(session: SoloGameSession, remaining_time: Optional[int] = None) -> str:
     """Compose full caption/text for solo practice question with remaining time."""
@@ -264,7 +277,52 @@ def format_solo_question_text(session: SoloGameSession, remaining_time: Optional
         lives=lives_str
     )
     countdown_str = format_countdown(current_time, session.lang)
-    return f"{t('solo_title', session.lang)}\n{info_line}\n\n{q.text}\n\n{countdown_str}"
+    blur_note = ""
+    if q.mode == GameMode.BLUR:
+        stage = getattr(q, "blur_stage", 1)
+        blur_note = f"\n\n{t(f'blur_stage_{stage}', session.lang)}"
+    return f"{t('solo_title', session.lang)}\n{info_line}\n\n{q.text}{blur_note}\n\n{countdown_str}"
+
+async def safe_edit_question_media(
+    bot: Bot,
+    chat_id: int,
+    message_id: int,
+    image_bytes: bytes,
+    caption: str,
+    reply_markup: Optional[InlineKeyboardMarkup] = None
+) -> bool:
+    """
+    Safely update photo in a message using InputMediaPhoto with rate-limiting resilience.
+    """
+    try:
+        if caption and len(caption) > 1024:
+            caption = caption[:1021] + "..."
+        media = InputMediaPhoto(
+            media=BufferedInputFile(image_bytes, filename="blur_reveal.jpg"),
+            caption=caption,
+            parse_mode="HTML"
+        )
+        await bot.edit_message_media(
+            chat_id=chat_id,
+            message_id=message_id,
+            media=media,
+            reply_markup=reply_markup
+        )
+        return True
+    except asyncio.CancelledError:
+        raise
+    except TelegramRetryAfter as e:
+        logger.warning(f"TelegramRetryAfter: flood wait {e.retry_after}s on media edit {message_id}. Skipping.")
+        return False
+    except TelegramBadRequest as e:
+        err = str(e).lower()
+        if "message is not modified" in err:
+            return True
+        logger.warning(f"TelegramBadRequest on media edit: {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"Error on media edit: {e}")
+        return False
 
 async def safe_edit_question_message(
     bot: Bot,
@@ -364,7 +422,9 @@ async def run_round_countdown(
     Automatically handles rate limits, monotonic drift, cancellations, and fires timeout_callback.
     """
     duration = getattr(session, "round_time", config.DEFAULT_ROUND_TIME)
-    checkpoints = get_countdown_checkpoints(duration)
+    q_init = getattr(session, "current_question", None)
+    is_blur_mode = bool(q_init and getattr(q_init, "mode", None) == GameMode.BLUR)
+    checkpoints = get_countdown_checkpoints(duration, is_blur=is_blur_mode)
 
     start_mono = time.monotonic()
     for cp in checkpoints:
@@ -383,6 +443,20 @@ async def run_round_countdown(
                     return
             current_kb = session.current_kb
 
+        q = getattr(session, "current_question", None)
+        blur_upgraded = False
+        if q and q.mode == GameMode.BLUR and q.blur_stages and len(q.blur_stages) >= 3:
+            old_stage = getattr(q, "blur_stage", 1)
+            new_stage = 1
+            if cp <= duration * 0.35:
+                new_stage = 3
+            elif cp <= duration * 0.65:
+                new_stage = 2
+            
+            if new_stage > old_stage:
+                q.blur_stage = new_stage
+                blur_upgraded = True
+
         # Perform live countdown update on the message
         if getattr(session, "round_message_id", None):
             if is_solo:
@@ -390,14 +464,25 @@ async def run_round_countdown(
             else:
                 new_text = format_group_question_text(session, remaining_time=cp)
 
-            await safe_edit_question_message(
-                bot=bot,
-                chat_id=chat_id,
-                message_id=session.round_message_id,
-                text=new_text,
-                reply_markup=current_kb,
-                has_photo=getattr(session, "has_photo", False)
-            )
+            if blur_upgraded and q and q.blur_stages:
+                stage_idx = min(len(q.blur_stages) - 1, q.blur_stage - 1)
+                await safe_edit_question_media(
+                    bot=bot,
+                    chat_id=chat_id,
+                    message_id=session.round_message_id,
+                    image_bytes=q.blur_stages[stage_idx],
+                    caption=new_text,
+                    reply_markup=current_kb
+                )
+            else:
+                await safe_edit_question_message(
+                    bot=bot,
+                    chat_id=chat_id,
+                    message_id=session.round_message_id,
+                    text=new_text,
+                    reply_markup=current_kb,
+                    has_photo=getattr(session, "has_photo", False)
+                )
 
     # Sleep remaining seconds until 0
     final_sleep = (start_mono + duration) - time.monotonic()
@@ -426,6 +511,15 @@ async def send_round_question(bot: Bot, chat_id: int, session: GameSession, db):
     if not q:
         return
 
+    # Pre-fetch blur stages if Blur mode
+    if q.mode == GameMode.BLUR and q.image_url:
+        q.blur_stage = 1
+        if not q.blur_stages:
+            try:
+                q.blur_stages = await get_blur_stages(q.image_url)
+            except Exception as e:
+                logger.warning(f"Failed to generate blur stages for question: {e}")
+
     caption = format_group_question_text(session, remaining_time=session.round_time)
     if getattr(session, "input_mode", "both") == "text":
         kb = None
@@ -435,7 +529,21 @@ async def send_round_question(bot: Bot, chat_id: int, session: GameSession, db):
 
     msg = None
     session.has_photo = False
-    if q.image_url:
+    if q.mode == GameMode.BLUR and q.blur_stages:
+        try:
+            msg = await bot.send_photo(
+                chat_id=chat_id,
+                photo=BufferedInputFile(q.blur_stages[0], filename="blur_stage1.jpg"),
+                caption=caption,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            if msg:
+                session.has_photo = True
+        except Exception as e:
+            logger.warning(f"Failed to send Stage 1 blur photo ({e}), falling back to resilient photo.")
+
+    if not msg and q.image_url:
         try:
             msg = await send_resilient_photo(
                 bot=bot,
@@ -660,6 +768,15 @@ async def send_solo_round(bot: Bot, user_id: int, session: SoloGameSession, db=N
     if not q:
         return
 
+    # Pre-fetch blur stages if Blur mode
+    if q.mode == GameMode.BLUR and q.image_url:
+        q.blur_stage = 1
+        if not q.blur_stages:
+            try:
+                q.blur_stages = await get_blur_stages(q.image_url)
+            except Exception as e:
+                logger.warning(f"Failed to generate solo blur stages for question: {e}")
+
     caption = format_solo_question_text(session, remaining_time=session.round_time)
     is_text_only = (getattr(session, "input_mode", "both") == "text")
     kb = get_solo_question_kb(
@@ -674,7 +791,21 @@ async def send_solo_round(bot: Bot, user_id: int, session: SoloGameSession, db=N
 
     msg = None
     session.has_photo = False
-    if q.image_url:
+    if q.mode == GameMode.BLUR and q.blur_stages:
+        try:
+            msg = await bot.send_photo(
+                chat_id=user_id,
+                photo=BufferedInputFile(q.blur_stages[0], filename="blur_stage1.jpg"),
+                caption=caption,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            if msg:
+                session.has_photo = True
+        except Exception as e:
+            logger.warning(f"Failed to send solo Stage 1 blur photo ({e}), falling back to resilient photo.")
+
+    if not msg and q.image_url:
         try:
             msg = await send_resilient_photo(
                 bot=bot,

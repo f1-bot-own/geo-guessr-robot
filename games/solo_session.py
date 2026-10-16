@@ -124,6 +124,12 @@ class SoloGameSession:
             
             # Base 100 pts + streak bonus
             points = 100 + (self.streak - 1) * 10
+            if getattr(self.current_question, "mode", None) == GameMode.BLUR:
+                stage = getattr(self.current_question, "blur_stage", 1)
+                if stage == 1:
+                    points += 300
+                elif stage == 2:
+                    points += 150
             self.score += points
             return (True, points, False)
         else:

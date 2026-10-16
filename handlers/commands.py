@@ -133,7 +133,7 @@ async def cmd_game(message: Message, bot: Bot):
     text_parts = (message.text or "").strip().split()
     chosen_mode = "mix"
     chosen_continent = "all"
-    modes = ("flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "mix")
+    modes = ("flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "blur", "mix")
     continents = ("all", "asia", "europe", "africa", "americas", "oceania")
     for part in text_parts[1:]:
         p = part.lower()
@@ -184,6 +184,12 @@ async def cmd_emoji(message: Message, bot: Bot):
 async def cmd_contour(message: Message, bot: Bot):
     """Direct shortcut command to launch a Country Contour game."""
     message.text = "/game contour"
+    await cmd_game(message, bot)
+
+@router.message(Command("blur", "xira"))
+async def cmd_blur(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Blur Reveal game."""
+    message.text = "/game blur"
     await cmd_game(message, bot)
 
 @router.message(Command("stop"))
@@ -252,7 +258,7 @@ async def cmd_solo(message: Message, bot: Bot):
     chosen_mode = None
     chosen_time = config.DEFAULT_ROUND_TIME
     chosen_input = None
-    modes = ("flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "mix")
+    modes = ("flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "blur", "mix")
     input_modes = ("buttons", "text", "both")
 
     for part in text_parts[1:]:

@@ -9,6 +9,7 @@ import re
 from aiogram import Router, Bot, F
 from aiogram.types import Message
 from database.db import Database, format_user_mention
+from games.models import GameMode
 from games.manager import game_manager
 from games.flow import proceed_after_round, send_solo_round
 from gamedata.countries import get_country, COUNTRIES
@@ -160,6 +161,12 @@ async def check_group_text_answer(message: Message, bot: Bot):
                     points=points,
                     answer=q.correct_answer
                 )
+                if q and getattr(q, "mode", None) == GameMode.BLUR:
+                    stage = getattr(q, "blur_stage", 1)
+                    if stage == 1:
+                        announcement += f"\n🔍 <b>+300 {t('mode_blur', session.lang)} bonus!</b>"
+                    elif stage == 2:
+                        announcement += f"\n🔍 <b>+150 {t('mode_blur', session.lang)} bonus!</b>"
                 if q.fun_fact:
                     announcement += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"
                 if getattr(q, "maps_url", None) and q.maps_url not in announcement:
@@ -219,6 +226,12 @@ async def check_group_text_answer(message: Message, bot: Bot):
                 points=points,
                 answer=q.correct_answer
             )
+            if q and getattr(q, "mode", None) == GameMode.BLUR:
+                stage = getattr(q, "blur_stage", 1)
+                if stage == 1:
+                    announcement += f"\n🔍 <b>+300 {t('mode_blur', session.lang)} bonus!</b>"
+                elif stage == 2:
+                    announcement += f"\n🔍 <b>+150 {t('mode_blur', session.lang)} bonus!</b>"
             if q.fun_fact:
                 announcement += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"
             if getattr(q, "maps_url", None) and q.maps_url not in announcement:

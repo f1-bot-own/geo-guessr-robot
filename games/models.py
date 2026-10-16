@@ -14,9 +14,10 @@ class GameMode:
     STREETVIEW = "streetview"
     EMOJI = "emoji"
     CONTOUR = "contour"
+    BLUR = "blur"
     MIX = "mix"
 
-    ALL = [FLAG, CAPITAL, LANDMARK, HIGHER_LOWER, COAT_OF_ARMS, STREETVIEW, EMOJI, CONTOUR, MIX]
+    ALL = [FLAG, CAPITAL, LANDMARK, HIGHER_LOWER, COAT_OF_ARMS, STREETVIEW, EMOJI, CONTOUR, BLUR, MIX]
 
 @dataclass
 class Question:
@@ -32,3 +33,5 @@ class Question:
     maps_url: Optional[str] = None
     location_title: Optional[str] = None
     driving_side: Optional[str] = None
+    blur_stages: Optional[tuple] = None
+    blur_stage: int = 1

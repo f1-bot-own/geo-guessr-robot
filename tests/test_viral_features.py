@@ -132,31 +132,104 @@ class TestViralFeatures(unittest.TestCase):
         self.assertTrue(any("Эмодзи" in b for b in buttons_cat), f"Emoji category missing in {buttons_cat}")
         self.assertTrue(any("Контур" in b for b in buttons_cat), f"Contour category missing in {buttons_cat}")
 
-    def test_webapp_blur_elements(self):
-        """Test webapp files contain blur reveal elements and translations."""
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        html_path = os.path.join(root, "webapp", "index.html")
-        css_path = os.path.join(root, "webapp", "style.css")
-        js_path = os.path.join(root, "webapp", "app.js")
+    def test_blur_question_generation(self):
+        """Test generating blur questions in uz, ru, en."""
+        for lang in ("uz", "ru", "en"):
+            q = QuestionFactory.generate(GameMode.BLUR, lang=lang)
+            self.assertEqual(q.mode, GameMode.BLUR)
+            self.assertIsNotNone(q.image_url)
+            self.assertEqual(len(q.options), 4)
+            self.assertIn(q.correct_answer, q.options)
+            self.assertEqual(len(set(q.options)), 4, "Options must be distinct")
+            self.assertEqual(q.blur_stage, 1)
 
-        with open(html_path, "r", encoding="utf-8") as f:
-            html = f.read()
-        self.assertIn('id="blurToggleBtn"', html)
-        self.assertIn('id="blurPill"', html)
-        self.assertIn('id="metricBlurBonus"', html)
+    def test_blur_engine_stages(self):
+        """Test blur engine processes image into 3 progressive reveal stages."""
+        from games.blur_engine import process_image_to_stages
+        from PIL import Image
+        import io
+        img = Image.new("RGB", (200, 200), color="blue")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        raw_bytes = buf.getvalue()
 
-        with open(css_path, "r", encoding="utf-8") as f:
-            css = f.read()
-        self.assertIn(".blurred-reveal", css)
-        self.assertIn(".blur-pill", css)
-        self.assertIn(".bonus-box", css)
+        stages = process_image_to_stages(raw_bytes)
+        self.assertEqual(len(stages), 3)
+        for stage_bytes in stages:
+            self.assertIsInstance(stage_bytes, bytes)
+            self.assertGreater(len(stage_bytes), 0)
 
-        with open(js_path, "r", encoding="utf-8") as f:
-            js = f.read()
-        self.assertIn("startBlurReveal", js)
-        self.assertIn("stopBlurReveal", js)
-        self.assertIn("toggleBlurMode", js)
-        self.assertIn("blurBonus", js)
+    def test_group_session_blur_bonus(self):
+        """Test GameSession awards speed bonus based on blur stage."""
+        import asyncio
+        session = GameSession(chat_id=999, lang="en", mode=GameMode.BLUR)
+        q = Question(
+            mode=GameMode.BLUR,
+            text="Guess this country:",
+            options=["France", "Germany", "Italy", "Spain"],
+            correct_index=0,
+            correct_answer="France",
+            country_code="fr",
+            image_url="https://flagcdn.com/w640/fr.png"
+        )
+        session.current_question = q
+        session.round_start_time = 0.0
+        session.status = "in_progress"
+
+        # Stage 1: +300 bonus
+        q.blur_stage = 1
+        res, pts_s1, _ = asyncio.run(session.check_answer(user_id=1, user_name="Alice", option_index=0))
+        self.assertEqual(res, "correct")
+        self.assertGreaterEqual(pts_s1, 400) # 100 base + 300 bonus
+
+        # Stage 2: +150 bonus
+        session.status = "in_progress"
+        session.answered_users_wrong.clear()
+        q.blur_stage = 2
+        res2, pts_s2, _ = asyncio.run(session.check_answer(user_id=2, user_name="Bob", option_index=0))
+        self.assertEqual(res2, "correct")
+        self.assertEqual(pts_s1 - pts_s2, 150) # Difference is exactly the 150 bonus diff
+
+    def test_solo_session_blur_bonus(self):
+        """Test SoloGameSession awards speed bonus based on blur stage."""
+        session = SoloGameSession(user_id=888, user_name="Charlie", lang="uz", mode=GameMode.BLUR)
+        q = Question(
+            mode=GameMode.BLUR,
+            text="Bu qaysi davlat?",
+            options=["O'zbekiston", "Qozog'iston", "Tojikiston", "Qirg'iziston"],
+            correct_index=0,
+            correct_answer="O'zbekiston",
+            country_code="uz",
+            image_url="https://flagcdn.com/w640/uz.png"
+        )
+        session.current_question = q
+
+        # Stage 1: 100 base + 300 bonus = 400
+        q.blur_stage = 1
+        is_corr, pts, is_over = session.check_answer(0)
+        self.assertTrue(is_corr)
+        self.assertEqual(pts, 400)
+        self.assertFalse(is_over)
+
+    def test_countdown_checkpoints_blur(self):
+        """Test countdown checkpoints include blur transition thresholds."""
+        from games.flow import get_countdown_checkpoints
+        cp_blur = get_countdown_checkpoints(20, is_blur=True)
+        self.assertIn(13, cp_blur)
+        self.assertIn(7, cp_blur)
+
+    def test_keyboards_include_blur_mode(self):
+        """Test blur mode button appears in keyboards."""
+        kb_group = get_setup_kb(
+            session_id="blur123",
+            mode="blur",
+            rounds=5,
+            round_time=20,
+            lang="uz",
+            continent="all"
+        )
+        buttons_group = [btn.text for row in kb_group.inline_keyboard for btn in row]
+        self.assertTrue(any("xira" in b.lower() or "blur" in b.lower() for b in buttons_group), f"Blur missing: {buttons_group}")
 
 
 if __name__ == "__main__":

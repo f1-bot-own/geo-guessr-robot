@@ -128,7 +128,16 @@ class GameSession:
                 self.user_streaks[user_id] = current_streak
                 streak_bonus = min(50, (current_streak - 1) * 10)
 
-                total_points = config.POINTS_CORRECT + speed_bonus + streak_bonus
+                # Blur mode speed bonus: Stage 1 = +300, Stage 2 = +150
+                blur_bonus = 0
+                if getattr(self.current_question, "mode", None) == GameMode.BLUR:
+                    stage = getattr(self.current_question, "blur_stage", 1)
+                    if stage == 1:
+                        blur_bonus = 300
+                    elif stage == 2:
+                        blur_bonus = 150
+
+                total_points = config.POINTS_CORRECT + speed_bonus + streak_bonus + blur_bonus
                 self.scores[user_id] = self.scores.get(user_id, 0) + total_points
 
                 # Mark round as answered

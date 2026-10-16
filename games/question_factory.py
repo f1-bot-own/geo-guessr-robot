@@ -50,6 +50,7 @@ class QuestionFactory:
                 GameMode.STREETVIEW,
                 GameMode.EMOJI,
                 GameMode.CONTOUR,
+                GameMode.BLUR,
             ])
             return QuestionFactory.generate(chosen_mode, lang, exclude_codes, continent)
         
@@ -69,6 +70,8 @@ class QuestionFactory:
             return QuestionFactory._gen_emoji(lang, exclude_codes, continent)
         elif mode == GameMode.CONTOUR:
             return QuestionFactory._gen_contour(lang, exclude_codes, continent)
+        elif mode == GameMode.BLUR:
+            return QuestionFactory._gen_blur(lang, exclude_codes, continent)
         else:
             return QuestionFactory._gen_flag(lang, exclude_codes, continent)
 
@@ -456,6 +459,78 @@ class QuestionFactory:
             image_url=contour_url,
             fun_fact=fun_fact
         )
+
+    @staticmethod
+    def _gen_blur(
+        lang: str,
+        exclude_codes: Optional[Set[str]],
+        continent: Optional[str] = None
+    ) -> Question:
+        """
+        Generate progressive unblur question.
+        75% flags (colors, stripes, emblems), 25% landmarks.
+        """
+        is_landmark = random.random() < 0.25 and len(LANDMARKS) > 0
+        if is_landmark:
+            lm_pool = LANDMARKS
+            if continent and continent.lower() not in ("all", "world"):
+                filtered_cont = [l for l in LANDMARKS if _matches_continent(get_country(l["country_code"]) or {}, continent)]
+                if len(filtered_cont) >= 4:
+                    lm_pool = filtered_cont
+            if exclude_codes:
+                filtered_exc = [l for l in lm_pool if l["country_code"] not in exclude_codes]
+                if len(filtered_exc) >= 4:
+                    lm_pool = filtered_exc
+            target_lm = random.choice(lm_pool)
+            target_country = get_country(target_lm["country_code"]) or COUNTRIES[0]
+            pool = QuestionFactory._get_country_candidates(exclude_codes, continent)
+            other_countries = [c for c in pool if c["code"] != target_country["code"]]
+            if len(other_countries) < 3:
+                other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
+            distractors = random.sample(other_countries, 3)
+            options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
+            correct_name = target_country["name"].get(lang, target_country["name"]["en"])
+            options.append(correct_name)
+            random.shuffle(options)
+            correct_index = options.index(correct_name)
+            text = t("question_blur_landmark", lang)
+            image_url = target_lm.get("image_url") or target_lm.get("photo_url")
+            fun_fact = get_fun_fact(target_country["code"], lang)
+            return Question(
+                mode=GameMode.BLUR,
+                text=text,
+                options=options,
+                correct_index=correct_index,
+                correct_answer=correct_name,
+                country_code=target_country["code"],
+                image_url=image_url,
+                fun_fact=fun_fact
+            )
+        else:
+            # Country Flag Blur (Primary focus)
+            pool = QuestionFactory._get_country_candidates(exclude_codes, continent)
+            target = random.choice(pool)
+            other_countries = [c for c in pool if c["code"] != target["code"]]
+            if len(other_countries) < 3:
+                other_countries = [c for c in COUNTRIES if c["code"] != target["code"]]
+            distractors = random.sample(other_countries, 3)
+            options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
+            correct_name = target["name"].get(lang, target["name"]["en"])
+            options.append(correct_name)
+            random.shuffle(options)
+            correct_index = options.index(correct_name)
+            text = t("question_blur_flag", lang)
+            fun_fact = get_fun_fact(target["code"], lang)
+            return Question(
+                mode=GameMode.BLUR,
+                text=text,
+                options=options,
+                correct_index=correct_index,
+                correct_answer=correct_name,
+                country_code=target["code"],
+                image_url=target.get("flag_url"),
+                fun_fact=fun_fact
+            )
 
     @staticmethod
     def create_streetview_question(

@@ -9,6 +9,7 @@ from aiogram import Router, Bot, F
 from aiogram.types import CallbackQuery
 from locales.i18n import t, get_rank_name
 from database.db import Database, format_user_mention
+from games.models import GameMode
 from games.session import GameSession
 from games.solo_session import SoloGameSession
 from games.daily_session import DailyChallengeSession
@@ -96,6 +97,12 @@ async def cb_group_answer(query: CallbackQuery, bot: Bot):
             points=points,
             answer=correct_ans
         )
+        if q and getattr(q, "mode", None) == GameMode.BLUR:
+            stage = getattr(q, "blur_stage", 1)
+            if stage == 1:
+                text += f"\n🔍 <b>+300 {t('mode_blur', session.lang)} bonus!</b>"
+            elif stage == 2:
+                text += f"\n🔍 <b>+150 {t('mode_blur', session.lang)} bonus!</b>"
         if q and q.fun_fact:
             text += f"\n\n💡 <b>Fact:</b> {q.fun_fact}"
         if q and getattr(q, "maps_url", None) and q.maps_url not in text:
@@ -140,7 +147,7 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         await query.answer(alert_msg, show_alert=True)
         return
 
-    modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "mix"]
+    modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "blur", "mix"]
     rounds_cycle = [5, 10, 15, 20, 3]
     time_cycle = [30, 60]
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
@@ -697,7 +704,7 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
     lang = user_data.get("language", "en") if user_data else "en"
     state = game_manager.get_solo_setup_state(user.id)
 
-    solo_modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "mix"]
+    solo_modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview", "emoji", "contour", "blur", "mix"]
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
 
     if action == "mode":

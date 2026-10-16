@@ -37,7 +37,7 @@ def get_setup_kb(
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
         [mode_btn("emoji"), mode_btn("contour")],
-        [mode_btn("mix")],
+        [mode_btn("blur"), mode_btn("mix")],
         # Continent Filter button
         [
             InlineKeyboardButton(
@@ -122,6 +122,7 @@ def get_category_selection_kb(
             InlineKeyboardButton(text=t("mode_contour", lang), callback_data=f"{prefix}:contour")
         ],
         [
+            InlineKeyboardButton(text=t("mode_blur", lang), callback_data=f"{prefix}:blur"),
             InlineKeyboardButton(text=t("mode_mix", lang), callback_data=f"{prefix}:mix")
         ],
         [
@@ -171,7 +172,7 @@ def get_solo_setup_kb(
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
         [mode_btn("emoji"), mode_btn("contour")],
-        [mode_btn("mix")],
+        [mode_btn("blur"), mode_btn("mix")],
         # Continent Filter
         [
             InlineKeyboardButton(
