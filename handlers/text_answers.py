@@ -20,96 +20,174 @@ router = Router()
 
 from .bot_compat import get_db
 
+# Map Cyrillic characters (both Russian and Uzbek Cyrillic) to Latin equivalents
+CYRILLIC_TO_LATIN = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+    "ж": "j", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
+    "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+    "ф": "f", "х": "x", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sh",
+    "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+    "ў": "o", "ғ": "g", "қ": "q", "ҳ": "h"
+}
+
+def to_latin(text: str) -> str:
+    """Transliterate Cyrillic text (Russian and Uzbek Cyrillic) to Latin phonetic representation."""
+    if not text:
+        return ""
+    res = []
+    for ch in text.lower():
+        res.append(CYRILLIC_TO_LATIN.get(ch, ch))
+    return "".join(res)
+
 def _normalize(text: str) -> str:
-    """Normalize text by lowering, normalizing ё->е, stripping apostrophes/diacritics, and stripping extra spaces."""
+    """Normalize text by lowering, normalizing ё->е, stripping all apostrophe/quote variants, and stripping extra spaces."""
     if not text:
         return ""
     t = text.lower().replace("ё", "е")
-    # Strip apostrophes and modifier quotes so O'zbekiston and Ozbekiston normalize identically
-    t = re.sub(r"['`’ʻʼ\^]", "", t)
+    # Strip all variants of single quotes, apostrophes, accents, and modifiers
+    t = re.sub(r"['`’‘‛ʻʼ\^′´\"]", "", t)
     cleaned = re.sub(r"[^\w\s]", " ", t, flags=re.UNICODE)
     return " ".join(cleaned.split())
+
+# Well-known Uzbek Cyrillic and colloquial name variants for countries & capitals
+EXTRA_COUNTRY_VARIANTS = {
+    "uz": {"ўзбекистон", "узбекистон", "ozbekiston", "uzbekiston", "тошкент", "toshkent"},
+    "kz": {"қозоғистон", "казахстан", "qozogiston", "остона", "нурсултон", "астана"},
+    "kg": {"қирғизистон", "кыргызстан", "qirgiziston", "бишкек"},
+    "tj": {"тожикистон", "таджикистан", "tojikiston", "душанбе"},
+    "tm": {"туркманистон", "туркменистан", "туркмения", "turkmaniston", "ашхобод", "ашхабад"},
+    "us": {"ақш", "aqsh", "сша", "usa", "америка", "america"},
+    "ru": {"россия", "rossiya", "рф", "москва"},
+    "gb": {"буюк британия", "британия", "англия", "angliya", "london", "лондон"},
+    "cn": {"хитой", "китай", "xitoy", "пекин"},
+    "tr": {"туркия", "турция", "turkiya", "анқара", "анкара"},
+    "de": {"германия", "germaniya", "берлин"},
+    "fr": {"франция", "fransiya", "париж", "parij"},
+    "it": {"италия", "italiya", "рим"},
+    "es": {"испания", "ispaniya", "мадрид"},
+    "af": {"афғонистон", "афганистан", "afgoniston", "kobul", "кабул"},
+}
 
 ALL_COUNTRY_NAMES = set()
 for c in COUNTRIES:
     for lang_key in ("en", "ru", "uz"):
         if "name" in c and lang_key in c["name"]:
             val = c["name"][lang_key]
-            ALL_COUNTRY_NAMES.add(_normalize(val))
-            norm_space = " ".join(re.sub(r"[^\w\s]", " ", val.lower().replace("ё", "е")).split())
-            ALL_COUNTRY_NAMES.add(norm_space)
+            norm_v = _normalize(val)
+            ALL_COUNTRY_NAMES.add(norm_v)
+            ALL_COUNTRY_NAMES.add(norm_v.replace(" ", ""))
+            lat_v = to_latin(norm_v)
+            ALL_COUNTRY_NAMES.add(lat_v)
+            ALL_COUNTRY_NAMES.add(lat_v.replace(" ", ""))
         if "capital" in c and lang_key in c["capital"]:
             val = c["capital"][lang_key]
-            ALL_COUNTRY_NAMES.add(_normalize(val))
-            norm_space = " ".join(re.sub(r"[^\w\s]", " ", val.lower().replace("ё", "е")).split())
-            ALL_COUNTRY_NAMES.add(norm_space)
+            norm_v = _normalize(val)
+            ALL_COUNTRY_NAMES.add(norm_v)
+            ALL_COUNTRY_NAMES.add(norm_v.replace(" ", ""))
+            lat_v = to_latin(norm_v)
+            ALL_COUNTRY_NAMES.add(lat_v)
+            ALL_COUNTRY_NAMES.add(lat_v.replace(" ", ""))
+
+for code, extra_set in EXTRA_COUNTRY_VARIANTS.items():
+    for item in extra_set:
+        norm_v = _normalize(item)
+        ALL_COUNTRY_NAMES.add(norm_v)
+        ALL_COUNTRY_NAMES.add(to_latin(norm_v))
 
 def _matches_any_country(text: str) -> bool:
-    return text in ALL_COUNTRY_NAMES or text.replace(" ", "") in ALL_COUNTRY_NAMES
+    norm = _normalize(text)
+    lat = to_latin(norm)
+    return (
+        norm in ALL_COUNTRY_NAMES or
+        norm.replace(" ", "") in ALL_COUNTRY_NAMES or
+        lat in ALL_COUNTRY_NAMES or
+        lat.replace(" ", "") in ALL_COUNTRY_NAMES
+    )
+
+def _add_variants(target_set: set, val: str):
+    if not val:
+        return
+    norm = _normalize(val)
+    if norm:
+        target_set.add(norm)
+        if " " in norm:
+            target_set.add(norm.replace(" ", ""))
+        lat = to_latin(norm)
+        if lat:
+            target_set.add(lat)
+            if " " in lat:
+                target_set.add(lat.replace(" ", ""))
 
 def _compile_valid_correct(q) -> set:
-    """Compile valid representations of correct answer without leaking question country into capital answer."""
+    """Compile valid representations of correct answer across languages and Cyrillic/Latin scripts."""
     country = get_country(q.country_code) if q.country_code else None
     valid_correct = set()
-    norm_correct_ans = _normalize(q.correct_answer)
-    if norm_correct_ans:
-        valid_correct.add(norm_correct_ans)
-        if " " in norm_correct_ans:
-            valid_correct.add(norm_correct_ans.replace(" ", ""))
+    _add_variants(valid_correct, q.correct_answer)
 
     if getattr(q, "aliases", None):
         for alias in q.aliases:
-            norm_a = _normalize(alias)
-            if norm_a:
-                valid_correct.add(norm_a)
-                if " " in norm_a:
-                    valid_correct.add(norm_a.replace(" ", ""))
+            _add_variants(valid_correct, alias)
 
     if country:
         cap_names = set()
         if "capital" in country:
             for l in ("en", "ru", "uz"):
                 if l in country["capital"]:
-                    cn = _normalize(country["capital"][l])
-                    cap_names.add(cn)
-                    if " " in cn:
-                        cap_names.add(cn.replace(" ", ""))
+                    _add_variants(cap_names, country["capital"][l])
 
         country_names = set()
         if "name" in country:
             for l in ("en", "ru", "uz"):
                 if l in country["name"]:
-                    cn = _normalize(country["name"][l])
-                    country_names.add(cn)
-                    if " " in cn:
-                        country_names.add(cn.replace(" ", ""))
+                    _add_variants(country_names, country["name"][l])
 
-        if norm_correct_ans in cap_names or (norm_correct_ans.replace(" ", "") in cap_names):
-            # Question is asking for the capital! Only capital names in all languages are valid
+        # Add extra country variants if code is mapped
+        c_code = country.get("code", "").lower()
+        if c_code in EXTRA_COUNTRY_VARIANTS:
+            for extra_v in EXTRA_COUNTRY_VARIANTS[c_code]:
+                _add_variants(country_names, extra_v)
+
+        norm_correct_ans = _normalize(q.correct_answer)
+        lat_correct_ans = to_latin(norm_correct_ans)
+        if (
+            norm_correct_ans in cap_names or
+            norm_correct_ans.replace(" ", "") in cap_names or
+            lat_correct_ans in cap_names or
+            lat_correct_ans.replace(" ", "") in cap_names
+        ):
+            # Question is asking for the capital! Only capital names are valid
             valid_correct.update(cap_names)
         else:
-            # Question is asking for the country name! Only country names are valid
+            # Question is asking for the country name!
             valid_correct.update(country_names)
 
     if q.mode == "higher_lower":
-        opt_text = _normalize(q.options[q.correct_index])
-        if opt_text:
-            valid_correct.add(opt_text)
-            if " " in opt_text:
-                valid_correct.add(opt_text.replace(" ", ""))
+        _add_variants(valid_correct, q.options[q.correct_index])
 
     return valid_correct
 
 def _text_matches_valid(norm_text: str, valid_set: set) -> bool:
-    norm_nospace = norm_text.replace(" ", "")
-    for valid in valid_set:
-        if not valid or len(valid) < 2:
+    if not norm_text:
+        return False
+    candidates = [norm_text, norm_text.replace(" ", "")]
+    lat = to_latin(norm_text)
+    if lat and lat not in candidates:
+        candidates.append(lat)
+        candidates.append(lat.replace(" ", ""))
+
+    for cand in candidates:
+        if not cand or len(cand) < 2:
             continue
-        if norm_text == valid or (norm_nospace and norm_nospace == valid):
+        if cand in valid_set:
             return True
-        pattern = r"(?:\b|^)" + re.escape(valid) + r"(?:\b|$)"
-        if re.search(pattern, norm_text):
-            return True
+        for valid in valid_set:
+            if not valid or len(valid) < 2:
+                continue
+            if cand == valid:
+                return True
+            pattern = r"(?:\b|^)" + re.escape(valid) + r"(?:\b|$)"
+            if re.search(pattern, cand):
+                return True
     return False
 
 OPTION_SHORTCUTS = {
@@ -133,6 +211,10 @@ async def check_group_text_answer(message: Message, bot: Bot):
 
     user = message.from_user
     if not user or user.is_bot:
+        return
+
+    # In duel mode, only the two participants may answer
+    if getattr(session, "is_duel", False) and user.id not in (session.created_by_user_id, getattr(session, "duel_target_id", None)):
         return
 
     raw_text = message.text.strip().lower()
@@ -268,19 +350,25 @@ async def check_group_text_answer(message: Message, bot: Bot):
         if idx == q.correct_index:
             continue
         norm_opt = _normalize(opt)
-        if norm_opt and (norm_text == norm_opt or re.search(r"(?:\b|^)" + re.escape(norm_opt) + r"(?:\b|$)", norm_text)):
+        if norm_opt and _text_matches_valid(norm_text, {norm_opt}):
             result, penalty, _ = await session.check_answer(user.id, user_name, idx)
             if result == "wrong":
                 await db.record_answer(user.id, is_correct=False, points=-penalty, user_name=user_name, username=user.username)
-                await message.reply(
-                    text=t("wrong_answer_alert", session.lang, penalty=penalty),
-                    parse_mode="HTML"
-                )
+                try:
+                    await message.reply(
+                        text=t("wrong_answer_alert", session.lang, penalty=penalty),
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
             elif result == "already_wrong":
-                await message.reply(
-                    text=t("already_answered_wrong", session.lang, user=user_name),
-                    parse_mode="HTML"
-                )
+                try:
+                    await message.reply(
+                        text=t("already_answered_wrong", session.lang, user=user_name),
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
             return
 
     # 4. Check if user typed any other country/capital or attempted an answer in text-only mode
@@ -290,15 +378,21 @@ async def check_group_text_answer(message: Message, bot: Bot):
         result, penalty, _ = await session.check_answer(user.id, user_name, wrong_idx)
         if result == "wrong":
             await db.record_answer(user.id, is_correct=False, points=-penalty, user_name=user_name, username=user.username)
-            await message.reply(
-                text=t("wrong_answer_alert", session.lang, penalty=penalty),
-                parse_mode="HTML"
-            )
+            try:
+                await message.reply(
+                    text=t("wrong_answer_alert", session.lang, penalty=penalty),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
         elif result == "already_wrong":
-            await message.reply(
-                text=t("already_answered_wrong", session.lang, user=user_name),
-                parse_mode="HTML"
-            )
+            try:
+                await message.reply(
+                    text=t("already_answered_wrong", session.lang, user=user_name),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
         return
 
 # ----------------- Solo Text Answers -----------------
@@ -331,7 +425,10 @@ async def check_solo_text_answer(message: Message, bot: Bot):
         selected_idx = OPTION_SHORTCUTS[shortcut_candidate]
         if selected_idx < len(q.options):
             if selected_idx in session.eliminated_options:
-                await message.reply("This option has been eliminated!", parse_mode="HTML")
+                try:
+                    await message.reply("This option has been eliminated!", parse_mode="HTML")
+                except Exception:
+                    pass
                 return
             await _process_solo_text_guess(message, bot, session, selected_idx, db)
             return
@@ -348,7 +445,7 @@ async def check_solo_text_answer(message: Message, bot: Bot):
         if idx == q.correct_index:
             continue
         norm_opt = _normalize(opt)
-        if norm_opt and (norm_text == norm_opt or re.search(r"(?:\b|^)" + re.escape(norm_opt) + r"(?:\b|$)", norm_text)):
+        if norm_opt and _text_matches_valid(norm_text, {norm_opt}):
             await _process_solo_text_guess(message, bot, session, idx, db)
             return
 

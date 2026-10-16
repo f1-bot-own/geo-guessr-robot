@@ -3,6 +3,7 @@ Bot Command Handlers for GeoGuru & GeoGuessr Telegram Bot.
 Includes: /start, /help, /game, /stop, /solo, /daily, /profile, /leaderboard, /top, /language, /duel.
 """
 
+import asyncio
 import json
 from datetime import datetime
 from aiogram import Router, Bot, F
@@ -130,7 +131,8 @@ async def cmd_game(message: Message, bot: Bot):
         return
 
     # Create new session in setup mode with host authorization
-    user_name = user.first_name or user.username or "Host"
+    user_id = user.id if user else (message.sender_chat.id if message.sender_chat else chat.id)
+    user_name = (user.first_name or user.username or "Host") if user else "Host"
     text_parts = (message.text or "").strip().split()
     chosen_mode = None
     chosen_continent = "all"
@@ -156,19 +158,19 @@ async def cmd_game(message: Message, bot: Bot):
 
     session = GameSession(
         chat_id=chat.id,
-        created_by_user_id=user.id,
+        created_by_user_id=user_id,
         is_group=True,
         lang=lang,
         mode=chosen_mode or "mix",
         total_rounds=config.DEFAULT_ROUNDS,
         round_time=config.DEFAULT_ROUND_TIME,
-        host_id=user.id,
+        host_id=user_id,
         host_name=user_name,
         continent=chosen_continent,
         selected_modes=init_selected,
         is_blur=is_blur_init
     )
-    session.user_names[user.id] = user_name
+    session.user_names[user_id] = user_name
     game_manager.set_session(chat.id, session)
 
     kb = get_setup_kb(
@@ -227,7 +229,8 @@ async def cmd_blur(message: Message, bot: Bot):
         await message.reply(text=t("game_already_active", lang), parse_mode="HTML")
         return
 
-    user_name = user.first_name or user.username or "Host"
+    user_id = user.id if user else (message.sender_chat.id if message.sender_chat else chat.id)
+    user_name = (user.first_name or user.username or "Host") if user else "Host"
     text_parts = (message.text or "").strip().split()
     chosen_submodes = []
     modes = (
@@ -244,19 +247,19 @@ async def cmd_blur(message: Message, bot: Bot):
 
     session = GameSession(
         chat_id=chat.id,
-        created_by_user_id=user.id,
+        created_by_user_id=user_id,
         is_group=True,
         lang=lang,
         mode="blur",
         total_rounds=config.DEFAULT_ROUNDS,
         round_time=config.DEFAULT_ROUND_TIME,
-        host_id=user.id,
+        host_id=user_id,
         host_name=user_name,
         continent="all",
         selected_modes=chosen_submodes,
         is_blur=True
     )
-    session.user_names[user.id] = user_name
+    session.user_names[user_id] = user_name
     game_manager.set_session(chat.id, session)
 
     kb = get_setup_kb(
@@ -316,10 +319,23 @@ async def cmd_stop(message: Message, bot: Bot):
     user = message.from_user
     lang = await db.get_chat_language(chat.id) if chat.type in ("group", "supergroup") else "en"
 
+    user_id = user.id if user else None
     active_session = game_manager.get_session(chat.id)
-    solo_session = game_manager.get_solo_session(user.id)
+    solo_session = game_manager.get_solo_session(user_id) if user_id else None
+    daily_session = game_manager.get_daily_session(user_id) if user_id else None
+    duel_invite = game_manager.get_duel_invite(chat.id)
 
-    if not active_session and not solo_session:
+    eng_group = None
+    eng_solo = None
+    try:
+        from game.engine import game_manager as engine_gm
+        eng_group = engine_gm.get_group_game(chat.id)
+        if user_id:
+            eng_solo = engine_gm.get_solo_game(user_id)
+    except Exception:
+        pass
+
+    if not active_session and not solo_session and not daily_session and not duel_invite and not eng_group and not eng_solo:
         await message.reply(text=t("no_game_active", lang), parse_mode="HTML")
         return
 
@@ -337,13 +353,41 @@ async def cmd_stop(message: Message, bot: Bot):
         solo_session.stop()
         if solo_session.round_message_id:
             try:
-                await bot.edit_message_reply_markup(chat_id=user.id, message_id=solo_session.round_message_id, reply_markup=None)
+                await bot.edit_message_reply_markup(chat_id=user_id, message_id=solo_session.round_message_id, reply_markup=None)
             except Exception:
                 pass
         solo_session.current_kb = None
-        game_manager.remove_solo_session(user.id)
-    
-    user_name = user.first_name or user.username or "Admin"
+        game_manager.remove_solo_session(user_id)
+
+    if daily_session and user_id:
+        game_manager.remove_daily_session(user_id)
+
+    if duel_invite:
+        exp_task = duel_invite.get("expire_task")
+        if exp_task and not exp_task.done():
+            exp_task.cancel()
+        game_manager.remove_duel_invite(chat.id)
+        duel_id = duel_invite.get("duel_id")
+        if duel_id:
+            await db.update_duel_status(duel_id, status="cancelled")
+
+    if eng_group:
+        eng_group.stop()
+        try:
+            from game.engine import game_manager as engine_gm
+            engine_gm.remove_group_game(chat.id)
+        except Exception:
+            pass
+
+    if eng_solo and user_id:
+        eng_solo.stop()
+        try:
+            from game.engine import game_manager as engine_gm
+            engine_gm.remove_solo_game(user_id)
+        except Exception:
+            pass
+
+    user_name = (user.first_name or user.username or "Admin") if user else "Admin"
     await message.answer(text=t("game_stopped", lang, user=user_name), parse_mode="HTML")
 
 @router.message(Command("solo"))
@@ -644,6 +688,10 @@ async def cmd_duel(message: Message, bot: Bot):
         await message.reply("⚔️ Duels can only be played in group chats! Add me to a group to duel friends.")
         return
 
+    if not challenger:
+        await message.reply("⚔️ Anonymous admins cannot initiate duels! Please send as your personal account.")
+        return
+
     lang = await db.get_chat_language(chat.id)
 
     # Check target
@@ -666,6 +714,11 @@ async def cmd_duel(message: Message, bot: Bot):
         await message.reply(t("game_already_active", lang), parse_mode="HTML")
         return
 
+    # Check pending duel invite in this chat
+    if game_manager.get_duel_invite(chat.id):
+        await message.reply("⚔️ There is already a pending duel challenge in this chat! Accept or decline it first, or use /stop.", parse_mode="HTML")
+        return
+
     # Create duel in database
     challenger_name = challenger.first_name or challenger.username or "Challenger"
     target_name = target_user.first_name or target_user.username or "Target"
@@ -677,16 +730,6 @@ async def cmd_duel(message: Message, bot: Bot):
         opponent_name=target_name
     )
 
-    # Create pending duel invite
-    game_manager.set_duel_invite(chat.id, {
-        "duel_id": duel_id,
-        "challenger_id": challenger.id,
-        "challenger_name": challenger_name,
-        "target_id": target_user.id,
-        "target_name": target_name,
-        "lang": lang
-    })
-
     c_mention = format_user_mention(challenger.id, challenger_name)
     t_mention = format_user_mention(target_user.id, target_name)
     text = t(
@@ -695,11 +738,48 @@ async def cmd_duel(message: Message, bot: Bot):
         challenger=c_mention,
         target=t_mention
     )
-    await message.answer(
+    sent_msg = await message.answer(
         text=text,
         reply_markup=get_duel_kb(challenger.id, target_user.id, lang, duel_id=duel_id),
         parse_mode="HTML"
     )
+
+    # Duel expiration timer: 60s
+    async def _expire_duel():
+        try:
+            await asyncio.sleep(60)
+            inv = game_manager.get_duel_invite(chat.id)
+            if inv and inv.get("duel_id") == duel_id:
+                game_manager.remove_duel_invite(chat.id)
+                await db.update_duel_status(duel_id, status="expired")
+                try:
+                    await bot.edit_message_reply_markup(chat_id=chat.id, message_id=sent_msg.message_id, reply_markup=None)
+                except Exception:
+                    pass
+                try:
+                    await bot.send_message(
+                        chat_id=chat.id,
+                        text="⏰ <b>Duel challenge expired!</b> Neither player accepted in time.",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
+        except asyncio.CancelledError:
+            raise
+
+    exp_task = asyncio.create_task(_expire_duel())
+
+    # Create pending duel invite
+    game_manager.set_duel_invite(chat.id, {
+        "duel_id": duel_id,
+        "challenger_id": challenger.id,
+        "challenger_name": challenger_name,
+        "target_id": target_user.id,
+        "target_name": target_name,
+        "lang": lang,
+        "expire_task": exp_task,
+        "message_id": sent_msg.message_id
+    })
 
 
 @router.message(Command("miniapp", "map"))

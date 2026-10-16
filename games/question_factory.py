@@ -4,7 +4,7 @@ Generates balanced, randomized questions for all supported game modes.
 """
 
 import random
-from typing import Optional, Set, List
+from typing import Optional, Set, List, Tuple
 from gamedata.countries import COUNTRIES, get_country
 from gamedata.landmarks import LANDMARKS
 from gamedata.streetviews import STREETVIEWS, get_random_streetview
@@ -51,6 +51,70 @@ def _matches_continent(country_dict: dict, continent: Optional[str]) -> bool:
     elif cont == "oceania":
         return "oceania" in c_cont
     return True
+
+def _find_country(name_or_code: Optional[str]) -> Optional[dict]:
+    """Resolve a country dict from code, English name, Uzbek name, or Russian name."""
+    if not name_or_code or not isinstance(name_or_code, str):
+        return None
+    val = name_or_code.strip()
+    c = get_country(val)
+    if c:
+        return c
+    norm = val.lower()
+    for country in COUNTRIES:
+        if country.get("code", "").lower() == norm:
+            return country
+        for l in ("en", "uz", "ru"):
+            name = country.get("name", {}).get(l, "").lower()
+            if name and (name == norm or name in norm or norm in name):
+                return country
+    return None
+
+def _build_four_options(
+    correct_answer: str,
+    candidate_distractors: List[str],
+    fallback_distractors: List[str]
+) -> Tuple[List[str], int]:
+    """
+    Build a list of exactly 4 unique options including correct_answer.
+    Guarantees:
+    - Exactly 4 options.
+    - All options are unique.
+    - correct_answer is always present.
+    - correct_index matches options.index(correct_answer).
+    """
+    options = [correct_answer]
+    seen = {correct_answer.strip().lower()}
+
+    for d in candidate_distractors:
+        d_str = str(d).strip()
+        if d_str and d_str.lower() not in seen:
+            seen.add(d_str.lower())
+            options.append(d_str)
+            if len(options) == 4:
+                break
+
+    if len(options) < 4:
+        for d in fallback_distractors:
+            d_str = str(d).strip()
+            if d_str and d_str.lower() not in seen:
+                seen.add(d_str.lower())
+                options.append(d_str)
+                if len(options) == 4:
+                    break
+
+    fallback_idx = 1
+    while len(options) < 4:
+        synthetic = f"Choice {fallback_idx}"
+        if synthetic.lower() not in seen:
+            seen.add(synthetic.lower())
+            options.append(synthetic)
+        fallback_idx += 1
+
+    options = options[:4]
+    random.shuffle(options)
+    correct_index = options.index(correct_answer)
+    return options, correct_index
 
 class QuestionFactory:
     @staticmethod
@@ -138,19 +202,13 @@ class QuestionFactory:
     ) -> Question:
         pool = QuestionFactory._get_country_candidates(exclude_codes, continent)
         target = random.choice(pool)
-        
-        # 3 distractors from candidate pool or same continent
-        other_countries = [c for c in pool if c["code"] != target["code"]]
-        if len(other_countries) < 3:
-            other_countries = [c for c in COUNTRIES if c["code"] != target["code"]]
-        distractors = random.sample(other_countries, 3)
-        
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
         correct_name = target["name"].get(lang, target["name"]["en"])
-        
-        options.append(correct_name)
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+
+        candidates = [c["name"].get(lang, c["name"]["en"]) for c in pool if c["code"] != target["code"]]
+        fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in COUNTRIES if c["code"] != target["code"]]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         text = t("question_flag", lang)
         fun_fact = get_fun_fact(target["code"], lang)
@@ -174,29 +232,27 @@ class QuestionFactory:
     ) -> Question:
         pool = QuestionFactory._get_country_candidates(exclude_codes, continent)
         target = random.choice(pool)
-        other_countries = [c for c in pool if c["code"] != target["code"]]
-        if len(other_countries) < 3:
-            other_countries = [c for c in COUNTRIES if c["code"] != target["code"]]
-        distractors = random.sample(other_countries, 3)
 
         # 50% ask capital of country, 50% ask country of capital
         if random.random() < 0.5:
             target_country_name = target["name"].get(lang, target["name"]["en"])
             text = t("question_capital_of_country", lang, country=target_country_name)
             correct_capital = target["capital"].get(lang, target["capital"]["en"])
-            options = [d["capital"].get(lang, d["capital"]["en"]) for d in distractors]
-            options.append(correct_capital)
-            random.shuffle(options)
-            correct_index = options.index(correct_capital)
+            candidates = [c["capital"].get(lang, c["capital"]["en"]) for c in pool if c["code"] != target["code"] and "capital" in c]
+            fallbacks = [c["capital"].get(lang, c["capital"]["en"]) for c in COUNTRIES if c["code"] != target["code"] and "capital" in c]
+            random.shuffle(candidates)
+            random.shuffle(fallbacks)
+            options, correct_index = _build_four_options(correct_capital, candidates, fallbacks)
             answer_text = correct_capital
         else:
             target_cap_name = target["capital"].get(lang, target["capital"]["en"])
             text = t("question_country_of_capital", lang, capital=target_cap_name)
             correct_country = target["name"].get(lang, target["name"]["en"])
-            options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-            options.append(correct_country)
-            random.shuffle(options)
-            correct_index = options.index(correct_country)
+            candidates = [c["name"].get(lang, c["name"]["en"]) for c in pool if c["code"] != target["code"]]
+            fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in COUNTRIES if c["code"] != target["code"]]
+            random.shuffle(candidates)
+            random.shuffle(fallbacks)
+            options, correct_index = _build_four_options(correct_country, candidates, fallbacks)
             answer_text = correct_country
 
         fun_fact = get_fun_fact(target["code"], lang)
@@ -220,29 +276,25 @@ class QuestionFactory:
     ) -> Question:
         lm_pool = LANDMARKS
         if continent and continent.lower() not in ("all", "world"):
-            filtered_cont = [l for l in LANDMARKS if _matches_continent(get_country(l["country_code"]) or {}, continent)]
-            if len(filtered_cont) >= 4:
+            filtered_cont = [l for l in LANDMARKS if _matches_continent(get_country(l.get("country_code", "")) or {}, continent)]
+            if filtered_cont:
                 lm_pool = filtered_cont
         if exclude_codes:
-            filtered = [l for l in lm_pool if l["country_code"] not in exclude_codes]
-            if len(filtered) >= 4:
+            filtered = [l for l in lm_pool if l.get("country_code") not in exclude_codes]
+            if filtered:
                 lm_pool = filtered
 
         target_lm = random.choice(lm_pool)
-        target_country = get_country(target_lm["country_code"])
-        if not target_country:
-            target_country = COUNTRIES[0]
-
-        other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
-        if len(other_countries) < 3:
-            other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
-        distractors = random.sample(other_countries, 3)
-
+        target_country = get_country(target_lm.get("country_code", "")) or COUNTRIES[0]
         correct_name = target_country["name"].get(lang, target_country["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        options.append(correct_name)
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+
+        cont_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
+        all_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
+        candidates = [c["name"].get(lang, c["name"]["en"]) for c in cont_countries]
+        fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in all_countries]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         lm_name = target_lm["name"].get(lang, target_lm["name"]["en"])
         clue = target_lm["clue"].get(lang, target_lm["clue"]["en"])
@@ -273,6 +325,13 @@ class QuestionFactory:
         c1, c2 = random.sample(pool, 2)
         c1_name = c1["name"].get(lang, c1["name"]["en"])
         c2_name = c2["name"].get(lang, c2["name"]["en"])
+        if c1_name == c2_name:
+            for alt in COUNTRIES:
+                alt_name = alt["name"].get(lang, alt["name"]["en"])
+                if alt_name != c1_name:
+                    c2 = alt
+                    c2_name = alt_name
+                    break
 
         compare_population = random.random() < 0.5
         if compare_population:
@@ -315,25 +374,26 @@ class QuestionFactory:
         exclude_codes: Optional[Set[str]],
         continent: Optional[str] = None
     ) -> Question:
-        pool = [c for c in COUNTRIES if c.get("coat_of_arms_url") and _matches_continent(c, continent)]
-        if len(pool) < 4:
-            pool = [c for c in COUNTRIES if c.get("coat_of_arms_url")]
+        pool = [c for c in COUNTRIES if c.get("coat_of_arms_url")]
+        if continent and continent.lower() not in ("all", "world"):
+            filtered_cont = [c for c in pool if _matches_continent(c, continent)]
+            if filtered_cont:
+                pool = filtered_cont
         if exclude_codes:
             filtered = [c for c in pool if c["code"] not in exclude_codes]
-            if len(filtered) >= 4:
+            if filtered:
                 pool = filtered
 
         target = random.choice(pool)
-        other_countries = [c for c in pool if c["code"] != target["code"]]
-        if len(other_countries) < 3:
-            other_countries = [c for c in COUNTRIES if c["code"] != target["code"]]
-        distractors = random.sample(other_countries, 3)
-
         correct_name = target["name"].get(lang, target["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        options.append(correct_name)
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+
+        cont_countries = [c for c in pool if c["code"] != target["code"]]
+        all_countries = [c for c in COUNTRIES if c["code"] != target["code"]]
+        candidates = [c["name"].get(lang, c["name"]["en"]) for c in cont_countries]
+        fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in all_countries]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         text = t("question_coat_of_arms", lang)
         fun_fact = get_fun_fact(target["code"], lang)
@@ -357,29 +417,25 @@ class QuestionFactory:
     ) -> Question:
         sv_pool = STREETVIEWS
         if continent and continent.lower() not in ("all", "world"):
-            filtered_cont = [s for s in STREETVIEWS if _matches_continent(get_country(s["country_code"]) or {}, continent)]
-            if len(filtered_cont) >= 4:
+            filtered_cont = [s for s in STREETVIEWS if _matches_continent(get_country(s.get("country_code", "")) or {}, continent)]
+            if filtered_cont:
                 sv_pool = filtered_cont
         if exclude_codes:
-            filtered = [s for s in sv_pool if s["country_code"] not in exclude_codes]
-            if len(filtered) >= 4:
+            filtered = [s for s in sv_pool if s.get("country_code") not in exclude_codes]
+            if filtered:
                 sv_pool = filtered
 
         target_sv = random.choice(sv_pool)
-        target_country = get_country(target_sv["country_code"])
-        if not target_country:
-            target_country = COUNTRIES[0]
-
-        other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
-        if len(other_countries) < 3:
-            other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
-        distractors = random.sample(other_countries, 3)
-
+        target_country = get_country(target_sv.get("country_code", "")) or COUNTRIES[0]
         correct_name = target_country["name"].get(lang, target_country["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        options.append(correct_name)
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+
+        cont_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
+        all_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
+        candidates = [c["name"].get(lang, c["name"]["en"]) for c in cont_countries]
+        fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in all_countries]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         loc_title = target_sv.get("location", {}).get(lang, target_sv.get("location", {}).get("en", ""))
         maps_link = target_sv.get("maps_url") or f"https://www.google.com/maps?q={target_sv['lat']},{target_sv['lng']}"
@@ -416,27 +472,25 @@ class QuestionFactory:
     ) -> Question:
         pool = EMOJI_RIDDLES
         if continent and continent.lower() not in ("all", "world"):
-            filtered_cont = [r for r in EMOJI_RIDDLES if _matches_continent(get_country(r["code"]) or {}, continent)]
-            if len(filtered_cont) >= 4:
+            filtered_cont = [r for r in EMOJI_RIDDLES if _matches_continent(get_country(r.get("code", "")) or {}, continent)]
+            if filtered_cont:
                 pool = filtered_cont
         if exclude_codes:
-            filtered_exc = [r for r in pool if r["code"] not in exclude_codes]
-            if len(filtered_exc) >= 4:
+            filtered_exc = [r for r in pool if r.get("code") not in exclude_codes]
+            if filtered_exc:
                 pool = filtered_exc
 
         target_riddle = random.choice(pool)
-        target_country = get_country(target_riddle["code"]) or COUNTRIES[0]
-
-        other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
-        if len(other_countries) < 3:
-            other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
-        distractors = random.sample(other_countries, 3)
-
+        target_country = get_country(target_riddle.get("code", "")) or COUNTRIES[0]
         correct_name = target_country["name"].get(lang, target_country["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        options.append(correct_name)
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+
+        cont_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
+        all_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
+        candidates = [c["name"].get(lang, c["name"]["en"]) for c in cont_countries]
+        fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in all_countries]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         hint_text = target_riddle.get("hint", {}).get(lang, target_riddle.get("hint", {}).get("en", ""))
         text = t("question_emoji", lang, emojis=target_riddle["emojis"], hint=hint_text)
@@ -461,27 +515,25 @@ class QuestionFactory:
     ) -> Question:
         pool = CONTOUR_DATA
         if continent and continent.lower() not in ("all", "world"):
-            filtered_cont = [c for c in CONTOUR_DATA if _matches_continent(get_country(c["code"]) or {}, continent)]
-            if len(filtered_cont) >= 4:
+            filtered_cont = [c for c in CONTOUR_DATA if _matches_continent(get_country(c.get("code", "")) or {}, continent)]
+            if filtered_cont:
                 pool = filtered_cont
         if exclude_codes:
-            filtered_exc = [c for c in pool if c["code"] not in exclude_codes]
-            if len(filtered_exc) >= 4:
+            filtered_exc = [c for c in pool if c.get("code") not in exclude_codes]
+            if filtered_exc:
                 pool = filtered_exc
 
         target_contour = random.choice(pool)
-        target_country = get_country(target_contour["code"]) or COUNTRIES[0]
-
-        other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
-        if len(other_countries) < 3:
-            other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
-        distractors = random.sample(other_countries, 3)
-
+        target_country = get_country(target_contour.get("code", "")) or COUNTRIES[0]
         correct_name = target_country["name"].get(lang, target_country["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        options.append(correct_name)
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+
+        cont_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
+        all_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
+        candidates = [c["name"].get(lang, c["name"]["en"]) for c in cont_countries]
+        fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in all_countries]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         contour_url = get_contour_url(target_country["code"])
         trivia_text = target_contour.get("shape_trivia", {}).get(lang, target_contour.get("shape_trivia", {}).get("en", ""))
@@ -539,25 +591,25 @@ class QuestionFactory:
         elif blur_category == "landmark":
             lm_pool = LANDMARKS
             if continent and continent.lower() not in ("all", "world"):
-                filtered_cont = [l for l in LANDMARKS if _matches_continent(get_country(l["country_code"]) or {}, continent)]
-                if len(filtered_cont) >= 4:
+                filtered_cont = [l for l in LANDMARKS if _matches_continent(get_country(l.get("country_code", "")) or {}, continent)]
+                if filtered_cont:
                     lm_pool = filtered_cont
             if exclude_codes:
-                filtered_exc = [l for l in lm_pool if l["country_code"] not in exclude_codes]
-                if len(filtered_exc) >= 4:
+                filtered_exc = [l for l in lm_pool if l.get("country_code") not in exclude_codes]
+                if filtered_exc:
                     lm_pool = filtered_exc
             target_lm = random.choice(lm_pool)
-            target_country = get_country(target_lm["country_code"]) or COUNTRIES[0]
-            pool = QuestionFactory._get_country_candidates(exclude_codes, continent)
-            other_countries = [c for c in pool if c["code"] != target_country["code"]]
-            if len(other_countries) < 3:
-                other_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
-            distractors = random.sample(other_countries, 3)
-            options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
+            target_country = get_country(target_lm.get("country_code", "")) or COUNTRIES[0]
             correct_name = target_country["name"].get(lang, target_country["name"]["en"])
-            options.append(correct_name)
-            random.shuffle(options)
-            correct_index = options.index(correct_name)
+
+            cont_countries = [c for c in COUNTRIES if c["code"] != target_country["code"] and _matches_continent(c, continent)]
+            all_countries = [c for c in COUNTRIES if c["code"] != target_country["code"]]
+            candidates = [c["name"].get(lang, c["name"]["en"]) for c in cont_countries]
+            fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in all_countries]
+            random.shuffle(candidates)
+            random.shuffle(fallbacks)
+            options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
+
             text = t("question_blur_landmark", lang)
             image_url = target_lm.get("image_url") or target_lm.get("photo_url")
             fun_fact = get_fun_fact(target_country["code"], lang)
@@ -575,15 +627,14 @@ class QuestionFactory:
             # Country Flag Blur (Primary focus)
             pool = QuestionFactory._get_country_candidates(exclude_codes, continent)
             target = random.choice(pool)
-            other_countries = [c for c in pool if c["code"] != target["code"]]
-            if len(other_countries) < 3:
-                other_countries = [c for c in COUNTRIES if c["code"] != target["code"]]
-            distractors = random.sample(other_countries, 3)
-            options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
             correct_name = target["name"].get(lang, target["name"]["en"])
-            options.append(correct_name)
-            random.shuffle(options)
-            correct_index = options.index(correct_name)
+
+            candidates = [c["name"].get(lang, c["name"]["en"]) for c in pool if c["code"] != target["code"]]
+            fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in COUNTRIES if c["code"] != target["code"]]
+            random.shuffle(candidates)
+            random.shuffle(fallbacks)
+            options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
+
             text = t("question_blur_flag", lang)
             fun_fact = get_fun_fact(target["code"], lang)
             return Question(
@@ -607,26 +658,24 @@ class QuestionFactory:
         if not pool:
             return QuestionFactory._gen_flag(lang, exclude_codes, continent)
 
+        if continent and continent.lower() not in ("all", "world"):
+            filtered_cont = [p for p in PRESIDENTS if _matches_continent(_find_country(p.get("country", {}).get("en", "")) or {}, continent)]
+            if filtered_cont:
+                pool = filtered_cont
+
         if exclude_codes:
             filtered = [p for p in pool if p.get("id") not in exclude_codes]
-            if len(filtered) >= 4:
+            if filtered:
                 pool = filtered
 
         target = random.choice(pool)
-        other_presidents = [p for p in pool if p.get("id") != target.get("id")]
-        if len(other_presidents) < 3:
-            other_presidents = pool
-        distractors = random.sample(other_presidents, min(3, len(other_presidents)))
-
         correct_name = target["name"].get(lang, target["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        if correct_name not in options:
-            options.append(correct_name)
-        while len(options) < 4:
-            options.append(f"Leader {len(options) + 1}")
-        options = options[:4]
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+
+        candidates = [p["name"].get(lang, p["name"]["en"]) for p in pool if p.get("id") != target.get("id")]
+        fallbacks = [p["name"].get(lang, p["name"]["en"]) for p in PRESIDENTS if p.get("id") != target.get("id")]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         text = t("question_president", lang)
         fun_fact = target.get("fun_fact", {}).get(lang, target.get("fun_fact", {}).get("en", ""))
@@ -656,26 +705,24 @@ class QuestionFactory:
         if not pool:
             return QuestionFactory._gen_flag(lang, exclude_codes, continent)
 
+        if continent and continent.lower() not in ("all", "world"):
+            filtered_cont = [h for h in HISTORICAL_FIGURES if _matches_continent(_find_country(h.get("country", {}).get("en", "")) or {}, continent)]
+            if filtered_cont:
+                pool = filtered_cont
+
         if exclude_codes:
             filtered = [h for h in pool if h.get("id") not in exclude_codes]
-            if len(filtered) >= 4:
+            if filtered:
                 pool = filtered
 
         target = random.choice(pool)
-        other_figures = [h for h in pool if h.get("id") != target.get("id")]
-        if len(other_figures) < 3:
-            other_figures = pool
-        distractors = random.sample(other_figures, min(3, len(other_figures)))
-
         correct_name = target["name"].get(lang, target["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        if correct_name not in options:
-            options.append(correct_name)
-        while len(options) < 4:
-            options.append(f"Figure {len(options) + 1}")
-        options = options[:4]
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+
+        candidates = [h["name"].get(lang, h["name"]["en"]) for h in pool if h.get("id") != target.get("id")]
+        fallbacks = [h["name"].get(lang, h["name"]["en"]) for h in HISTORICAL_FIGURES if h.get("id") != target.get("id")]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         text = t("question_historical", lang)
         fun_fact = target.get("fun_fact", {}).get(lang, target.get("fun_fact", {}).get("en", ""))
@@ -702,29 +749,26 @@ class QuestionFactory:
         if not pool:
             return QuestionFactory._gen_flag(lang, exclude_codes, continent)
 
+        if continent and continent.lower() not in ("all", "world"):
+            filtered_cont = [c for c in CELEBRITIES if _matches_continent(_find_country(c.get("country", {}).get("en", "")) or {}, continent)]
+            if filtered_cont:
+                pool = filtered_cont
+
         if exclude_codes:
             filtered = [c for c in pool if c.get("id") not in exclude_codes]
-            if len(filtered) >= 4:
+            if filtered:
                 pool = filtered
 
         target = random.choice(pool)
-        target_cat = target.get("category", "")
-        same_cat = [c for c in pool if c.get("id") != target.get("id") and c.get("category") == target_cat]
-        if len(same_cat) >= 3:
-            distractors = random.sample(same_cat, 3)
-        else:
-            other_celebs = [c for c in pool if c.get("id") != target.get("id")]
-            distractors = random.sample(other_celebs, min(3, len(other_celebs)))
-
         correct_name = target["name"].get(lang, target["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        if correct_name not in options:
-            options.append(correct_name)
-        while len(options) < 4:
-            options.append(f"Star {len(options) + 1}")
-        options = options[:4]
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+        target_cat = target.get("category", "")
+
+        same_cat = [c["name"].get(lang, c["name"]["en"]) for c in pool if c.get("id") != target.get("id") and c.get("category") == target_cat]
+        candidates = same_cat + [c["name"].get(lang, c["name"]["en"]) for c in pool if c.get("id") != target.get("id")]
+        fallbacks = [c["name"].get(lang, c["name"]["en"]) for c in CELEBRITIES if c.get("id") != target.get("id")]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         text = t("question_celebrity", lang)
         fun_fact = target.get("fun_fact", {}).get(lang, target.get("fun_fact", {}).get("en", ""))
@@ -775,29 +819,26 @@ class QuestionFactory:
         if not pool:
             return QuestionFactory._gen_flag(lang, exclude_codes, continent)
 
+        if continent and continent.lower() not in ("all", "world"):
+            filtered_cont = [l for l in LOGOS if _matches_continent(get_country(l.get("country_code", "")) or {}, continent)]
+            if filtered_cont:
+                pool = filtered_cont
+
         if exclude_codes:
             filtered = [l for l in pool if l.get("id") not in exclude_codes]
-            if len(filtered) >= 4:
+            if filtered:
                 pool = filtered
 
         target = random.choice(pool)
-        target_cat = target.get("category", "")
-        same_cat = [l for l in pool if l.get("id") != target.get("id") and l.get("category") == target_cat]
-        if len(same_cat) >= 3:
-            distractors = random.sample(same_cat, 3)
-        else:
-            other_logos = [l for l in pool if l.get("id") != target.get("id")]
-            distractors = random.sample(other_logos, min(3, len(other_logos)))
-
         correct_name = target["name"].get(lang, target["name"]["en"])
-        options = [d["name"].get(lang, d["name"]["en"]) for d in distractors]
-        if correct_name not in options:
-            options.append(correct_name)
-        while len(options) < 4:
-            options.append(f"Brand {len(options) + 1}")
-        options = options[:4]
-        random.shuffle(options)
-        correct_index = options.index(correct_name)
+        target_cat = target.get("category", "")
+
+        same_cat = [l["name"].get(lang, l["name"]["en"]) for l in pool if l.get("id") != target.get("id") and l.get("category") == target_cat]
+        candidates = same_cat + [l["name"].get(lang, l["name"]["en"]) for l in pool if l.get("id") != target.get("id")]
+        fallbacks = [l["name"].get(lang, l["name"]["en"]) for l in LOGOS if l.get("id") != target.get("id")]
+        random.shuffle(candidates)
+        random.shuffle(fallbacks)
+        options, correct_index = _build_four_options(correct_name, candidates, fallbacks)
 
         text = t("question_logo", lang)
         fun_fact = target.get("fun_fact", {}).get(lang, target.get("fun_fact", {}).get("en", ""))

@@ -60,6 +60,67 @@ class TestMiniAppWebServer(AioHTTPTestCase):
         self.assertTrue(data.get("ok"))
         self.mock_db.add_user_xp.assert_called_once_with(12345, 400)
 
+    @unittest_run_loop
+    async def test_score_api_negative_score_rejected(self):
+        """Negative scores must be rejected with 400 Bad Request."""
+        payload = {"user_id": 12345, "score": -100}
+        resp = await self.client.request("POST", "/api/miniapp/score", json=payload)
+        self.assertEqual(resp.status, 400)
+        data = await resp.json()
+        self.assertFalse(data.get("ok"))
+        self.assertIn("between 0 and 25000", data.get("error", ""))
+
+    @unittest_run_loop
+    async def test_score_api_excessive_score_rejected(self):
+        """Scores above 25,000 must be rejected with 400 Bad Request."""
+        payload = {"user_id": 12345, "score": 30000}
+        resp = await self.client.request("POST", "/api/miniapp/score", json=payload)
+        self.assertEqual(resp.status, 400)
+        data = await resp.json()
+        self.assertFalse(data.get("ok"))
+        self.assertIn("between 0 and 25000", data.get("error", ""))
+
+    @unittest_run_loop
+    async def test_score_api_non_integer_score_rejected(self):
+        """Non-integer scores must be rejected with 400 Bad Request."""
+        payload = {"user_id": 12345, "score": "twenty_thousand"}
+        resp = await self.client.request("POST", "/api/miniapp/score", json=payload)
+        self.assertEqual(resp.status, 400)
+        data = await resp.json()
+        self.assertFalse(data.get("ok"))
+
+    @unittest_run_loop
+    async def test_score_api_missing_score_rejected(self):
+        """Payload without score field must be rejected with 400 Bad Request."""
+        payload = {"user_id": 12345}
+        resp = await self.client.request("POST", "/api/miniapp/score", json=payload)
+        self.assertEqual(resp.status, 400)
+        data = await resp.json()
+        self.assertFalse(data.get("ok"))
+
+    @unittest_run_loop
+    async def test_score_api_invalid_user_id_rejected(self):
+        """Non-integer or non-positive user_id must be rejected with 400 Bad Request."""
+        # Non-integer string
+        resp1 = await self.client.request("POST", "/api/miniapp/score", json={"user_id": "invalid_user", "score": 1000})
+        self.assertEqual(resp1.status, 400)
+
+        # Negative user_id
+        resp2 = await self.client.request("POST", "/api/miniapp/score", json={"user_id": -99, "score": 1000})
+        self.assertEqual(resp2.status, 400)
+
+    @unittest_run_loop
+    async def test_score_api_invalid_rounds_rejected(self):
+        """Rounds out of range 1-50 must be rejected with 400 Bad Request."""
+        resp = await self.client.request("POST", "/api/miniapp/score", json={"user_id": 12345, "score": 1000, "rounds": 0})
+        self.assertEqual(resp.status, 400)
+
+    @unittest_run_loop
+    async def test_score_api_invalid_json_rejected(self):
+        """Malformed JSON or non-dict payloads must return 400 Bad Request."""
+        resp = await self.client.request("POST", "/api/miniapp/score", data="not json", headers={"Content-Type": "application/json"})
+        self.assertEqual(resp.status, 400)
+
 
 class TestMiniAppKeyboards(unittest.TestCase):
     def test_miniapp_button_without_url(self):

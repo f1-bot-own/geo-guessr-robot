@@ -683,9 +683,37 @@ async def finish_game(bot: Bot, chat_id: int, session: GameSession, db):
     game_manager.remove_session(chat_id)
 
     podium = session.get_podium()
-    winner_id = podium[0][0] if podium and podium[0][2] > 0 else None
-    winner_name = podium[0][1] if podium and podium[0][2] > 0 else ""
-    winner_score = podium[0][2] if podium and podium[0][2] > 0 else 0
+
+    if session.is_duel:
+        challenger_id = session.created_by_user_id
+        target_id = session.duel_target_id
+        c_score = session.scores.get(challenger_id, 0)
+        t_score = session.scores.get(target_id, 0)
+        c_name = session.user_names.get(challenger_id, "Challenger")
+        t_name = session.user_names.get(target_id, "Opponent")
+
+        if c_score > t_score:
+            winner_id = challenger_id
+            winner_name = c_name
+            winner_score = c_score
+        elif t_score > c_score:
+            winner_id = target_id
+            winner_name = t_name
+            winner_score = t_score
+        else:
+            # Score tie in duel: DRAW (no single winner credited)
+            winner_id = None
+            winner_name = ""
+            winner_score = c_score
+    else:
+        if len(podium) >= 2 and podium[0][2] > 0 and podium[0][2] == podium[1][2]:
+            winner_id = None
+            winner_name = "Tie"
+            winner_score = podium[0][2]
+        else:
+            winner_id = podium[0][0] if podium and podium[0][2] > 0 else None
+            winner_name = podium[0][1] if podium and podium[0][2] > 0 else ""
+            winner_score = podium[0][2] if podium and podium[0][2] > 0 else 0
 
     # Record match in matches table
     await db.record_match(
@@ -694,7 +722,7 @@ async def finish_game(bot: Bot, chat_id: int, session: GameSession, db):
         winner_id=winner_id,
         winner_name=winner_name,
         winner_score=winner_score,
-        players_count=len(podium)
+        players_count=len(podium) if not session.is_duel else 2
     )
 
     # Handle duel outcome in database

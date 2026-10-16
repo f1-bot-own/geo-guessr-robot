@@ -4,6 +4,7 @@ Handles answers, game setup, lifelines, menu navigation, languages, and duels.
 """
 
 import asyncio
+import inspect
 from datetime import datetime
 from aiogram import Router, Bot, F
 from aiogram.types import CallbackQuery
@@ -48,12 +49,22 @@ async def cb_group_answer(query: CallbackQuery, bot: Bot):
         await query.answer()
         return
 
-    chat_id = query.message.chat.id
+    chat = query.message.chat if query.message else None
     user = query.from_user
+    if not chat or not user:
+        await query.answer()
+        return
+
+    chat_id = chat.id
     session = game_manager.get_session(chat_id)
 
     if not session or session.session_id != session_id:
         await query.answer("⚠️ This game session has ended.", show_alert=True)
+        if query.message:
+            try:
+                await query.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
         return
 
     if getattr(session, "input_mode", "both") == "text":
@@ -157,26 +168,36 @@ def format_setup_title(session, lang: str) -> str:
 async def cb_game_setup(query: CallbackQuery, bot: Bot):
     """Handle interactive game setup configuration with host-only authorization."""
     parts = query.data.split(":")
-    if len(parts) < 3:
+    if len(parts) == 4:
+        _, action, param, session_id = parts
+    elif len(parts) == 3:
+        _, action, session_id = parts
+        param = None
+    else:
         await query.answer()
         return
 
-    if len(parts) == 4:
-        _, action, param, session_id = parts
-    else:
-        _, action, session_id = parts
-        param = None
+    chat = query.message.chat if query.message else None
+    user = query.from_user
+    if not chat or not user:
+        await query.answer()
+        return
 
-    chat_id = query.message.chat.id
+    chat_id = chat.id
     session = game_manager.get_session(chat_id)
 
     if not session or session.session_id != session_id or session.status != "setup":
         await query.answer("⚠️ Setup is expired or game already started.", show_alert=True)
+        if query.message:
+            try:
+                await query.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
         return
 
     # HOST-ONLY AUTHORIZATION: Only the host can adjust setup parameters or start the game
     host_id = getattr(session, "host_id", None) or session.created_by_user_id
-    if host_id and query.from_user.id != host_id:
+    if host_id and user.id != host_id:
         host_name = getattr(session, "host_name", "") or session.user_names.get(host_id) or "Host"
         alert_msg = t("host_only_settings_alert", session.lang, host=host_name)
         await query.answer(alert_msg, show_alert=True)
@@ -304,11 +325,24 @@ async def cb_daily_answer(query: CallbackQuery, bot: Bot):
     """Handle daily challenge round answer."""
     db = get_db(bot)
     user = query.from_user
-    opt_idx = int(query.data.split(":")[1])
+    if not user:
+        await query.answer()
+        return
+
+    parts = query.data.split(":")
+    if len(parts) != 2 or not parts[1].isdigit():
+        await query.answer()
+        return
+    opt_idx = int(parts[1])
 
     session = game_manager.get_daily_session(user.id)
     if not session or session.status != "in_progress":
         await query.answer("⚠️ Today's challenge ended or expired.", show_alert=True)
+        if query.message:
+            try:
+                await query.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
         return
 
     is_correct, points, is_finished, correct_answer = session.check_answer(opt_idx)
@@ -340,7 +374,10 @@ async def cb_daily_answer(query: CallbackQuery, bot: Bot):
             f"🔥 <b>Daily Streak:</b> {streak} day(s)!\n\n"
             f"<i>Come back tomorrow for a new challenge!</i>"
         )
-        await bot.send_message(chat_id=user.id, text=msg, parse_mode="HTML")
+        try:
+            await bot.send_message(chat_id=user.id, text=msg, parse_mode="HTML")
+        except Exception:
+            pass
 
 # ----------------- Solo Mode Answers & Lifelines -----------------
 @router.callback_query(F.data.startswith("solo_ans:"))
@@ -348,11 +385,24 @@ async def cb_solo_answer(query: CallbackQuery, bot: Bot):
     """Handle solo mode question answer with optimized low-latency concurrent processing."""
     db = get_db(bot)
     user = query.from_user
-    opt_idx = int(query.data.split(":")[1])
+    if not user:
+        await query.answer()
+        return
+
+    parts = query.data.split(":")
+    if len(parts) != 2 or not parts[1].isdigit():
+        await query.answer()
+        return
+    opt_idx = int(parts[1])
 
     session = game_manager.get_solo_session(user.id)
     if not session:
         await query.answer("⚠️ Solo session ended. Start a new one with /solo!", show_alert=True)
+        if query.message:
+            try:
+                await query.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
         return
 
     if getattr(session, "input_mode", "both") == "text":
@@ -454,8 +504,11 @@ async def cb_solo_answer(query: CallbackQuery, bot: Bot):
 async def cb_solo_hint(query: CallbackQuery):
     """Deliver solo hint lifeline."""
     user = query.from_user
+    if not user:
+        await query.answer()
+        return
     session = game_manager.get_solo_session(user.id)
-    if not session or not session.has_hint:
+    if not session or session.status != "in_progress" or not session.has_hint:
         await query.answer("Hint is already used!", show_alert=True)
         return
 
@@ -482,8 +535,11 @@ async def cb_solo_hint(query: CallbackQuery):
 async def cb_solo_5050(query: CallbackQuery):
     """Apply 50/50 lifeline removing two incorrect answers."""
     user = query.from_user
+    if not user:
+        await query.answer()
+        return
     session = game_manager.get_solo_session(user.id)
-    if not session or not session.has_5050:
+    if not session or session.status != "in_progress" or not session.has_5050:
         await query.answer("50/50 is already used!", show_alert=True)
         return
 
@@ -514,15 +570,24 @@ async def cb_solo_ignore(query: CallbackQuery):
 async def cb_set_language(query: CallbackQuery, bot: Bot):
     """Update language for user or group."""
     db = get_db(bot)
-    new_lang = query.data.split(":")[1]
+    parts = query.data.split(":")
+    if len(parts) < 2:
+        await query.answer()
+        return
+    new_lang = parts[1]
     if new_lang not in config.SUPPORTED_LANGUAGES:
         new_lang = "en"
+
+    chat = query.message.chat if query.message else None
+    user = query.from_user
+    if not user:
+        await query.answer()
+        return
 
     lang_names = {"en": "English 🇬🇧", "ru": "Русский 🇷🇺", "uz": "O'zbekcha 🇺🇿"}
     lang_name = lang_names.get(new_lang, new_lang)
 
-    chat = query.message.chat
-    if chat.type in ("group", "supergroup"):
+    if chat and chat.type in ("group", "supergroup"):
         await db.set_chat_language(chat.id, new_lang)
         active_session = game_manager.get_session(chat.id)
         if active_session:
@@ -535,13 +600,13 @@ async def cb_set_language(query: CallbackQuery, bot: Bot):
         except Exception:
             pass
     else:
-        await db.set_user_language(query.from_user.id, new_lang)
-        active_solo = game_manager.get_solo_session(query.from_user.id)
+        await db.set_user_language(user.id, new_lang)
+        active_solo = game_manager.get_solo_session(user.id)
         if active_solo:
             active_solo.lang = new_lang
         try:
             from game.engine import game_manager as engine_gm
-            eng_solo = engine_gm.get_solo_game(query.from_user.id)
+            eng_solo = engine_gm.get_solo_game(user.id)
             if eng_solo:
                 eng_solo.lang = new_lang
         except Exception:
@@ -549,18 +614,29 @@ async def cb_set_language(query: CallbackQuery, bot: Bot):
 
     text = t("lang_changed", new_lang, lang_name=lang_name)
     await query.answer(f"Language: {lang_name}")
-    try:
-        await query.message.edit_text(text=text, parse_mode="HTML")
-    except Exception:
-        await query.message.answer(text=text, parse_mode="HTML")
+    if query.message:
+        try:
+            await query.message.edit_text(text=text, parse_mode="HTML")
+        except Exception:
+            try:
+                await query.message.answer(text=text, parse_mode="HTML")
+            except Exception:
+                pass
 
 # ----------------- Main Menu Navigation -----------------
 @router.callback_query(F.data.startswith("menu:"))
 async def cb_main_menu(query: CallbackQuery, bot: Bot):
     """Handle menu item clicks."""
     db = get_db(bot)
-    action = query.data.split(":")[1]
+    parts = query.data.split(":")
+    if len(parts) < 2:
+        await query.answer()
+        return
+    action = parts[1]
     user = query.from_user
+    if not user:
+        await query.answer()
+        return
     user_data = await db.get_user(user.id)
     lang = user_data.get("language", "en") if user_data else "en"
 
@@ -574,12 +650,15 @@ async def cb_main_menu(query: CallbackQuery, bot: Bot):
                 parse_mode="HTML"
             )
         except Exception:
-            await bot.send_message(
-                chat_id=user.id,
-                text=t("choose_game_type", lang),
-                reply_markup=get_game_type_kb(lang, bot_username=bot_info.username),
-                parse_mode="HTML"
-            )
+            try:
+                await bot.send_message(
+                    chat_id=user.id,
+                    text=t("choose_game_type", lang),
+                    reply_markup=get_game_type_kb(lang, bot_username=bot_info.username),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
     elif action == "solo":
         # Present all categories cleanly as buttons
         await query.answer()
@@ -591,12 +670,15 @@ async def cb_main_menu(query: CallbackQuery, bot: Bot):
                 parse_mode="HTML"
             )
         except Exception:
-            await bot.send_message(
-                chat_id=user.id,
-                text=t("choose_category", lang),
-                reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
-                parse_mode="HTML"
-            )
+            try:
+                await bot.send_message(
+                    chat_id=user.id,
+                    text=t("choose_category", lang),
+                    reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
     elif action == "daily":
         today_str = datetime.utcnow().strftime("%Y-%m-%d")
         if not await db.can_play_daily(user.id, today_str):
@@ -607,11 +689,14 @@ async def cb_main_menu(query: CallbackQuery, bot: Bot):
         daily_session = DailyChallengeSession(user.id, user.first_name or "Player", lang=lang, date_str=today_str)
         game_manager.set_daily_session(user.id, daily_session)
         await query.answer("📅 Launching Daily Challenge!")
-        await bot.send_message(
-            chat_id=user.id,
-            text=f"{t('daily_title', lang)}\n🎯 <i>5 unique questions for today! Answer all to earn bonus XP!</i>",
-            parse_mode="HTML"
-        )
+        try:
+            await bot.send_message(
+                chat_id=user.id,
+                text=f"{t('daily_title', lang)}\n🎯 <i>5 unique questions for today! Answer all to earn bonus XP!</i>",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
         await send_daily_round(bot, user.id, daily_session)
     elif action == "profile":
         await query.answer()
@@ -629,37 +714,59 @@ async def cb_main_menu(query: CallbackQuery, bot: Bot):
             f"{t('profile_title', lang, name=user.first_name or 'Player')}\n\n"
             f"{t('profile_details', lang, rank=rank, level=lvl, xp=xp, games=games, wins=wins, correct=correct, total=total, accuracy=accuracy, streak=streak)}"
         )
-        await bot.send_message(chat_id=user.id, text=text, parse_mode="HTML")
+        try:
+            await bot.send_message(chat_id=user.id, text=text, parse_mode="HTML")
+        except Exception:
+            pass
     elif action == "leaderboard":
         await query.answer()
         from handlers.commands import format_leaderboard_text
         top_players = await db.get_global_leaderboard(limit=10, period="all_time")
         text = format_leaderboard_text(top_players, lb_type="global", period="all_time", lang=lang)
         kb = get_leaderboard_kb(lb_type="global", current_period="all_time", lang=lang)
-        await bot.send_message(chat_id=user.id, text=text, reply_markup=kb, parse_mode="HTML")
+        try:
+            await bot.send_message(chat_id=user.id, text=text, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
     elif action == "language":
         await query.answer()
-        await bot.send_message(chat_id=user.id, text=t("choose_lang", lang), reply_markup=get_language_kb(), parse_mode="HTML")
+        try:
+            await bot.send_message(chat_id=user.id, text=t("choose_lang", lang), reply_markup=get_language_kb(), parse_mode="HTML")
+        except Exception:
+            pass
     elif action == "help":
         await query.answer()
-        await bot.send_message(chat_id=user.id, text=t("help_text", lang), parse_mode="HTML")
+        try:
+            await bot.send_message(chat_id=user.id, text=t("help_text", lang), parse_mode="HTML")
+        except Exception:
+            pass
     elif action in ("miniapp", "miniapp_info"):
         await query.answer()
         from keyboards.menu_kb import get_miniapp_launch_kb
-        await bot.send_message(
-            chat_id=user.id,
-            text=t("miniapp_intro", lang),
-            reply_markup=get_miniapp_launch_kb(lang),
-            parse_mode="HTML"
-        )
+        try:
+            await bot.send_message(
+                chat_id=user.id,
+                text=t("miniapp_intro", lang),
+                reply_markup=get_miniapp_launch_kb(lang),
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
 
 # ----------------- Game Type Selection -----------------
 @router.callback_query(F.data.startswith("game_type:"))
 async def cb_game_type(query: CallbackQuery, bot: Bot):
     """Handle Game Type selection (Group vs Solo vs Daily)."""
     db = get_db(bot)
-    action = query.data.split(":")[1]
+    parts = query.data.split(":")
+    if len(parts) < 2:
+        await query.answer()
+        return
+    action = parts[1]
     user = query.from_user
+    if not user:
+        await query.answer()
+        return
     user_data = await db.get_user(user.id)
     lang = user_data.get("language", "en") if user_data else "en"
 
@@ -673,12 +780,15 @@ async def cb_game_type(query: CallbackQuery, bot: Bot):
                 parse_mode="HTML"
             )
         except Exception:
-            await bot.send_message(
-                chat_id=user.id,
-                text=t("choose_category", lang),
-                reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
-                parse_mode="HTML"
-            )
+            try:
+                await bot.send_message(
+                    chat_id=user.id,
+                    text=t("choose_category", lang),
+                    reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
     elif action == "daily":
         today_str = datetime.utcnow().strftime("%Y-%m-%d")
         if not await db.can_play_daily(user.id, today_str):
@@ -689,11 +799,14 @@ async def cb_game_type(query: CallbackQuery, bot: Bot):
         daily_session = DailyChallengeSession(user.id, user.first_name or "Player", lang=lang, date_str=today_str)
         game_manager.set_daily_session(user.id, daily_session)
         await query.answer("📅 Launching Daily Challenge!")
-        await bot.send_message(
-            chat_id=user.id,
-            text=f"{t('daily_title', lang)}\n🎯 <i>5 unique questions for today! Answer all to earn bonus XP!</i>",
-            parse_mode="HTML"
-        )
+        try:
+            await bot.send_message(
+                chat_id=user.id,
+                text=f"{t('daily_title', lang)}\n🎯 <i>5 unique questions for today! Answer all to earn bonus XP!</i>",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
         await send_daily_round(bot, user.id, daily_session)
     elif action == "menu":
         bot_info = await bot.get_me()
@@ -712,9 +825,15 @@ async def cb_game_type(query: CallbackQuery, bot: Bot):
 async def cb_solo_category(query: CallbackQuery, bot: Bot):
     """Handle solo mode category selection and start solo match."""
     parts = query.data.split(":")
+    if len(parts) < 2:
+        await query.answer()
+        return
     cat = parts[1]
     db = get_db(bot)
     user = query.from_user
+    if not user:
+        await query.answer()
+        return
     user_data = await db.get_user(user.id)
     lang = user_data.get("language", "en") if user_data else "en"
 
@@ -779,9 +898,15 @@ async def cb_solo_category(query: CallbackQuery, bot: Bot):
 async def cb_solo_setup(query: CallbackQuery, bot: Bot):
     """Handle interactive solo mode setup."""
     parts = query.data.split(":")
+    if len(parts) < 2:
+        await query.answer()
+        return
     action = parts[1]
     param = parts[2] if len(parts) > 2 else None
     user = query.from_user
+    if not user:
+        await query.answer()
+        return
     db = get_db(bot)
     user_data = await db.get_user(user.id)
     lang = user_data.get("language", "en") if user_data else "en"
@@ -910,7 +1035,7 @@ async def cb_duel(query: CallbackQuery, bot: Bot):
     """Handle duel acceptance or decline."""
     db = get_db(bot)
     parts = query.data.split(":")
-    if len(parts) < 4:
+    if len(parts) < 4 or not parts[2].isdigit() or not parts[3].isdigit():
         await query.answer()
         return
 
@@ -918,28 +1043,75 @@ async def cb_duel(query: CallbackQuery, bot: Bot):
     challenger_id = int(parts[2])
     target_id = int(parts[3])
     duel_id = int(parts[4]) if len(parts) >= 5 and parts[4].isdigit() else 0
-    chat_id = query.message.chat.id
+    chat = query.message.chat if query.message else None
     user = query.from_user
+    if not chat or not user:
+        await query.answer()
+        return
 
-    if user.id != target_id:
+    chat_id = chat.id
+
+    # Authorization: target can accept/decline; challenger can decline (cancel); others cannot
+    if user.id != target_id and not (action == "decline" and user.id == challenger_id):
         await query.answer("Only the challenged player can accept or decline this duel!", show_alert=True)
         return
 
     lang = await db.get_chat_language(chat_id)
+    invite = game_manager.get_duel_invite(chat_id)
+
+    # Check expiration: if active invite exists in chat, duel_id must match.
+    if invite and duel_id and invite.get("duel_id") != duel_id:
+        await query.answer("⚠️ This duel challenge has expired or already ended.", show_alert=True)
+        if query.message:
+            try:
+                await query.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+        return
+
+    # Check database status if duel invite is not in memory
+    if not invite and duel_id and hasattr(db, "get_duel"):
+        get_duel_fn = getattr(db, "get_duel", None)
+        if callable(get_duel_fn):
+            res = get_duel_fn(duel_id)
+            duel_record = await res if inspect.isawaitable(res) else res
+            if isinstance(duel_record, dict) and duel_record.get("status") in ("expired", "declined", "completed"):
+                await query.answer("⚠️ This duel challenge has expired or already ended.", show_alert=True)
+                if query.message:
+                    try:
+                        await query.message.edit_reply_markup(reply_markup=None)
+                    except Exception:
+                        pass
+                return
 
     if action == "decline":
-        game_manager.remove_duel_invite(chat_id)
+        if invite:
+            exp_task = invite.get("expire_task")
+            if exp_task and not exp_task.done():
+                exp_task.cancel()
+            game_manager.remove_duel_invite(chat_id)
         if duel_id:
             await db.update_duel_status(duel_id, status="declined")
         await query.answer("Duel declined.")
         try:
-            await query.message.edit_text(t("duel_declined", lang), parse_mode="HTML")
+            decline_msg = t("duel_declined", lang) if user.id == target_id else "❌ <i>Duel challenge cancelled by challenger.</i>"
+            await query.message.edit_text(decline_msg, parse_mode="HTML")
         except Exception:
             pass
         return
 
     if action == "accept":
-        game_manager.remove_duel_invite(chat_id)
+        # Check if game already in progress in chat
+        active_session = game_manager.get_session(chat_id)
+        if active_session and active_session.status in ("in_progress", "setup", "between_rounds"):
+            await query.answer(t("game_already_active", lang), show_alert=True)
+            return
+
+        if invite:
+            exp_task = invite.get("expire_task")
+            if exp_task and not exp_task.done():
+                exp_task.cancel()
+            game_manager.remove_duel_invite(chat_id)
         if duel_id:
             await db.update_duel_status(duel_id, status="active")
         await query.answer("⚔️ Duel Accepted! Starting 3-round battle!")
@@ -965,11 +1137,14 @@ async def cb_duel(query: CallbackQuery, bot: Bot):
             pass
 
         session.start_game()
-        await bot.send_message(
-            chat_id=chat_id,
-            text=f"⚔️ <b>DUEL STARTED!</b>\n3 intense rounds! Only the two duelists may answer!",
-            parse_mode="HTML"
-        )
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"⚔️ <b>DUEL STARTED!</b>\n3 intense rounds! Only the two duelists may answer!",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
         await send_round_question(bot, chat_id, session, db)
 
 # ----------------- Time-based Leaderboard Period Switcher -----------------
@@ -984,13 +1159,18 @@ async def cb_leaderboard_period(query: CallbackQuery, bot: Bot):
 
     lb_type = parts[1]  # "global" or "group"
     period = parts[2]   # "daily", "weekly", "monthly", "all_time"
-    chat_id = query.message.chat.id
+    chat = query.message.chat if query.message else None
+    user = query.from_user
+    if not chat or not user:
+        await query.answer()
+        return
+    chat_id = chat.id
 
-    if lb_type == "group" and query.message.chat.type in ("group", "supergroup"):
+    if lb_type == "group" and chat.type in ("group", "supergroup"):
         lang = await db.get_chat_language(chat_id)
         players = await db.get_group_leaderboard(chat_id, limit=10, period=period)
     else:
-        user_data = await db.get_user(query.from_user.id)
+        user_data = await db.get_user(user.id)
         lang = user_data.get("language", "en") if user_data else "en"
         players = await db.get_global_leaderboard(limit=10, period=period)
 

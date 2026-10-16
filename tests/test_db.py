@@ -95,6 +95,43 @@ class TestDatabase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(group_board[0]["score"], 350)
         self.assertEqual(group_board[0]["games_won"], 1)
 
+    async def test_empty_leaderboard_queries_do_not_crash(self):
+        """Leaderboard queries on empty database / non-existent chat must return empty list without crashing."""
+        empty_chat_id = -999999999
+        for period in ["all_time", "daily", "weekly", "monthly"]:
+            res_group = await db.get_group_leaderboard(empty_chat_id, limit=10, period=period)
+            self.assertIsInstance(res_group, list)
+            self.assertEqual(len(res_group), 0)
+
+        # Chat ID is None
+        res_none = await db.get_group_leaderboard(None, limit=10)
+        self.assertEqual(res_none, [])
+
+        # Limit edge cases (negative, zero, overly large)
+        res_limit_zero = await db.get_global_leaderboard(limit=0)
+        self.assertIsInstance(res_limit_zero, list)
+
+        res_limit_neg = await db.get_global_leaderboard(limit=-5)
+        self.assertIsInstance(res_limit_neg, list)
+
+    async def test_add_user_xp(self):
+        """add_user_xp awards XP, recalculates level, and creates user if missing."""
+        uid = 888777
+        new_xp = await db.add_user_xp(uid, 300, first_name="MiniAppGamer")
+        self.assertEqual(new_xp, 300)
+
+        u = await db.get_user(uid)
+        self.assertIsNotNone(u)
+        self.assertEqual(u["xp"], 300)
+        self.assertEqual(u["level"], db.calculate_level(300))
+
+        # Award more XP
+        updated_xp = await db.add_user_xp(uid, 500)
+        self.assertEqual(updated_xp, 800)
+        u2 = await db.get_user(uid)
+        self.assertEqual(u2["xp"], 800)
+        self.assertEqual(u2["level"], 3)
+
     async def test_daily_challenge(self):
         user_id = 301
         today = "2026-10-10"
@@ -110,6 +147,44 @@ class TestDatabase(unittest.IsolatedAsyncioTestCase):
         after_done = await db.check_daily_challenge_done(user_id, today)
         self.assertIsNotNone(after_done)
         self.assertEqual(after_done["score"], 400)
+
+    async def test_daily_streak_reset_on_skip_and_active_check(self):
+        """Skipping a day properly breaks and resets the daily streak."""
+        user_id = 302
+        await db.get_or_create_user(user_id=user_id, first_name="StreakPlayer")
+
+        # Day 1
+        await db.record_daily_challenge_done(user_id, score=200, challenge_date="2026-10-10")
+        u = await db.get_user(user_id)
+        self.assertEqual(u["daily_streak"], 1)
+        self.assertEqual(await db.get_daily_streak(user_id, today_date="2026-10-10"), 1)
+        self.assertEqual(await db.get_daily_streak(user_id, today_date="2026-10-11"), 1)
+
+        # Day 2 (consecutive)
+        await db.record_daily_challenge_done(user_id, score=250, challenge_date="2026-10-11")
+        u = await db.get_user(user_id)
+        self.assertEqual(u["daily_streak"], 2)
+
+        # Skip Day 3 (2026-10-12)
+        # Check active streak on Day 4 before playing -> streak is broken (0)
+        self.assertEqual(await db.get_daily_streak(user_id, today_date="2026-10-13"), 0)
+
+        # Complete challenge on Day 4 (2026-10-13) -> streak must reset to 1
+        await db.record_daily_challenge_done(user_id, score=300, challenge_date="2026-10-13")
+        u_after = await db.get_user(user_id)
+        self.assertEqual(u_after["daily_streak"], 1)
+        self.assertEqual(await db.get_daily_streak(user_id, today_date="2026-10-13"), 1)
+
+    async def test_daily_challenge_timestamp_format_resilience(self):
+        """Dates formatted with timestamp or ISO time must parse safely without raising ValueError."""
+        user_id = 303
+        await db.get_or_create_user(user_id=user_id, first_name="TimePlayer")
+
+        # Completion with ISO timestamp containing T and seconds
+        await db.record_daily_challenge_done(user_id, score=100, challenge_date="2026-10-15T14:30:00")
+        record = await db.check_daily_challenge_done(user_id, "2026-10-15")
+        self.assertIsNotNone(record)
+        self.assertEqual(record["score"], 100)
 
     async def test_duels(self):
         duel_id = await db.create_duel(

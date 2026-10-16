@@ -324,8 +324,6 @@ def get_game_type_kb(lang: str = "en", bot_username: str = "") -> InlineKeyboard
 
 def get_question_kb(session_id: str, options: List[str]) -> InlineKeyboardMarkup:
     """Generate answer buttons for an active group round."""
-    buttons = []
-    # If 2 options (Higher/Lower)
     if len(options) == 2:
         keyboard = [
             [InlineKeyboardButton(text=options[0], callback_data=f"ans:{session_id}:0")],
@@ -333,17 +331,13 @@ def get_question_kb(session_id: str, options: List[str]) -> InlineKeyboardMarkup
         ]
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-    # 4 options in 2x2 grid
-    keyboard = [
-        [
-            InlineKeyboardButton(text=options[0], callback_data=f"ans:{session_id}:0"),
-            InlineKeyboardButton(text=options[1], callback_data=f"ans:{session_id}:1")
-        ],
-        [
-            InlineKeyboardButton(text=options[2], callback_data=f"ans:{session_id}:2"),
-            InlineKeyboardButton(text=options[3], callback_data=f"ans:{session_id}:3")
+    keyboard = []
+    for i in range(0, len(options), 2):
+        row = [
+            InlineKeyboardButton(text=options[j], callback_data=f"ans:{session_id}:{j}")
+            for j in range(i, min(i + 2, len(options)))
         ]
-    ]
+        keyboard.append(row)
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 def get_solo_question_kb(
@@ -380,10 +374,10 @@ def get_solo_question_kb(
             [make_btn(1)]
         ]
     else:
-        option_rows = [
-            [make_btn(0), make_btn(1)],
-            [make_btn(2), make_btn(3)]
-        ]
+        option_rows = []
+        for i in range(0, len(options), 2):
+            row = [make_btn(j) for j in range(i, min(i + 2, len(options)))]
+            option_rows.append(row)
 
     option_rows.append(lifeline_row)
     return InlineKeyboardMarkup(inline_keyboard=option_rows)
@@ -397,16 +391,13 @@ def get_daily_question_kb(options: List[str]) -> InlineKeyboardMarkup:
         ]
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-    keyboard = [
-        [
-            InlineKeyboardButton(text=options[0], callback_data="daily_ans:0"),
-            InlineKeyboardButton(text=options[1], callback_data="daily_ans:1")
-        ],
-        [
-            InlineKeyboardButton(text=options[2], callback_data="daily_ans:2"),
-            InlineKeyboardButton(text=options[3], callback_data="daily_ans:3")
+    keyboard = []
+    for i in range(0, len(options), 2):
+        row = [
+            InlineKeyboardButton(text=options[j], callback_data=f"daily_ans:{j}")
+            for j in range(i, min(i + 2, len(options)))
         ]
-    ]
+        keyboard.append(row)
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 def get_duel_kb(challenger_id: int, target_id: int, lang: str = "en", duel_id: int = 0) -> InlineKeyboardMarkup:

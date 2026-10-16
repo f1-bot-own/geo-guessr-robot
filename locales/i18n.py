@@ -1,9 +1,10 @@
 """
 Internationalization (i18n) module for GeoGuru & GeoGuessr Bot.
-Provides string translation with fallback to English.
+Provides string translation with fallback to English and safe template formatting.
 """
 import json
 import logging
+import string
 from pathlib import Path
 from typing import Any, Dict
 
@@ -12,6 +13,27 @@ logger = logging.getLogger(__name__)
 LOCALES_DIR = Path(__file__).resolve().parent
 
 LOCALES: Dict[str, Dict[str, Any]] = {}
+
+
+class SafeFormatter(string.Formatter):
+    """
+    Formatter that preserves placeholders when missing from kwargs,
+    preventing KeyError or ValueError and allowing partial interpolation.
+    """
+    def get_value(self, key, args, kwargs):
+        if isinstance(key, str):
+            if key in kwargs:
+                return kwargs[key]
+            return "{" + key + "}"
+        elif isinstance(key, int):
+            if key < len(args):
+                return args[key]
+            return "{" + str(key) + "}"
+        return "{" + str(key) + "}"
+
+
+_safe_formatter = SafeFormatter()
+
 
 def load_locales():
     """Load all JSON locale files from the locales directory."""
@@ -28,14 +50,22 @@ def load_locales():
         else:
             LOCALES[lang] = {}
 
+
 # Initial load
 load_locales()
+
 
 def t(key: str, lang: str = "en", **kwargs) -> str:
     """
     Get a localized string by key and format it with provided kwargs.
     Defaults to 'en' (English).
+    Safely handles missing keys, missing format arguments, and None/empty keys without raising KeyError.
     """
+    if key is None:
+        return ""
+    if not isinstance(key, str):
+        key = str(key)
+
     if not lang or lang not in LOCALES:
         lang = "en"
     
@@ -49,11 +79,14 @@ def t(key: str, lang: str = "en", **kwargs) -> str:
         val = en_dict.get(key, key)
     
     if isinstance(val, str):
+        if not kwargs:
+            return val
         try:
-            return val.format(**kwargs)
+            return _safe_formatter.format(val, **kwargs)
         except Exception:
             return val
-    return str(val)
+    return str(val) if val is not None else ""
+
 
 def get_rank_name(level: int, lang: str = "en") -> str:
     """Return rank name based on user level."""
@@ -65,6 +98,7 @@ def get_rank_name(level: int, lang: str = "en") -> str:
     # Map level to rank tier (1 to 7)
     tier = min(max(1, (level // 3) + 1), 7)
     return ranks.get(str(tier), "🌐 GeoGuru")
+
 
 def format_countdown(seconds: int, lang: str = "en") -> str:
     """
@@ -88,4 +122,3 @@ def format_countdown(seconds: int, lang: str = "en") -> str:
             return f"⏳ Осталось времени: {sec}с"
         else:
             return f"⏳ Time remaining: {sec}s"
-

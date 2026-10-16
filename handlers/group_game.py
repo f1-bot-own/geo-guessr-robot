@@ -125,6 +125,9 @@ async def handle_menu_group_game(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("setup_set_mode:"))
 async def set_mode_callback(callback: CallbackQuery):
     parts = callback.data.split(":")
+    if len(parts) < 3 or not parts[1].lstrip("-").isdigit():
+        await callback.answer()
+        return
     chat_id = int(parts[1])
     target_mode = parts[2]
     state = game_manager.setup_states.get(chat_id)
@@ -133,7 +136,7 @@ async def set_mode_callback(callback: CallbackQuery):
         return
 
     host_id = state.get("host_id")
-    if host_id and callback.from_user.id != host_id:
+    if host_id and callback.from_user and callback.from_user.id != host_id:
         await callback.answer(t("host_only_settings_alert", state.get("lang", "en")), show_alert=True)
         return
 
@@ -156,6 +159,9 @@ async def set_mode_callback(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("setup_set_time:"))
 async def set_time_callback(callback: CallbackQuery):
     parts = callback.data.split(":")
+    if len(parts) < 3 or not parts[1].lstrip("-").isdigit() or not parts[2].isdigit():
+        await callback.answer()
+        return
     chat_id = int(parts[1])
     target_time = int(parts[2])
     state = game_manager.setup_states.get(chat_id)
@@ -164,7 +170,7 @@ async def set_time_callback(callback: CallbackQuery):
         return
 
     host_id = state.get("host_id")
-    if host_id and callback.from_user.id != host_id:
+    if host_id and callback.from_user and callback.from_user.id != host_id:
         await callback.answer(t("host_only_settings_alert", state.get("lang", "en")), show_alert=True)
         return
 
@@ -188,6 +194,9 @@ async def set_time_callback(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("setup_set_input:"))
 async def set_input_callback(callback: CallbackQuery):
     parts = callback.data.split(":")
+    if len(parts) < 3 or not parts[1].lstrip("-").isdigit():
+        await callback.answer()
+        return
     chat_id = int(parts[1])
     target_input = parts[2]
     state = game_manager.setup_states.get(chat_id)
@@ -196,7 +205,7 @@ async def set_input_callback(callback: CallbackQuery):
         return
 
     host_id = state.get("host_id")
-    if host_id and callback.from_user.id != host_id:
+    if host_id and callback.from_user and callback.from_user.id != host_id:
         await callback.answer(t("host_only_settings_alert", state.get("lang", "en")), show_alert=True)
         return
 
@@ -219,14 +228,18 @@ async def set_input_callback(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("setup_cycle_mode:"))
 async def cycle_mode_callback(callback: CallbackQuery):
-    chat_id = int(callback.data.split(":")[1])
+    parts = callback.data.split(":")
+    if len(parts) < 2 or not parts[1].lstrip("-").isdigit():
+        await callback.answer()
+        return
+    chat_id = int(parts[1])
     state = game_manager.setup_states.get(chat_id)
     if not state:
         await callback.answer("Setup expired. Type /game again.")
         return
 
     host_id = state.get("host_id")
-    if host_id and callback.from_user.id != host_id:
+    if host_id and callback.from_user and callback.from_user.id != host_id:
         await callback.answer(t("host_only_settings_alert", state.get("lang", "en")), show_alert=True)
         return
 
@@ -250,14 +263,18 @@ async def cycle_mode_callback(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("setup_cycle_rounds:"))
 async def cycle_rounds_callback(callback: CallbackQuery):
-    chat_id = int(callback.data.split(":")[1])
+    parts = callback.data.split(":")
+    if len(parts) < 2 or not parts[1].lstrip("-").isdigit():
+        await callback.answer()
+        return
+    chat_id = int(parts[1])
     state = game_manager.setup_states.get(chat_id)
     if not state:
         await callback.answer("Setup expired. Type /game again.")
         return
 
     host_id = state.get("host_id")
-    if host_id and callback.from_user.id != host_id:
+    if host_id and callback.from_user and callback.from_user.id != host_id:
         await callback.answer(t("host_only_settings_alert", state.get("lang", "en")), show_alert=True)
         return
 
@@ -282,14 +299,18 @@ async def cycle_rounds_callback(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("setup_cycle_time:"))
 async def cycle_time_callback(callback: CallbackQuery):
-    chat_id = int(callback.data.split(":")[1])
+    parts = callback.data.split(":")
+    if len(parts) < 2 or not parts[1].lstrip("-").isdigit():
+        await callback.answer()
+        return
+    chat_id = int(parts[1])
     state = game_manager.setup_states.get(chat_id)
     if not state:
         await callback.answer("Setup expired. Type /game again.")
         return
 
     host_id = state.get("host_id")
-    if host_id and callback.from_user.id != host_id:
+    if host_id and callback.from_user and callback.from_user.id != host_id:
         await callback.answer(t("host_only_settings_alert", state.get("lang", "en")), show_alert=True)
         return
 
@@ -314,11 +335,15 @@ async def cycle_time_callback(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("setup_cancel:"))
 async def setup_cancel_callback(callback: CallbackQuery):
-    chat_id = int(callback.data.split(":")[1])
+    parts = callback.data.split(":")
+    if len(parts) < 2 or not parts[1].lstrip("-").isdigit():
+        await callback.answer()
+        return
+    chat_id = int(parts[1])
     state = game_manager.setup_states.get(chat_id)
     if state:
         host_id = state.get("host_id")
-        if host_id and callback.from_user.id != host_id:
+        if host_id and callback.from_user and callback.from_user.id != host_id:
             await callback.answer(t("host_only_settings_alert", state.get("lang", "en")), show_alert=True)
             return
 
@@ -332,14 +357,18 @@ async def setup_cancel_callback(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("setup_launch:"))
 async def setup_launch_callback(callback: CallbackQuery, bot: Bot):
-    chat_id = int(callback.data.split(":")[1])
+    parts = callback.data.split(":")
+    if len(parts) < 2 or not parts[1].lstrip("-").isdigit():
+        await callback.answer()
+        return
+    chat_id = int(parts[1])
     state = game_manager.setup_states.get(chat_id)
     if not state:
         await callback.answer("Setup expired. Type /game again.")
         return
 
     host_id = state.get("host_id")
-    if host_id and callback.from_user.id != host_id:
+    if host_id and callback.from_user and callback.from_user.id != host_id:
         await callback.answer(t("host_only_settings_alert", state.get("lang", "en")), show_alert=True)
         return
 

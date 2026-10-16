@@ -91,9 +91,17 @@ class GameSession:
         self.current_round += 1
         self.answered_users_wrong.clear()
         
-        active_modes = [m for m in getattr(self, "selected_modes", []) if m not in ("mix", "blur")]
+        valid_modes = [
+            GameMode.FLAG, GameMode.CAPITAL, GameMode.LANDMARK, GameMode.HIGHER_LOWER,
+            GameMode.COAT_OF_ARMS, GameMode.STREETVIEW, GameMode.EMOJI, GameMode.CONTOUR,
+            GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.PERSON, GameMode.LOGO
+        ]
+        active_modes = [
+            m for m in getattr(self, "selected_modes", [])
+            if m in valid_modes and m not in ("mix", "blur")
+        ]
         if not active_modes:
-            if self.mode and self.mode not in ("mix", "blur"):
+            if self.mode and self.mode in valid_modes and self.mode not in ("mix", "blur"):
                 active_modes = [self.mode]
             else:
                 active_modes = [

@@ -6,7 +6,7 @@ import asyncio
 import random
 from typing import Optional, Set, List, Tuple, Any
 from .models import Question, GameMode
-from .question_factory import QuestionFactory
+from .question_factory import QuestionFactory, _find_country
 from gamedata.countries import get_country
 from locales.i18n import t
 import config
@@ -71,9 +71,17 @@ class SoloGameSession:
         self.round_number += 1
         self.eliminated_options.clear()
         
-        active_modes = [m for m in getattr(self, "selected_modes", []) if m not in ("mix", "blur")]
+        valid_modes = [
+            GameMode.FLAG, GameMode.CAPITAL, GameMode.LANDMARK, GameMode.HIGHER_LOWER,
+            GameMode.COAT_OF_ARMS, GameMode.STREETVIEW, GameMode.EMOJI, GameMode.CONTOUR,
+            GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.PERSON, GameMode.LOGO
+        ]
+        active_modes = [
+            m for m in getattr(self, "selected_modes", [])
+            if m in valid_modes and m not in ("mix", "blur")
+        ]
         if not active_modes:
-            if self.mode and self.mode not in ("mix", "blur"):
+            if self.mode and self.mode in valid_modes and self.mode not in ("mix", "blur"):
                 active_modes = [self.mode]
             else:
                 active_modes = [
@@ -109,46 +117,93 @@ class SoloGameSession:
         return q
 
     def use_5050(self) -> List[int]:
-        """Eliminate two incorrect options."""
-        if not self.has_5050 or not self.current_question:
+        """Eliminate two incorrect options safely."""
+        if not self.has_5050 or not self.current_question or self.eliminated_options:
             return []
-        self.has_5050 = False
         
         correct_idx = self.current_question.correct_index
         wrong_indices = [i for i in range(len(self.current_question.options)) if i != correct_idx]
-        
-        eliminated = random.sample(wrong_indices, min(2, len(wrong_indices)))
+        if len(wrong_indices) < 2:
+            return []
+
+        self.has_5050 = False
+        eliminated = random.sample(wrong_indices, 2)
         self.eliminated_options.update(eliminated)
         return eliminated
 
     def use_hint(self) -> str:
-        """Provide a continent and capital hint, or driving side & continent for street view."""
+        """Provide a smart hint without leaking the answer, handling any mode or missing ISO code."""
         if not self.has_hint or not self.current_question:
             return ""
         self.has_hint = False
-        
-        country = get_country(self.current_question.country_code)
-        if not country:
-            if self.current_question.fun_fact:
-                return f"💡 {self.current_question.fun_fact}"
-            elif self.current_question.country_code:
-                return f"💡 {self.current_question.country_code}"
-            return "💡 Hint: Choose carefully!"
-        
-        continent = country["continent"].get(self.lang, country["continent"]["en"])
 
-        if self.current_question.mode == "streetview" or getattr(self.current_question, "mode", "") == "streetview":
-            driving_side = getattr(self.current_question, "driving_side", "right") or "right"
+        q = self.current_question
+        country = None
+        if q.country_code:
+            country = _find_country(q.country_code)
+
+        # Mode-specific smart hints
+        if q.mode == "streetview" or getattr(q, "mode", "") == "streetview":
+            continent_str = ""
+            if country and "continent" in country:
+                continent_str = country["continent"].get(self.lang, country["continent"]["en"])
+            driving_side = getattr(q, "driving_side", "right") or "right"
             if self.lang == "uz":
                 ds_str = "o'ng" if driving_side == "right" else "chap"
             elif self.lang == "ru":
                 ds_str = "правостороннее" if driving_side == "right" else "левостороннее"
             else:
                 ds_str = "Right" if driving_side == "right" else "Left"
-            return t("solo_hint_streetview", self.lang, driving_side=ds_str, continent=continent)
+            if continent_str:
+                return t("solo_hint_streetview", self.lang, driving_side=ds_str, continent=continent_str)
+            return f"💡 Driving side: {ds_str}"
 
-        capital = country["capital"].get(self.lang, country["capital"]["en"])
-        return t("solo_hint_text", self.lang, continent=continent, capital=capital)
+        if country:
+            continent = country.get("continent", {}).get(self.lang, country.get("continent", {}).get("en", ""))
+            capital = country.get("capital", {}).get(self.lang, country.get("capital", {}).get("en", ""))
+            c_name = country.get("name", {}).get(self.lang, country.get("name", {}).get("en", ""))
+            
+            if q.mode in (GameMode.FLAG, GameMode.COAT_OF_ARMS, GameMode.CONTOUR, GameMode.BLUR, GameMode.EMOJI):
+                return t("solo_hint_text", self.lang, continent=continent, capital=capital)
+            elif q.mode == GameMode.CAPITAL:
+                # Do not leak the capital when asking for capital!
+                if self.lang == "uz":
+                    return f"💡 Qit'a: {continent}"
+                elif self.lang == "ru":
+                    return f"💡 Континент: {continent}"
+                else:
+                    return f"💡 Continent: {continent}"
+            elif q.mode in (GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.PERSON, GameMode.LOGO):
+                if self.lang == "uz":
+                    return f"💡 Hudud/Qit'a: {continent}, Davlat: {c_name}"
+                elif self.lang == "ru":
+                    return f"💡 Регион/Континент: {continent}, Страна: {c_name}"
+                else:
+                    return f"💡 Region/Continent: {continent}, Origin: {c_name}"
+
+        # If no country resolved (e.g. historical figure without direct country, or world):
+        if q.mode in (GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.PERSON):
+            if self.lang == "uz":
+                return "💡 Maslahat: Tarixiy davr va shaxsning faoliyat sohasiga e'tibor bering!"
+            elif self.lang == "ru":
+                return "💡 Подсказка: Обратите внимание на историческую эпоху и сферу деятельности!"
+            else:
+                return "💡 Hint: Pay attention to the historical era and field of prominence!"
+        elif q.mode == GameMode.LOGO:
+            if self.lang == "uz":
+                return "💡 Maslahat: Brendning faoliyat sohasi va xalqaro bozoriga e'tibor bering!"
+            elif self.lang == "ru":
+                return "💡 Подсказка: Обратите внимание на сферу деятельности бренда!"
+            else:
+                return "💡 Hint: Think about the brand's industry and global market!"
+
+        # Generic fallback
+        if self.lang == "uz":
+            return "💡 Maslahat: Variantlarni diqqat bilan solishtiring!"
+        elif self.lang == "ru":
+            return "💡 Подсказка: Внимательно сравните предложенные варианты!"
+        else:
+            return "💡 Hint: Carefully compare the available options!"
 
     def check_answer(self, option_index: int) -> Tuple[bool, int, bool]:
         """
