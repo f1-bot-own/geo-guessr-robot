@@ -22,10 +22,20 @@ class GameMode:
     LOGO = "logo"
     MIX = "mix"
 
+    ZAKOVAT = "zakovat"
+    ASTRONOMY = "astronomy"
+    SCIENCE = "science"
+    HISTORY = "history"
+    LITERATURE = "literature"
+    ART = "art"
+    NATURE = "nature"
+    LOGIC_MATH = "logic_math"
+
     ALL = [
         FLAG, CAPITAL, LANDMARK, HIGHER_LOWER, COAT_OF_ARMS,
         STREETVIEW, EMOJI, CONTOUR, BLUR,
         PRESIDENT, HISTORICAL, CELEBRITY, PERSON, LOGO,
+        ZAKOVAT, ASTRONOMY, SCIENCE, HISTORY, LITERATURE, ART, NATURE, LOGIC_MATH,
         MIX
     ]
 
@@ -46,3 +56,5 @@ class Question:
     blur_stages: Optional[tuple] = None
     blur_stage: int = 1
     aliases: Optional[List[str]] = None
+    sub_mode: Optional[str] = None
+    is_black_box: bool = False

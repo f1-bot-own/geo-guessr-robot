@@ -260,7 +260,14 @@ def format_group_question_text(session: GameSession, remaining_time: Optional[in
     if q.mode == GameMode.BLUR:
         stage = getattr(q, "blur_stage", 1)
         blur_note = f"\n\n{t(f'blur_stage_{stage}', session.lang)}"
-    return f"{header}\n\n{q.text}{blur_note}\n\n{countdown_str}"
+
+    q_content = q.text
+    if getattr(q, "is_black_box", False):
+        bb_title = t("black_box_title", session.lang)
+        if bb_title not in q_content:
+            q_content = f"{bb_title}\n{q_content}"
+
+    return f"{header}\n\n{q_content}{blur_note}\n\n{countdown_str}"
 
 def format_solo_question_text(session: SoloGameSession, remaining_time: Optional[int] = None) -> str:
     """Compose full caption/text for solo practice question with remaining time."""
@@ -281,7 +288,14 @@ def format_solo_question_text(session: SoloGameSession, remaining_time: Optional
     if q.mode == GameMode.BLUR:
         stage = getattr(q, "blur_stage", 1)
         blur_note = f"\n\n{t(f'blur_stage_{stage}', session.lang)}"
-    return f"{t('solo_title', session.lang)}\n{info_line}\n\n{q.text}{blur_note}\n\n{countdown_str}"
+
+    q_content = q.text
+    if getattr(q, "is_black_box", False):
+        bb_title = t("black_box_title", session.lang)
+        if bb_title not in q_content:
+            q_content = f"{bb_title}\n{q_content}"
+
+    return f"{t('solo_title', session.lang)}\n{info_line}\n\n{q_content}{blur_note}\n\n{countdown_str}"
 
 async def safe_edit_question_media(
     bot: Bot,

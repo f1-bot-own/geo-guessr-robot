@@ -34,6 +34,46 @@ try:
 except Exception:
     LOGOS = []
 
+try:
+    from gamedata.zakovat_data import ZAKOVAT_QUESTIONS
+except Exception:
+    ZAKOVAT_QUESTIONS = []
+
+try:
+    from gamedata.astronomy_data import ASTRONOMY_QUESTIONS
+except Exception:
+    ASTRONOMY_QUESTIONS = []
+
+try:
+    from gamedata.science_data import SCIENCE_QUESTIONS
+except Exception:
+    SCIENCE_QUESTIONS = []
+
+try:
+    from gamedata.history_data import HISTORY_DATA
+except Exception:
+    HISTORY_DATA = []
+
+try:
+    from gamedata.literature_data import LITERATURE_DATA
+except Exception:
+    LITERATURE_DATA = []
+
+try:
+    from gamedata.art_data import ART_DATA
+except Exception:
+    ART_DATA = []
+
+try:
+    from gamedata.nature_data import NATURE_DATA
+except Exception:
+    NATURE_DATA = []
+
+try:
+    from gamedata.logic_math_data import LOGIC_MATH_DATA
+except Exception:
+    LOGIC_MATH_DATA = []
+
 def _matches_continent(country_dict: dict, continent: Optional[str]) -> bool:
     """Check if country belongs to specified continent."""
     if not continent or continent.lower() in ("all", "world", "dunyo", "мир"):
@@ -122,7 +162,8 @@ class QuestionFactory:
         mode: str,
         lang: str = "en",
         exclude_codes: Optional[Set[str]] = None,
-        continent: Optional[str] = None
+        continent: Optional[str] = None,
+        sub_mode: Optional[str] = None
     ) -> Question:
         if mode == GameMode.MIX:
             candidates = [
@@ -144,6 +185,22 @@ class QuestionFactory:
                 candidates.append(GameMode.CELEBRITY)
             if LOGOS:
                 candidates.append(GameMode.LOGO)
+            if ZAKOVAT_QUESTIONS:
+                candidates.append(GameMode.ZAKOVAT)
+            if ASTRONOMY_QUESTIONS:
+                candidates.append(GameMode.ASTRONOMY)
+            if SCIENCE_QUESTIONS:
+                candidates.append(GameMode.SCIENCE)
+            if HISTORY_DATA:
+                candidates.append(GameMode.HISTORY)
+            if LITERATURE_DATA:
+                candidates.append(GameMode.LITERATURE)
+            if ART_DATA:
+                candidates.append(GameMode.ART)
+            if NATURE_DATA:
+                candidates.append(GameMode.NATURE)
+            if LOGIC_MATH_DATA:
+                candidates.append(GameMode.LOGIC_MATH)
             chosen_mode = random.choice(candidates)
             return QuestionFactory.generate(chosen_mode, lang, exclude_codes, continent)
         
@@ -175,6 +232,30 @@ class QuestionFactory:
             return QuestionFactory._gen_person(lang, exclude_codes, continent)
         elif mode == GameMode.LOGO:
             return QuestionFactory._gen_logo(lang, exclude_codes, continent)
+        elif mode == GameMode.ZAKOVAT or mode in ("black_box", "deduction", "world_intellect", "blitz"):
+            active_sub = sub_mode or (mode if mode != GameMode.ZAKOVAT else None)
+            return QuestionFactory._gen_zakovat(lang, exclude_codes, sub_mode=active_sub)
+        elif mode == GameMode.ASTRONOMY or mode in ("telescope_zoom", "cosmic_scale", "constellations", "space_missions"):
+            active_sub = sub_mode or (mode if mode != GameMode.ASTRONOMY else None)
+            return QuestionFactory._gen_astronomy(lang, exclude_codes, sub_mode=active_sub)
+        elif mode == GameMode.SCIENCE or mode in ("elements", "prototypes", "scientists", "macro_science"):
+            active_sub = sub_mode or (mode if mode != GameMode.SCIENCE else None)
+            return QuestionFactory._gen_science(lang, exclude_codes, sub_mode=active_sub)
+        elif mode == GameMode.HISTORY or mode in ("timeline", "empire_maps", "who_am_i", "artifacts"):
+            active_sub = sub_mode or (mode if mode != GameMode.HISTORY else None)
+            return QuestionFactory._gen_history(lang, exclude_codes, sub_mode=active_sub)
+        elif mode == GameMode.LITERATURE or mode in ("quotes", "book_emojis", "authors", "characters"):
+            active_sub = sub_mode or (mode if mode != GameMode.LITERATURE else None)
+            return QuestionFactory._gen_literature(lang, exclude_codes, sub_mode=active_sub)
+        elif mode == GameMode.ART or mode in ("art_fragment", "architecture", "artist_styles", "sculptures"):
+            active_sub = sub_mode or (mode if mode != GameMode.ART else None)
+            return QuestionFactory._gen_art(lang, exclude_codes, sub_mode=active_sub)
+        elif mode == GameMode.NATURE or mode in ("macro_texture", "animal_scale", "nature_emoji", "human_anatomy"):
+            active_sub = sub_mode or (mode if mode != GameMode.NATURE else None)
+            return QuestionFactory._gen_nature(lang, exclude_codes, sub_mode=active_sub)
+        elif mode == GameMode.LOGIC_MATH or mode in ("flash_math", "odd_one_out", "logic_sequence", "classic_riddles"):
+            active_sub = sub_mode or (mode if mode != GameMode.LOGIC_MATH else None)
+            return QuestionFactory._gen_logic_math(lang, exclude_codes, sub_mode=active_sub)
         else:
             return QuestionFactory._gen_flag(lang, exclude_codes, continent)
 
@@ -854,6 +935,115 @@ class QuestionFactory:
             fun_fact=fun_fact,
             aliases=target.get("aliases", [])
         )
+
+    @staticmethod
+    def _gen_from_dataset(
+        mode: str,
+        dataset: List[dict],
+        lang: str,
+        exclude_codes: Optional[Set[str]] = None,
+        sub_mode: Optional[str] = None,
+        default_country_code: str = "world"
+    ) -> Question:
+        if not dataset:
+            return QuestionFactory._gen_flag(lang, exclude_codes)
+
+        pool = dataset
+        if sub_mode:
+            filtered_sub = [
+                d for d in dataset
+                if d.get("sub_mode") == sub_mode or d.get("type") == sub_mode
+            ]
+            if filtered_sub:
+                pool = filtered_sub
+
+        if exclude_codes:
+            filtered_exc = [d for d in pool if d.get("id") not in exclude_codes]
+            if filtered_exc:
+                pool = filtered_exc
+
+        target = random.choice(pool)
+
+        q_dict = target.get("question", {})
+        q_text = q_dict.get(lang, q_dict.get("en", "Question"))
+
+        options_dict = target.get("options", {})
+        raw_options = list(options_dict.get(lang, options_dict.get("en", [])))
+
+        ans_dict = target.get("correct_answer", {})
+        correct_ans = ans_dict.get(lang, ans_dict.get("en", ""))
+
+        if not correct_ans and raw_options and "correct_index" in target:
+            idx = target["correct_index"]
+            if 0 <= idx < len(raw_options):
+                correct_ans = raw_options[idx]
+
+        if not raw_options or len(raw_options) < 4 or correct_ans not in raw_options:
+            candidates = [
+                d.get("correct_answer", {}).get(lang, d.get("correct_answer", {}).get("en", ""))
+                for d in pool if d.get("id") != target.get("id")
+            ]
+            fallbacks = [
+                d.get("correct_answer", {}).get(lang, d.get("correct_answer", {}).get("en", ""))
+                for d in dataset if d.get("id") != target.get("id")
+            ]
+            raw_options, correct_index = _build_four_options(correct_ans, candidates, fallbacks)
+        else:
+            correct_index = target.get("correct_index", raw_options.index(correct_ans) if correct_ans in raw_options else 0)
+
+        fun_fact_dict = target.get("fun_fact", {})
+        fun_fact = fun_fact_dict.get(lang, fun_fact_dict.get("en", ""))
+
+        image_url = target.get("image_url")
+        aliases = target.get("aliases", [])
+        item_submode = target.get("sub_mode") or target.get("type")
+        is_black_box = (item_submode == "black_box" or target.get("is_black_box", False))
+
+        return Question(
+            mode=mode,
+            text=q_text,
+            options=raw_options,
+            correct_index=correct_index,
+            correct_answer=correct_ans,
+            country_code=target.get("country_code", default_country_code),
+            image_url=image_url,
+            fun_fact=fun_fact,
+            aliases=aliases,
+            sub_mode=item_submode,
+            is_black_box=is_black_box
+        )
+
+    @staticmethod
+    def _gen_zakovat(lang: str, exclude_codes: Optional[Set[str]] = None, sub_mode: Optional[str] = None) -> Question:
+        return QuestionFactory._gen_from_dataset(GameMode.ZAKOVAT, ZAKOVAT_QUESTIONS, lang, exclude_codes, sub_mode)
+
+    @staticmethod
+    def _gen_astronomy(lang: str, exclude_codes: Optional[Set[str]] = None, sub_mode: Optional[str] = None) -> Question:
+        return QuestionFactory._gen_from_dataset(GameMode.ASTRONOMY, ASTRONOMY_QUESTIONS, lang, exclude_codes, sub_mode)
+
+    @staticmethod
+    def _gen_science(lang: str, exclude_codes: Optional[Set[str]] = None, sub_mode: Optional[str] = None) -> Question:
+        return QuestionFactory._gen_from_dataset(GameMode.SCIENCE, SCIENCE_QUESTIONS, lang, exclude_codes, sub_mode)
+
+    @staticmethod
+    def _gen_history(lang: str, exclude_codes: Optional[Set[str]] = None, sub_mode: Optional[str] = None) -> Question:
+        return QuestionFactory._gen_from_dataset(GameMode.HISTORY, HISTORY_DATA, lang, exclude_codes, sub_mode)
+
+    @staticmethod
+    def _gen_literature(lang: str, exclude_codes: Optional[Set[str]] = None, sub_mode: Optional[str] = None) -> Question:
+        return QuestionFactory._gen_from_dataset(GameMode.LITERATURE, LITERATURE_DATA, lang, exclude_codes, sub_mode)
+
+    @staticmethod
+    def _gen_art(lang: str, exclude_codes: Optional[Set[str]] = None, sub_mode: Optional[str] = None) -> Question:
+        return QuestionFactory._gen_from_dataset(GameMode.ART, ART_DATA, lang, exclude_codes, sub_mode)
+
+    @staticmethod
+    def _gen_nature(lang: str, exclude_codes: Optional[Set[str]] = None, sub_mode: Optional[str] = None) -> Question:
+        return QuestionFactory._gen_from_dataset(GameMode.NATURE, NATURE_DATA, lang, exclude_codes, sub_mode)
+
+    @staticmethod
+    def _gen_logic_math(lang: str, exclude_codes: Optional[Set[str]] = None, sub_mode: Optional[str] = None) -> Question:
+        return QuestionFactory._gen_from_dataset(GameMode.LOGIC_MATH, LOGIC_MATH_DATA, lang, exclude_codes, sub_mode)
 
     @staticmethod
     def create_streetview_question(

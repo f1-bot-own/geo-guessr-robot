@@ -206,6 +206,7 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
     rounds_cycle = [5, 10, 15, 20, 3]
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
     all_cat_modes = [
+        "zakovat", "astronomy", "science", "history", "literature", "art", "nature", "logic_math",
         "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
         "emoji", "contour", "president", "historical", "celebrity", "logo"
     ]
@@ -921,6 +922,7 @@ async def cb_solo_setup(query: CallbackQuery, bot: Bot):
 
     continents = ["all", "asia", "europe", "africa", "americas", "oceania"]
     all_cat_modes = [
+        "zakovat", "astronomy", "science", "history", "literature", "art", "nature", "logic_math",
         "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
         "emoji", "contour", "president", "historical", "celebrity", "logo"
     ]

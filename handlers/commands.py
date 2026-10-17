@@ -138,7 +138,9 @@ async def cmd_game(message: Message, bot: Bot):
     chosen_continent = "all"
     modes = (
         "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
-        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
+        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo",
+        "zakovat", "astronomy", "science", "history", "literature", "art", "nature", "logic_math",
+        "mix"
     )
     continents = ("all", "asia", "europe", "africa", "americas", "oceania")
     for part in text_parts[1:]:
@@ -156,6 +158,8 @@ async def cmd_game(message: Message, bot: Bot):
     else:
         init_selected = []
 
+    default_round_time = 60 if chosen_mode == "zakovat" else config.DEFAULT_ROUND_TIME
+
     session = GameSession(
         chat_id=chat.id,
         created_by_user_id=user_id,
@@ -163,7 +167,7 @@ async def cmd_game(message: Message, bot: Bot):
         lang=lang,
         mode=chosen_mode or "mix",
         total_rounds=config.DEFAULT_ROUNDS,
-        round_time=config.DEFAULT_ROUND_TIME,
+        round_time=default_round_time,
         host_id=user_id,
         host_name=user_name,
         continent=chosen_continent,
@@ -310,6 +314,49 @@ async def cmd_logo(message: Message, bot: Bot):
     """Direct shortcut command to launch a Logo Guessr game."""
     message.text = "/game logo"
     await cmd_game(message, bot)
+
+@router.message(Command("zakovat", "zako", "bilimdon", "chgk"))
+async def cmd_zakovat(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Zakovat Intellectual game."""
+    message.text = "/game zakovat"
+    await cmd_game(message, bot)
+
+@router.message(Command("astronomy", "koinot", "kosmos"))
+async def cmd_astronomy(message: Message, bot: Bot):
+    """Direct shortcut command to launch an Astronomy & Space game."""
+    message.text = "/game astronomy"
+    await cmd_game(message, bot)
+
+@router.message(Command("science", "ilm", "fan"))
+async def cmd_science(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Science & Inventions game."""
+    message.text = "/game science"
+    await cmd_game(message, bot)
+
+@router.message(Command("literature", "adabiyot", "kitob"))
+async def cmd_literature(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Literature & Books game."""
+    message.text = "/game literature"
+    await cmd_game(message, bot)
+
+@router.message(Command("art", "sanat"))
+async def cmd_art(message: Message, bot: Bot):
+    """Direct shortcut command to launch an Art & Masterpieces game."""
+    message.text = "/game art"
+    await cmd_game(message, bot)
+
+@router.message(Command("nature", "tabiat", "biologiya"))
+async def cmd_nature(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Nature & Biology game."""
+    message.text = "/game nature"
+    await cmd_game(message, bot)
+
+@router.message(Command("logic", "mantiq", "matematika", "math"))
+async def cmd_logic_math(message: Message, bot: Bot):
+    """Direct shortcut command to launch a Logic & Fast Math game."""
+    message.text = "/game logic_math"
+    await cmd_game(message, bot)
+
 
 @router.message(Command("stop"))
 async def cmd_stop(message: Message, bot: Bot):

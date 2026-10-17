@@ -29,6 +29,7 @@ def get_setup_kb(
             selected_modes = []
 
     all_cat_modes = [
+        "zakovat", "astronomy", "science", "history", "literature", "art", "nature", "logic_math",
         "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
         "emoji", "contour", "president", "historical", "celebrity", "logo"
     ]
@@ -58,14 +59,23 @@ def get_setup_kb(
     blur_btn_text = f"🔍 Blur: {blur_status}"
 
     keyboard = [
-        # Explicit Multi-Mode Category selection checkboxes
+        # Flagship Zakovat Mode
+        [mode_btn("zakovat")],
+        # Science & Cosmos
+        [mode_btn("astronomy"), mode_btn("science")],
+        # Humanities & Literature
+        [mode_btn("history"), mode_btn("literature")],
+        # Art & Nature
+        [mode_btn("art"), mode_btn("nature")],
+        # Logic & Math + Mix
+        [mode_btn("logic_math"), mode_btn("mix")],
+        # Geography & Culture modes
         [mode_btn("flag"), mode_btn("capital")],
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
         [mode_btn("emoji"), mode_btn("contour")],
         [mode_btn("president"), mode_btn("historical")],
         [mode_btn("celebrity"), mode_btn("logo")],
-        [mode_btn("mix")],
         # Presets: All modes / Flags only
         [
             InlineKeyboardButton(text=t("btn_select_all_modes", lang), callback_data=f"setup:all:{session_id}"),
@@ -143,6 +153,25 @@ def get_category_selection_kb(
 
     keyboard = [
         [
+            InlineKeyboardButton(text=t("mode_zakovat", lang), callback_data=f"{prefix}:zakovat")
+        ],
+        [
+            InlineKeyboardButton(text=t("mode_astronomy", lang), callback_data=f"{prefix}:astronomy"),
+            InlineKeyboardButton(text=t("mode_science", lang), callback_data=f"{prefix}:science")
+        ],
+        [
+            InlineKeyboardButton(text=t("mode_history", lang), callback_data=f"{prefix}:history"),
+            InlineKeyboardButton(text=t("mode_literature", lang), callback_data=f"{prefix}:literature")
+        ],
+        [
+            InlineKeyboardButton(text=t("mode_art", lang), callback_data=f"{prefix}:art"),
+            InlineKeyboardButton(text=t("mode_nature", lang), callback_data=f"{prefix}:nature")
+        ],
+        [
+            InlineKeyboardButton(text=t("mode_logic_math", lang), callback_data=f"{prefix}:logic_math"),
+            InlineKeyboardButton(text=t("mode_mix", lang), callback_data=f"{prefix}:mix")
+        ],
+        [
             InlineKeyboardButton(text=t("mode_flag", lang), callback_data=f"{prefix}:flag"),
             InlineKeyboardButton(text=t("mode_capital", lang), callback_data=f"{prefix}:capital")
         ],
@@ -169,9 +198,6 @@ def get_category_selection_kb(
         [
             InlineKeyboardButton(text=t("mode_person", lang), callback_data=f"{prefix}:person"),
             InlineKeyboardButton(text=t("mode_blur", lang), callback_data=f"{prefix}:blur")
-        ],
-        [
-            InlineKeyboardButton(text=t("mode_mix", lang), callback_data=f"{prefix}:mix")
         ],
         [
             InlineKeyboardButton(
@@ -213,6 +239,7 @@ def get_solo_setup_kb(
             selected_modes = []
 
     all_cat_modes = [
+        "zakovat", "astronomy", "science", "history", "literature", "art", "nature", "logic_math",
         "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
         "emoji", "contour", "president", "historical", "celebrity", "logo"
     ]
@@ -242,14 +269,23 @@ def get_solo_setup_kb(
     blur_btn_text = f"🔍 Blur: {blur_status}"
 
     keyboard = [
-        # Explicit Multi-Mode Category selection checkboxes
+        # Flagship Zakovat Mode
+        [mode_btn("zakovat")],
+        # Science & Cosmos
+        [mode_btn("astronomy"), mode_btn("science")],
+        # Humanities & Literature
+        [mode_btn("history"), mode_btn("literature")],
+        # Art & Nature
+        [mode_btn("art"), mode_btn("nature")],
+        # Logic & Math + Mix
+        [mode_btn("logic_math"), mode_btn("mix")],
+        # Geography & Culture modes
         [mode_btn("flag"), mode_btn("capital")],
         [mode_btn("landmark"), mode_btn("higher_lower")],
         [mode_btn("coat_of_arms"), mode_btn("streetview")],
         [mode_btn("emoji"), mode_btn("contour")],
         [mode_btn("president"), mode_btn("historical")],
         [mode_btn("celebrity"), mode_btn("logo")],
-        [mode_btn("mix")],
         # Presets: All modes / Flags only
         [
             InlineKeyboardButton(text=t("btn_select_all_modes", lang), callback_data="solo_setup:all"),
