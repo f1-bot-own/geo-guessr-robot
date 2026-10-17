@@ -50,12 +50,20 @@ class TestConfigAndKeyboards(unittest.TestCase):
         self.assertEqual(TIME_OPTIONS, [30, 60])
 
     def test_setup_kb_contains_all_categories_and_30_60_timers(self):
-        """get_setup_kb must contain buttons for all 6 categories and explicit 30s/60s timers."""
-        kb = get_setup_kb(session_id="test1234", mode="flag", rounds=5, round_time=30, lang="en")
-        
+        """get_setup_kb must contain buttons for categories and explicit 30s/60s timers."""
+        # 1. Default Category Hubs view
+        kb_hubs = get_setup_kb(session_id="test1234", mode="flag", rounds=5, round_time=30, lang="en")
+        all_hub_buttons = [btn for row in kb_hubs.inline_keyboard for btn in row]
+        hub_callbacks = [btn.callback_data for btn in all_hub_buttons]
+        for h in ["zakovat", "geography", "cosmos_nature", "science_logic", "history_culture", "people_brands"]:
+            self.assertTrue(any(f"setup:cat:{h}:test1234" in cb for cb in hub_callbacks), f"Hub {h} missing!")
+        self.assertTrue(any("setup:time:30:test1234" in cb for cb in hub_callbacks))
+        self.assertTrue(any("setup:time:60:test1234" in cb for cb in hub_callbacks))
+
+        # 2. Detailed view
+        kb = get_setup_kb(session_id="test1234", mode="flag", rounds=5, round_time=30, lang="en", view_mode="detailed")
         all_buttons = [btn for row in kb.inline_keyboard for btn in row]
         callback_datas = [btn.callback_data for btn in all_buttons]
-        button_texts = [btn.text for btn in all_buttons]
 
         # All 6 categories present in callbacks
         expected_modes = ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "mix"]

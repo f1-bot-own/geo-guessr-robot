@@ -109,8 +109,14 @@ class TestZakovatAndNewSubjects(unittest.TestCase):
 
     def test_keyboards_contain_new_modes(self):
         """Verify setup keyboards render buttons for the new modes."""
-        kb_setup = get_setup_kb(session_id="test_sess", lang="uz")
+        kb_setup = get_setup_kb(session_id="test_sess", lang="uz", view_mode="detailed")
         button_texts = [btn.text for row in kb_setup.inline_keyboard for btn in row]
+
+        # Check category hubs view too
+        kb_hubs = get_setup_kb(session_id="test_sess", lang="uz", view_mode="categories")
+        hub_texts = [btn.text for row in kb_hubs.inline_keyboard for btn in row]
+        self.assertTrue(any("Zakovat" in text for text in hub_texts))
+        self.assertTrue(any("Geografiya" in text for text in hub_texts))
 
         # Check for presence of Zakovat and subjects
         self.assertTrue(any("Zakovat" in text for text in button_texts))

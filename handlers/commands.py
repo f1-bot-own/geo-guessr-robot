@@ -176,6 +176,7 @@ async def cmd_game(message: Message, bot: Bot):
         is_blur=is_blur_init
     )
     session.user_names[user_id] = user_name
+    session.view_mode = "categories"
     game_manager.set_session(chat.id, session)
 
     kb = get_setup_kb(
@@ -187,7 +188,8 @@ async def cmd_game(message: Message, bot: Bot):
         input_mode=session.input_mode,
         continent=session.continent,
         selected_modes=session.selected_modes,
-        is_blur=session.is_blur
+        is_blur=session.is_blur,
+        view_mode=session.view_mode
     )
 
     setup_title = format_setup_title(session, lang)

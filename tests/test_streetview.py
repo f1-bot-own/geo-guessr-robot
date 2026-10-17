@@ -245,7 +245,7 @@ class TestKeyboardsAndSetupIntegration(unittest.TestCase):
 
     def test_setup_kb_has_streetview_button(self):
         """get_setup_kb contains interactive button for streetview category."""
-        kb = get_setup_kb(session_id="test_sess", mode="streetview", rounds=5, round_time=30, lang="en")
+        kb = get_setup_kb(session_id="test_sess", mode="streetview", rounds=5, round_time=30, lang="en", view_mode="detailed")
         all_buttons = [btn for row in kb.inline_keyboard for btn in row]
         callbacks = [btn.callback_data for btn in all_buttons]
 

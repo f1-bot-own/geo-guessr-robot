@@ -27,6 +27,7 @@ from keyboards.game_kb import (
     get_hub_subcategories_kb,
     get_game_type_kb,
     get_leaderboard_kb,
+    CATEGORY_HUBS_INFO,
 )
 import config
 
@@ -135,16 +136,50 @@ def format_setup_title(session, lang: str) -> str:
     """Format clear, dynamic game setup header showing active modes, blur, continent, and host."""
     host_name = getattr(session, "host_name", "") or session.user_names.get(session.created_by_user_id) or "Host"
     selected = getattr(session, "selected_modes", [])
+
+    all_cat_modes = [
+        "zakovat", "astronomy", "science", "history", "literature", "art", "nature", "logic_math",
+        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
+        "emoji", "contour", "president", "historical", "celebrity", "logo"
+    ]
+    hub_modes_map = {
+        "zakovat": ["zakovat"],
+        "geography": [
+            "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
+            "streetview", "emoji", "contour"
+        ],
+        "cosmos_nature": ["astronomy", "nature"],
+        "science_logic": ["science", "logic_math"],
+        "history_culture": ["history", "literature", "art"],
+        "people_brands": ["president", "historical", "celebrity", "logo"],
+    }
+
     if not selected:
         modes_str = t("no_modes_selected_hint", lang)
         count_display = "0"
+    elif "mix" in selected or set(all_cat_modes).issubset(set(selected)):
+        modes_str = {
+            "uz": "🎲 SUPER MIX (Barcha 6 ta toifa, 4,000+ savol)",
+            "ru": "🎲 SUPER MIX (Все 6 категорий, 4,000+ вопросов)",
+            "en": "🎲 SUPER MIX (All 6 categories, 4,000+ questions)"
+        }.get(lang, "🎲 SUPER MIX")
+        count_display = "4,000+"
     else:
-        selected_names = [t(f"mode_{m}", lang) for m in selected if t(f"mode_{m}", lang)]
-        if len(selected_names) <= 3:
-            modes_str = ", ".join(selected_names)
+        active_hubs = []
+        for h_key, h_info in CATEGORY_HUBS_INFO.items():
+            t_modes = hub_modes_map.get(h_key, [])
+            if any(m in selected for m in t_modes):
+                active_hubs.append(h_info["icon"] + " " + h_info["title"].get(lang, h_key))
+        if active_hubs:
+            modes_str = ", ".join(active_hubs)
+            count_display = str(len(active_hubs))
         else:
-            modes_str = ", ".join(selected_names[:3]) + f" (+{len(selected_names) - 3})"
-        count_display = str(len(selected))
+            selected_names = [t(f"mode_{m}", lang) for m in selected if t(f"mode_{m}", lang)]
+            if len(selected_names) <= 3:
+                modes_str = ", ".join(selected_names)
+            else:
+                modes_str = ", ".join(selected_names[:3]) + f" (+{len(selected_names) - 3})"
+            count_display = str(len(selected))
 
     is_blur = getattr(session, "is_blur", False)
     blur_status = t("status_enabled", lang) if is_blur else t("status_disabled", lang)
@@ -155,25 +190,34 @@ def format_setup_title(session, lang: str) -> str:
 
     cat_summary = {
         "uz": (
-            "📚 <b>Mavjud toifalar (Jami 6 ta asosiy toifa, 4,000+ savol):</b>\n"
-            "1. 🎓 Zakovat (500) | 2. 🌍 Geografiya (1,000+)\n"
-            "3. 🌌 Koinot & Tabiat (800) | 4. 🔬 Fan & Mantiq (800)\n"
-            "5. 📜 Tarix & Madaniyat (1,200) | 6. 👑 Shaxslar (400+)\n"
-            "7. 🔍 Blur Reveal (+300 bonus) | 8. 🎲 SUPER MIX\n\n"
+            "📁 <b>Mavjud toifalar (Jami 6 ta asosiy toifa, 24+ yo'nalish, 4,000+ savol):</b>\n"
+            "1. 🎓 <b>Zakovat Klubi</b> (500) — Qora quti, Deduksiya, Jahon intellekti, Blits\n"
+            "2. 🌍 <b>Geografiya & GeoGuessr</b> (1,000+) — Bayroqlar, Poytaxtlar, Obidalar, Gerblar, Xaritalar\n"
+            "3. 🌌 <b>Koinot & Tabiat</b> (800) — Astronomiya, Teleskop, Hayvonot olami, Anatomiya\n"
+            "4. 🔬 <b>Fan & Mantiq</b> (800) — Kimyo, Fizika, Ixtirolar, Tezkor Matematika\n"
+            "5. 📜 <b>Tarix, Adabiyot & San'at</b> (1,200) — Tarix, Durdona asarlar, Rassomchilik\n"
+            "6. 👑 <b>Shaxslar & Brendlar</b> (400+) — Prezidentlar, Yulduzlar, Brend logolari\n"
+            "7. 🔍 <b>Blur Reveal</b> (+300 bonus) | 8. 🎲 <b>SUPER MIX</b> (Barchasi)\n\n"
         ),
         "ru": (
-            "📚 <b>Доступные категории (Всего 6 категорий, 4,000+ вопросов):</b>\n"
-            "1. 🎓 Заковат (500) | 2. 🌍 География (1,000+)\n"
-            "3. 🌌 Космос и Природа (800) | 4. 🔬 Наука и Логика (800)\n"
-            "5. 📜 История и Искусство (1,200) | 6. 👑 Личности (400+)\n"
-            "7. 🔍 Blur Reveal (+300) | 8. 🎲 SUPER MIX\n\n"
+            "📁 <b>Доступные категории (Всего 6 категорий, 24+ направлений, 4,000+ вопросов):</b>\n"
+            "1. 🎓 <b>Клуб Заковат</b> (500) — Чёрный ящик, Дедукция, Мировой интеллект, Блиц\n"
+            "2. 🌍 <b>География и GeoGuessr</b> (1,000+) — Флаги, Столицы, Достопримечательности, Гербы\n"
+            "3. 🌌 <b>Космос и Природа</b> (800) — Астрономия, Снимки телескопов, Биология\n"
+            "4. 🔬 <b>Наука и Логика</b> (800) — Химия, Физика, Изобретения, Быстрый счёт\n"
+            "5. 📜 <b>История и Искусство</b> (1,200) — Всемирная история, Шедевры литературы, Архитектура\n"
+            "6. 👑 <b>Личности и Бренды</b> (400+) — Президенты, Знаменитости, Логотипы\n"
+            "7. 🔍 <b>Blur Reveal</b> (+300) | 8. 🎲 <b>SUPER MIX</b> (Все темы)\n\n"
         ),
         "en": (
-            "📚 <b>Available Categories (6 Main Categories, 4,000+ Questions):</b>\n"
-            "1. 🎓 Zakovat (500) | 2. 🌍 Geography (1,000+)\n"
-            "3. 🌌 Cosmos & Nature (800) | 4. 🔬 Science & Logic (800)\n"
-            "5. 📜 History & Art (1,200) | 6. 👑 People & Brands (400+)\n"
-            "7. 🔍 Blur Reveal (+300) | 8. 🎲 SUPER MIX\n\n"
+            "📁 <b>Available Categories (6 Main Categories, 4,000+ Questions):</b>\n"
+            "1. 🎓 <b>Zakovat Club</b> (500) — Black Box, Logic & Deduction, World Intellect, Blitz\n"
+            "2. 🌍 <b>Geography & GeoGuessr</b> (1,000+) — Flags, Capitals, Landmarks, Coats of Arms\n"
+            "3. 🌌 <b>Cosmos & Nature</b> (800) — Astronomy, Deep Space, Wildlife, Human Anatomy\n"
+            "4. 🔬 <b>Science & Logic</b> (800) — Chemistry, Physics, Inventions, Fast Math\n"
+            "5. 📜 <b>History, Literature & Art</b> (1,200) — World History, Literary Classics, Art\n"
+            "6. 👑 <b>People & Brands</b> (400+) — Presidents, Historical Figures, Celebrities, Logos\n"
+            "7. 🔍 <b>Blur Reveal</b> (+300) | 8. 🎲 <b>SUPER MIX</b> (All Subjects)\n\n"
         )
     }.get(lang, "")
 
@@ -264,6 +308,41 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
                 session.mode = "mix"
             else:
                 session.mode = ""
+    elif action == "cat":
+        cat_key = param
+        hub_modes_map = {
+            "zakovat": ["zakovat"],
+            "geography": [
+                "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
+                "streetview", "emoji", "contour"
+            ],
+            "cosmos_nature": ["astronomy", "nature"],
+            "science_logic": ["science", "logic_math"],
+            "history_culture": ["history", "literature", "art"],
+            "people_brands": ["president", "historical", "celebrity", "logo"],
+        }
+        hub_modes = hub_modes_map.get(cat_key, [])
+        if not hasattr(session, "selected_modes") or session.selected_modes is None:
+            session.selected_modes = []
+
+        if "mix" in session.selected_modes or set(all_cat_modes).issubset(set(session.selected_modes)):
+            session.selected_modes = [m for m in all_cat_modes if m not in hub_modes]
+        else:
+            if any(m in session.selected_modes for m in hub_modes):
+                session.selected_modes = [m for m in session.selected_modes if m not in hub_modes]
+            else:
+                for m in hub_modes:
+                    if m not in session.selected_modes:
+                        session.selected_modes.append(m)
+
+        if len(session.selected_modes) == 1:
+            session.mode = session.selected_modes[0]
+        elif len(session.selected_modes) > 1:
+            session.mode = "mix"
+        else:
+            session.mode = ""
+    elif action == "view":
+        session.view_mode = param
     elif action == "all":
         session.selected_modes = list(all_cat_modes)
         session.mode = "mix"
@@ -334,7 +413,8 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         input_mode=getattr(session, "input_mode", "both"),
         continent=getattr(session, "continent", "all"),
         selected_modes=getattr(session, "selected_modes", [session.mode]),
-        is_blur=getattr(session, "is_blur", False)
+        is_blur=getattr(session, "is_blur", False),
+        view_mode=getattr(session, "view_mode", "categories")
     )
     title_text = format_setup_title(session, session.lang)
     try:

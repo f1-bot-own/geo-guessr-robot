@@ -57,6 +57,7 @@ class GameSession:
             self.selected_modes = [mode]
 
         self.is_blur: bool = is_blur or (mode == GameMode.BLUR)
+        self.view_mode: str = "categories"
         
         # Duel settings
         self.is_duel: bool = is_duel

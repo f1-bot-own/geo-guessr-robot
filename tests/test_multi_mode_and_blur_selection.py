@@ -44,7 +44,8 @@ class TestMultiModeAndBlurSelection(unittest.IsolatedAsyncioTestCase):
             mode="flag",
             selected_modes=["flag", "president"],
             is_blur=True,
-            lang="uz"
+            lang="uz",
+            view_mode="detailed"
         )
         buttons = [btn for row in kb.inline_keyboard for btn in row]
         callback_datas = [b.callback_data for b in buttons]

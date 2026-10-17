@@ -16,9 +16,10 @@ def get_setup_kb(
     input_mode: str = "both",
     continent: str = "all",
     selected_modes: Optional[List[str]] = None,
-    is_blur: bool = False
+    is_blur: bool = False,
+    view_mode: str = "categories"
 ) -> InlineKeyboardMarkup:
-    """Generate game setup parameters keyboard with multi-mode checkboxes, blur toggle, timers, and filters."""
+    """Generate game setup parameters keyboard with clean category hubs or detailed mode checkboxes."""
     if selected_modes is None:
         if mode and mode not in ("mix", "blur"):
             selected_modes = [mode]
@@ -34,19 +35,17 @@ def get_setup_kb(
         "emoji", "contour", "president", "historical", "celebrity", "logo"
     ]
 
-    def mode_btn(m_code: str):
-        if m_code == "mix":
-            is_sel = (
-                "mix" in (selected_modes or []) or
-                (bool(selected_modes) and set(all_cat_modes).issubset(set(selected_modes)))
-            )
-        else:
-            is_sel = m_code in (selected_modes or []) and "mix" not in (selected_modes or [])
-        prefix = "✅ " if is_sel else ""
-        return InlineKeyboardButton(
-            text=f"{prefix}{t(f'mode_{m_code}', lang)}",
-            callback_data=f"setup:mode:{m_code}:{session_id}"
-        )
+    hub_modes_map = {
+        "zakovat": ["zakovat"],
+        "geography": [
+            "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
+            "streetview", "emoji", "contour"
+        ],
+        "cosmos_nature": ["astronomy", "nature"],
+        "science_logic": ["science", "logic_math"],
+        "history_culture": ["history", "literature", "art"],
+        "people_brands": ["president", "historical", "celebrity", "logo"],
+    }
 
     t30_prefix = "✅ " if round_time == 30 else ""
     t60_prefix = "✅ " if round_time == 60 else ""
@@ -58,33 +57,7 @@ def get_setup_kb(
     blur_status = t("status_enabled", lang) if is_blur else t("status_disabled", lang)
     blur_btn_text = f"🔍 Blur: {blur_status}"
 
-    keyboard = [
-        # Flagship Zakovat Mode
-        [mode_btn("zakovat")],
-        # Science & Cosmos
-        [mode_btn("astronomy"), mode_btn("science")],
-        # Humanities & Literature
-        [mode_btn("history"), mode_btn("literature")],
-        # Art & Nature
-        [mode_btn("art"), mode_btn("nature")],
-        # Logic & Math + Mix
-        [mode_btn("logic_math"), mode_btn("mix")],
-        # Geography & Culture modes
-        [mode_btn("flag"), mode_btn("capital")],
-        [mode_btn("landmark"), mode_btn("higher_lower")],
-        [mode_btn("coat_of_arms"), mode_btn("streetview")],
-        [mode_btn("emoji"), mode_btn("contour")],
-        [mode_btn("president"), mode_btn("historical")],
-        [mode_btn("celebrity"), mode_btn("logo")],
-        # Presets: All modes / Flags only
-        [
-            InlineKeyboardButton(text=t("btn_select_all_modes", lang), callback_data=f"setup:all:{session_id}"),
-            InlineKeyboardButton(text=t("btn_only_flags", lang), callback_data=f"setup:flags_only:{session_id}")
-        ],
-        # Blur Effect ON / OFF toggle
-        [
-            InlineKeyboardButton(text=blur_btn_text, callback_data=f"setup:blur:{session_id}")
-        ],
+    common_bottom_rows = [
         # Continent Filter button
         [
             InlineKeyboardButton(
@@ -139,7 +112,102 @@ def get_setup_kb(
             )
         ]
     ]
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    if view_mode == "detailed":
+        def mode_btn(m_code: str):
+            if m_code == "mix":
+                is_sel = (
+                    "mix" in (selected_modes or []) or
+                    (bool(selected_modes) and set(all_cat_modes).issubset(set(selected_modes)))
+                )
+            else:
+                is_sel = m_code in (selected_modes or []) and "mix" not in (selected_modes or [])
+            prefix = "✅ " if is_sel else ""
+            return InlineKeyboardButton(
+                text=f"{prefix}{t(f'mode_{m_code}', lang)}",
+                callback_data=f"setup:mode:{m_code}:{session_id}"
+            )
+
+        back_to_hubs_text = {
+            "uz": "📁 Toifalar bo'yicha ko'rish",
+            "ru": "📁 Просмотр по категориям",
+            "en": "📁 View by Categories"
+        }.get(lang, "📁 View by Categories")
+
+        detailed_keyboard = [
+            [InlineKeyboardButton(text=back_to_hubs_text, callback_data=f"setup:view:categories:{session_id}")],
+            [mode_btn("zakovat")],
+            [mode_btn("astronomy"), mode_btn("science")],
+            [mode_btn("history"), mode_btn("literature")],
+            [mode_btn("art"), mode_btn("nature")],
+            [mode_btn("logic_math"), mode_btn("mix")],
+            [mode_btn("flag"), mode_btn("capital")],
+            [mode_btn("landmark"), mode_btn("higher_lower")],
+            [mode_btn("coat_of_arms"), mode_btn("streetview")],
+            [mode_btn("emoji"), mode_btn("contour")],
+            [mode_btn("president"), mode_btn("historical")],
+            [mode_btn("celebrity"), mode_btn("logo")],
+            [
+                InlineKeyboardButton(text=t("btn_select_all_modes", lang), callback_data=f"setup:all:{session_id}"),
+                InlineKeyboardButton(text=t("btn_only_flags", lang), callback_data=f"setup:flags_only:{session_id}")
+            ],
+            [InlineKeyboardButton(text=blur_btn_text, callback_data=f"setup:blur:{session_id}")]
+        ] + common_bottom_rows
+        return InlineKeyboardMarkup(inline_keyboard=detailed_keyboard)
+
+    # DEFAULT: CATEGORY HUBS VIEW
+    zako_title = CATEGORY_HUBS_INFO["zakovat"]["title"].get(lang, "Zakovat Club (500)")
+    geo_title = CATEGORY_HUBS_INFO["geography"]["title"].get(lang, "Geography (1,000+)")
+    cos_title = CATEGORY_HUBS_INFO["cosmos_nature"]["title"].get(lang, "Cosmos & Nature (800)")
+    sci_title = CATEGORY_HUBS_INFO["science_logic"]["title"].get(lang, "Science & Logic (800)")
+    his_title = CATEGORY_HUBS_INFO["history_culture"]["title"].get(lang, "History & Art (1,200)")
+    peo_title = CATEGORY_HUBS_INFO["people_brands"]["title"].get(lang, "People & Brands")
+
+    def hub_btn(hub_code: str, title: str, icon: str):
+        target_modes = hub_modes_map.get(hub_code, [])
+        is_sel = (
+            "mix" in (selected_modes or []) or
+            (bool(selected_modes) and set(all_cat_modes).issubset(set(selected_modes))) or
+            any(m in (selected_modes or []) for m in target_modes)
+        )
+        pfx = "✅ " if is_sel else ""
+        return InlineKeyboardButton(
+            text=f"{pfx}{icon} {title}",
+            callback_data=f"setup:cat:{hub_code}:{session_id}"
+        )
+
+    is_super_mix = (
+        "mix" in (selected_modes or []) or
+        (bool(selected_modes) and set(all_cat_modes).issubset(set(selected_modes)))
+    )
+    mix_pfx = "✅ " if is_super_mix else ""
+    super_mix_title = {
+        "uz": f"{mix_pfx}🎲 SUPER MIX (Barchasi - 4,000+)",
+        "ru": f"{mix_pfx}🎲 SUPER MIX (Все темы - 4,000+)",
+        "en": f"{mix_pfx}🎲 SUPER MIX (All Subjects - 4,000+)"
+    }.get(lang, f"{mix_pfx}🎲 SUPER MIX (4,000+)")
+
+    detail_btn_text = {
+        "uz": "📋 Aniq yo'nalishlar (Batafsil tanlash)",
+        "ru": "📋 Выбрать точные направления",
+        "en": "📋 Select Specific Sub-modes"
+    }.get(lang, "📋 Select Specific Sub-modes")
+
+    category_keyboard = [
+        # Flagship Zakovat Hub
+        [hub_btn("zakovat", zako_title, "🎓")],
+        # Geography & Cosmos Hubs
+        [hub_btn("geography", geo_title, "🌍"), hub_btn("cosmos_nature", cos_title, "🌌")],
+        # Science & History Hubs
+        [hub_btn("science_logic", sci_title, "🔬"), hub_btn("history_culture", his_title, "📜")],
+        # People Hub & Blur Toggle
+        [hub_btn("people_brands", peo_title, "👑"), InlineKeyboardButton(text=blur_btn_text, callback_data=f"setup:blur:{session_id}")],
+        # Super Mix
+        [InlineKeyboardButton(text=super_mix_title, callback_data=f"setup:mode:mix:{session_id}")],
+        # Detailed mode view toggle
+        [InlineKeyboardButton(text=detail_btn_text, callback_data=f"setup:view:detailed:{session_id}")]
+    ] + common_bottom_rows
+    return InlineKeyboardMarkup(inline_keyboard=category_keyboard)
 
 CATEGORY_HUBS_INFO: Dict[str, Any] = {
     "zakovat": {

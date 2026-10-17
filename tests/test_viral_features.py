@@ -109,7 +109,8 @@ class TestViralFeatures(unittest.TestCase):
             rounds=5,
             round_time=30,
             lang="uz",
-            continent="all"
+            continent="all",
+            view_mode="detailed"
         )
         buttons_group = [btn.text for row in kb_group.inline_keyboard for btn in row]
         self.assertTrue(any("qit" in b.lower() for b in buttons_group), f"Continent button missing in {buttons_group}")
