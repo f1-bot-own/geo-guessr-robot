@@ -39,6 +39,20 @@ class GameMode:
         MIX
     ]
 
+    SUB_MODES = [
+        "black_box", "deduction", "world_intellect", "blitz",
+        "telescope_zoom", "cosmic_scale", "constellations", "space_missions",
+        "elements", "prototypes", "scientists", "macro_science",
+        "timeline", "empire_maps", "who_am_i", "artifacts",
+        "quotes", "book_emojis", "authors", "characters",
+        "art_fragment", "architecture", "artist_styles", "sculptures",
+        "macro_texture", "animal_scale", "nature_emoji", "human_anatomy",
+        "flash_math", "odd_one_out", "logic_sequence", "classic_riddles",
+        "geo_mix", "cosmos_nature_mix", "science_logic_mix", "history_culture_mix"
+    ]
+
+    VALID_MODES = [m for m in ALL if m not in ("mix", "blur")] + SUB_MODES
+
 @dataclass
 class Question:
     mode: str

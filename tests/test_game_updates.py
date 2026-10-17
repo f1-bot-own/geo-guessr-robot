@@ -103,9 +103,16 @@ class TestConfigAndKeyboards(unittest.TestCase):
         """Verify standalone category keyboard and game type keyboard."""
         cat_kb = get_category_selection_kb(prefix="solo_cat", lang="en")
         cat_callbacks = [btn.callback_data for row in cat_kb.inline_keyboard for btn in row]
-        for m in ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "mix"]:
-            self.assertIn(f"solo_cat:{m}", cat_callbacks)
+        for hub in ["zakovat", "geography", "cosmos_nature", "science_logic", "history_culture", "people_brands"]:
+            self.assertIn(f"solo_cat:hub:{hub}", cat_callbacks)
+        self.assertIn("solo_cat:mix", cat_callbacks)
         self.assertIn("solo_cat:back", cat_callbacks)
+
+        from keyboards.game_kb import get_hub_subcategories_kb
+        geo_kb = get_hub_subcategories_kb("geography", prefix="solo_cat", lang="en")
+        geo_callbacks = [btn.callback_data for row in geo_kb.inline_keyboard for btn in row]
+        for m in ["flag", "capital", "landmark", "higher_lower", "coat_of_arms", "geo_mix"]:
+            self.assertIn(f"solo_cat:{m}", geo_callbacks)
 
         type_kb = get_game_type_kb(lang="en", bot_username="GeoBot")
         type_callbacks = [btn.callback_data for row in type_kb.inline_keyboard for btn in row if btn.callback_data]

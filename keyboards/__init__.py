@@ -7,6 +7,8 @@ from .game_kb import (
     get_duel_kb,
     get_category_selection_kb,
     get_game_type_kb,
+    get_category_overview_text,
+    get_hub_subcategories_kb,
 )
 
 __all__ = [
@@ -18,4 +20,6 @@ __all__ = [
     "get_duel_kb",
     "get_category_selection_kb",
     "get_game_type_kb",
+    "get_category_overview_text",
+    "get_hub_subcategories_kb",
 ]

@@ -21,6 +21,7 @@ from keyboards.game_kb import (
     get_setup_kb,
     get_duel_kb,
     get_category_selection_kb,
+    get_category_overview_text,
     get_game_type_kb,
     get_leaderboard_kb,
 )
@@ -502,9 +503,10 @@ async def cmd_solo(message: Message, bot: Bot):
         solo_session.next_round()
         await send_solo_round(bot, user.id, solo_session, db)
     else:
-        # Cleanly present all categories as buttons for the player to choose
+        # Cleanly present all categories as hubs for the player to choose
+        text = get_category_overview_text(lang)
         await message.answer(
-            text=t("choose_category", lang),
+            text=text,
             reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=effective_input_mode),
             parse_mode="HTML"
         )

@@ -71,11 +71,11 @@ class SoloGameSession:
         self.round_number += 1
         self.eliminated_options.clear()
         
-        valid_modes = [
+        valid_modes = getattr(GameMode, "VALID_MODES", [
             GameMode.FLAG, GameMode.CAPITAL, GameMode.LANDMARK, GameMode.HIGHER_LOWER,
             GameMode.COAT_OF_ARMS, GameMode.STREETVIEW, GameMode.EMOJI, GameMode.CONTOUR,
             GameMode.PRESIDENT, GameMode.HISTORICAL, GameMode.CELEBRITY, GameMode.PERSON, GameMode.LOGO
-        ]
+        ])
         active_modes = [
             m for m in getattr(self, "selected_modes", [])
             if m in valid_modes and m not in ("mix", "blur")

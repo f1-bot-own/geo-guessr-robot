@@ -127,10 +127,15 @@ class TestViralFeatures(unittest.TestCase):
         self.assertTrue(any("Continent" in b for b in buttons_solo), f"Continent button missing in solo: {buttons_solo}")
 
         # Solo category keyboard
+        from keyboards.game_kb import get_hub_subcategories_kb
         kb_cat = get_category_selection_kb(lang="ru")
         buttons_cat = [btn.text for row in kb_cat.inline_keyboard for btn in row]
-        self.assertTrue(any("Эмодзи" in b for b in buttons_cat), f"Emoji category missing in {buttons_cat}")
-        self.assertTrue(any("Контур" in b for b in buttons_cat), f"Contour category missing in {buttons_cat}")
+        self.assertTrue(any("География" in b for b in buttons_cat), f"Geography category missing in {buttons_cat}")
+
+        kb_sub = get_hub_subcategories_kb(hub="geography", lang="ru")
+        buttons_sub = [btn.text for row in kb_sub.inline_keyboard for btn in row]
+        self.assertTrue(any("Эмодзи" in b for b in buttons_sub), f"Emoji category missing in {buttons_sub}")
+        self.assertTrue(any("Контур" in b for b in buttons_sub), f"Contour category missing in {buttons_sub}")
 
     def test_blur_question_generation(self):
         """Test generating blur questions in uz, ru, en."""

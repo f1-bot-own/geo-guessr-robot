@@ -255,8 +255,12 @@ class TestKeyboardsAndSetupIntegration(unittest.TestCase):
         self.assertIn("Street View", sv_btn.text)
 
     def test_category_selection_kb_has_streetview(self):
-        """get_category_selection_kb and get_solo_setup_kb contain streetview."""
-        kb = get_category_selection_kb(prefix="solo_cat", lang="en")
+        from keyboards.game_kb import get_hub_subcategories_kb
+        cat_kb = get_category_selection_kb(prefix="solo_cat", lang="en")
+        cat_callbacks = [btn.callback_data for row in cat_kb.inline_keyboard for btn in row]
+        self.assertIn("solo_cat:hub:geography", cat_callbacks)
+
+        kb = get_hub_subcategories_kb(hub="geography", prefix="solo_cat", lang="en")
         all_buttons = [btn for row in kb.inline_keyboard for btn in row]
         callbacks = [btn.callback_data for btn in all_buttons]
         self.assertIn("solo_cat:streetview", callbacks)

@@ -23,6 +23,8 @@ from keyboards.game_kb import (
     get_solo_question_kb,
     get_daily_question_kb,
     get_category_selection_kb,
+    get_category_overview_text,
+    get_hub_subcategories_kb,
     get_game_type_kb,
     get_leaderboard_kb,
 )
@@ -151,9 +153,34 @@ def format_setup_title(session, lang: str) -> str:
     input_m = getattr(session, "input_mode", "both")
     input_str = t(f"btn_input_{input_m}", lang)
 
+    cat_summary = {
+        "uz": (
+            "📚 <b>Mavjud toifalar (Jami 6 ta asosiy toifa, 4,000+ savol):</b>\n"
+            "1. 🎓 Zakovat (500) | 2. 🌍 Geografiya (1,000+)\n"
+            "3. 🌌 Koinot & Tabiat (800) | 4. 🔬 Fan & Mantiq (800)\n"
+            "5. 📜 Tarix & Madaniyat (1,200) | 6. 👑 Shaxslar (400+)\n"
+            "7. 🔍 Blur Reveal (+300 bonus) | 8. 🎲 SUPER MIX\n\n"
+        ),
+        "ru": (
+            "📚 <b>Доступные категории (Всего 6 категорий, 4,000+ вопросов):</b>\n"
+            "1. 🎓 Заковат (500) | 2. 🌍 География (1,000+)\n"
+            "3. 🌌 Космос и Природа (800) | 4. 🔬 Наука и Логика (800)\n"
+            "5. 📜 История и Искусство (1,200) | 6. 👑 Личности (400+)\n"
+            "7. 🔍 Blur Reveal (+300) | 8. 🎲 SUPER MIX\n\n"
+        ),
+        "en": (
+            "📚 <b>Available Categories (6 Main Categories, 4,000+ Questions):</b>\n"
+            "1. 🎓 Zakovat (500) | 2. 🌍 Geography (1,000+)\n"
+            "3. 🌌 Cosmos & Nature (800) | 4. 🔬 Science & Logic (800)\n"
+            "5. 📜 History & Art (1,200) | 6. 👑 People & Brands (400+)\n"
+            "7. 🔍 Blur Reveal (+300) | 8. 🎲 SUPER MIX\n\n"
+        )
+    }.get(lang, "")
+
     text = (
         f"⚙️ <b>{t('game_setup_title', lang)}</b>\n"
         f"👑 <b>{t('host_label', lang)}:</b> {host_name}\n\n"
+        f"{cat_summary}"
         f"🎯 <b>{t('selected_modes_label', lang)} ({count_display}):</b>\n"
         f"👉 <i>{modes_str}</i>\n\n"
         f"🔍 <b>Blur:</b> {blur_status}\n"
@@ -666,7 +693,7 @@ async def cb_main_menu(query: CallbackQuery, bot: Bot):
         cur_input = game_manager.get_solo_setup_state(user.id).get("input_mode", "both")
         try:
             await query.message.edit_text(
-                text=t("choose_category", lang),
+                text=get_category_overview_text(lang),
                 reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
                 parse_mode="HTML"
             )
@@ -674,7 +701,7 @@ async def cb_main_menu(query: CallbackQuery, bot: Bot):
             try:
                 await bot.send_message(
                     chat_id=user.id,
-                    text=t("choose_category", lang),
+                    text=get_category_overview_text(lang),
                     reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
                     parse_mode="HTML"
                 )
@@ -776,7 +803,7 @@ async def cb_game_type(query: CallbackQuery, bot: Bot):
         cur_input = game_manager.get_solo_setup_state(user.id).get("input_mode", "both")
         try:
             await query.message.edit_text(
-                text=t("choose_category", lang),
+                text=get_category_overview_text(lang),
                 reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
                 parse_mode="HTML"
             )
@@ -784,7 +811,7 @@ async def cb_game_type(query: CallbackQuery, bot: Bot):
             try:
                 await bot.send_message(
                     chat_id=user.id,
-                    text=t("choose_category", lang),
+                    text=get_category_overview_text(lang),
                     reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
                     parse_mode="HTML"
                 )
@@ -862,11 +889,83 @@ async def cb_solo_category(query: CallbackQuery, bot: Bot):
         await query.answer()
         return
 
-    modes = [
-        "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
-        "emoji", "contour", "blur", "president", "historical", "celebrity", "person", "logo", "mix"
-    ]
-    chosen_mode = cat if cat in modes else "mix"
+    if cat == "hub":
+        hub_name = parts[2] if len(parts) > 2 else "main"
+        await query.answer()
+        cur_input = game_manager.get_solo_setup_state(user.id).get("input_mode", "both")
+        if hub_name == "main":
+            try:
+                await query.message.edit_text(
+                    text=get_category_overview_text(lang),
+                    reply_markup=get_category_selection_kb(prefix="solo_cat", lang=lang, input_mode=cur_input),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+        else:
+            try:
+                await query.message.edit_text(
+                    text=get_category_overview_text(lang, hub=hub_name),
+                    reply_markup=get_hub_subcategories_kb(hub=hub_name, prefix="solo_cat", lang=lang),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+        return
+
+    hub_modes_map = {
+        "zakovat": ["black_box", "deduction", "world_intellect", "blitz"],
+        "geo_mix": [
+            "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
+            "streetview", "emoji", "contour"
+        ],
+        "cosmos_nature_mix": [
+            "telescope_zoom", "cosmic_scale", "constellations", "space_missions",
+            "macro_texture", "animal_scale", "nature_emoji", "human_anatomy"
+        ],
+        "science_logic_mix": [
+            "elements", "prototypes", "scientists", "macro_science",
+            "flash_math", "odd_one_out", "logic_sequence", "classic_riddles"
+        ],
+        "history_culture_mix": [
+            "timeline", "empire_maps", "who_am_i", "artifacts",
+            "quotes", "book_emojis", "authors", "characters",
+            "art_fragment", "architecture", "artist_styles", "sculptures"
+        ],
+        "person": ["president", "historical", "celebrity", "logo"],
+        "astronomy": ["telescope_zoom", "cosmic_scale", "constellations", "space_missions"],
+        "nature": ["macro_texture", "animal_scale", "nature_emoji", "human_anatomy"],
+        "science": ["elements", "prototypes", "scientists", "macro_science"],
+        "logic_math": ["flash_math", "odd_one_out", "logic_sequence", "classic_riddles"],
+        "history": ["timeline", "empire_maps", "who_am_i", "artifacts"],
+        "literature": ["quotes", "book_emojis", "authors", "characters"],
+        "art": ["art_fragment", "architecture", "artist_styles", "sculptures"],
+        "mix": [
+            "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
+            "streetview", "emoji", "contour", "president", "historical",
+            "celebrity", "logo", "black_box", "deduction", "world_intellect", "blitz",
+            "telescope_zoom", "cosmic_scale", "constellations", "space_missions",
+            "elements", "prototypes", "scientists", "macro_science",
+            "timeline", "empire_maps", "who_am_i", "artifacts",
+            "quotes", "book_emojis", "authors", "characters",
+            "art_fragment", "architecture", "artist_styles", "sculptures",
+            "macro_texture", "animal_scale", "nature_emoji", "human_anatomy",
+            "flash_math", "odd_one_out", "logic_sequence", "classic_riddles"
+        ]
+    }
+
+    if cat in hub_modes_map:
+        selected_modes = hub_modes_map[cat]
+        chosen_mode = cat
+    elif cat in getattr(GameMode, "VALID_MODES", []):
+        selected_modes = [cat]
+        chosen_mode = cat
+    elif cat == "blur":
+        selected_modes = ["flag", "president", "landmark", "coat_of_arms", "logo"]
+        chosen_mode = "blur"
+    else:
+        selected_modes = hub_modes_map["mix"]
+        chosen_mode = "mix"
 
     existing = game_manager.get_solo_session(user.id)
     if existing:
@@ -876,18 +975,27 @@ async def cb_solo_category(query: CallbackQuery, bot: Bot):
     chosen_input_mode = saved_state.get("input_mode", "both")
     chosen_continent = saved_state.get("continent", "all")
 
+    is_blur_mode = (cat == "blur")
+    round_time = 60 if (chosen_mode in ("zakovat", "black_box", "deduction", "world_intellect")) else config.DEFAULT_ROUND_TIME
+
     solo_session = SoloGameSession(
         user_id=user.id,
         user_name=user.first_name or "Player",
         lang=lang,
         mode=chosen_mode,
+        round_time=round_time,
         input_mode=chosen_input_mode,
-        continent=chosen_continent
+        continent=chosen_continent,
+        selected_modes=selected_modes,
+        is_blur=is_blur_mode
     )
     game_manager.set_solo_session(user.id, solo_session)
     solo_session.next_round()
 
-    await query.answer(f"Starting {t(f'mode_{chosen_mode}', lang)}!")
+    mode_display = t(f"mode_{chosen_mode}", lang)
+    if not mode_display or mode_display == f"mode_{chosen_mode}":
+        mode_display = chosen_mode.replace("_", " ").title()
+    await query.answer(f"Starting {mode_display}!")
     try:
         await query.message.delete()
     except Exception:

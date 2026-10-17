@@ -144,5 +144,48 @@ class TestZakovatAndNewSubjects(unittest.TestCase):
         self.assertIn(GameMode.ZAKOVAT, sampled_modes)
         self.assertGreater(len(sampled_modes), 5)
 
+    def test_category_overview_text(self):
+        """Verify get_category_overview_text returns structured category counts and sub-modes."""
+        from keyboards.game_kb import get_category_overview_text
+        for lang in ("uz", "ru", "en"):
+            overview = get_category_overview_text(lang)
+            self.assertIn("6", overview)
+            self.assertIn("Zakovat" if lang != "ru" else "Заковат", overview)
+            self.assertIn("4,000", overview)
+
+        # Specific hub headers
+        zako_hub = get_category_overview_text("uz", hub="zakovat")
+        self.assertIn("Qora quti", zako_hub)
+        self.assertIn("Deduksiya", zako_hub)
+        self.assertIn("Jahon intellekti", zako_hub)
+        self.assertIn("Blits", zako_hub)
+
+    def test_hub_subcategories_keyboards(self):
+        """Verify subcategory keyboards for all hubs contain proper buttons and back navigation."""
+        from keyboards.game_kb import get_hub_subcategories_kb, CATEGORY_HUBS_INFO
+        for hub_key in CATEGORY_HUBS_INFO:
+            kb = get_hub_subcategories_kb(hub=hub_key, prefix="solo_cat", lang="uz")
+            callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+            self.assertIn("solo_cat:hub:main", callbacks, f"Back button missing in hub {hub_key}")
+            # Ensure at least 4 subcategory buttons
+            self.assertGreaterEqual(len(callbacks), 5)
+
+    def test_solo_session_submode_generation(self):
+        """Verify SoloGameSession generates questions accurately for individual sub-modes."""
+        from games.solo_session import SoloGameSession
+        for sub_mode in ("black_box", "telescope_zoom", "elements", "quotes", "macro_texture", "flash_math"):
+            session = SoloGameSession(
+                user_id=12345,
+                user_name="Tester",
+                lang="uz",
+                mode=sub_mode,
+                selected_modes=[sub_mode]
+            )
+            q = session.next_round()
+            self.assertIsNotNone(q)
+            self.assertEqual(len(q.options), 4)
+            self.assertIn(q.correct_answer, q.options)
+
 if __name__ == "__main__":
     unittest.main()
+
