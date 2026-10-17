@@ -256,6 +256,18 @@ class QuestionFactory:
         elif mode == GameMode.LOGIC_MATH or mode in ("flash_math", "odd_one_out", "logic_sequence", "classic_riddles"):
             active_sub = sub_mode or (mode if mode != GameMode.LOGIC_MATH else None)
             return QuestionFactory._gen_logic_math(lang, exclude_codes, sub_mode=active_sub)
+        elif mode == "geo_mix":
+            geo_modes = [
+                GameMode.FLAG, GameMode.CAPITAL, GameMode.LANDMARK, GameMode.HIGHER_LOWER,
+                GameMode.COAT_OF_ARMS, GameMode.STREETVIEW, GameMode.EMOJI, GameMode.CONTOUR
+            ]
+            return QuestionFactory.generate(random.choice(geo_modes), lang, exclude_codes, continent)
+        elif mode == "cosmos_nature_mix":
+            return QuestionFactory.generate(random.choice([GameMode.ASTRONOMY, GameMode.NATURE]), lang, exclude_codes, continent)
+        elif mode == "science_logic_mix":
+            return QuestionFactory.generate(random.choice([GameMode.SCIENCE, GameMode.LOGIC_MATH]), lang, exclude_codes, continent)
+        elif mode == "history_culture_mix":
+            return QuestionFactory.generate(random.choice([GameMode.HISTORY, GameMode.LITERATURE, GameMode.ART]), lang, exclude_codes, continent)
         else:
             return QuestionFactory._gen_flag(lang, exclude_codes, continent)
 

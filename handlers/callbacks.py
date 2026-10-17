@@ -142,16 +142,17 @@ def format_setup_title(session, lang: str) -> str:
         "flag", "capital", "landmark", "higher_lower", "coat_of_arms", "streetview",
         "emoji", "contour", "president", "historical", "celebrity", "logo"
     ]
+    view_mode = getattr(session, "view_mode", "categories")
     hub_modes_map = {
-        "zakovat": ["zakovat"],
+        "zakovat": ["zakovat", "black_box", "deduction", "world_intellect", "blitz"],
         "geography": [
             "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
-            "streetview", "emoji", "contour"
+            "streetview", "emoji", "contour", "geo_mix"
         ],
-        "cosmos_nature": ["astronomy", "nature"],
-        "science_logic": ["science", "logic_math"],
-        "history_culture": ["history", "literature", "art"],
-        "people_brands": ["president", "historical", "celebrity", "logo"],
+        "cosmos_nature": ["astronomy", "nature", "telescope_zoom", "macro_texture", "human_anatomy", "cosmos_nature_mix"],
+        "science_logic": ["science", "logic_math", "elements", "flash_math", "odd_one_out", "science_logic_mix"],
+        "history_culture": ["history", "literature", "art", "quotes", "art_fragment", "history_culture_mix"],
+        "people_brands": ["president", "historical", "celebrity", "logo", "person"],
     }
 
     if not selected:
@@ -164,6 +165,22 @@ def format_setup_title(session, lang: str) -> str:
             "en": "🎲 SUPER MIX (All 6 categories, 4,000+ questions)"
         }.get(lang, "🎲 SUPER MIX")
         count_display = "4,000+"
+    elif view_mode.startswith("hub:"):
+        btn_dict = {b[0]: b[1] for h in CATEGORY_HUBS_INFO.values() for b in h["buttons"]}
+        selected_labels = []
+        for m in selected:
+            if m in btn_dict:
+                selected_labels.append(btn_dict[m].get(lang, btn_dict[m].get("en", m)))
+            elif t(f"mode_{m}", lang):
+                selected_labels.append(t(f"mode_{m}", lang))
+            else:
+                selected_labels.append(m)
+        if selected_labels:
+            modes_str = ", ".join(selected_labels)
+            count_display = str(len(selected_labels))
+        else:
+            modes_str = t("no_modes_selected_hint", lang)
+            count_display = "0"
     else:
         active_hubs = []
         for h_key, h_info in CATEGORY_HUBS_INFO.items():
@@ -188,38 +205,47 @@ def format_setup_title(session, lang: str) -> str:
     input_m = getattr(session, "input_mode", "both")
     input_str = t(f"btn_input_{input_m}", lang)
 
-    cat_summary = {
-        "uz": (
-            "📁 <b>Mavjud toifalar (Jami 6 ta asosiy toifa, 24+ yo'nalish, 4,000+ savol):</b>\n"
-            "1. 🎓 <b>Zakovat Klubi</b> (500) — Qora quti, Deduksiya, Jahon intellekti, Blits\n"
-            "2. 🌍 <b>Geografiya & GeoGuessr</b> (1,000+) — Bayroqlar, Poytaxtlar, Obidalar, Gerblar, Xaritalar\n"
-            "3. 🌌 <b>Koinot & Tabiat</b> (800) — Astronomiya, Teleskop, Hayvonot olami, Anatomiya\n"
-            "4. 🔬 <b>Fan & Mantiq</b> (800) — Kimyo, Fizika, Ixtirolar, Tezkor Matematika\n"
-            "5. 📜 <b>Tarix, Adabiyot & San'at</b> (1,200) — Tarix, Durdona asarlar, Rassomchilik\n"
-            "6. 👑 <b>Shaxslar & Brendlar</b> (400+) — Prezidentlar, Yulduzlar, Brend logolari\n"
-            "7. 🔍 <b>Blur Reveal</b> (+300 bonus) | 8. 🎲 <b>SUPER MIX</b> (Barchasi)\n\n"
-        ),
-        "ru": (
-            "📁 <b>Доступные категории (Всего 6 категорий, 24+ направлений, 4,000+ вопросов):</b>\n"
-            "1. 🎓 <b>Клуб Заковат</b> (500) — Чёрный ящик, Дедукция, Мировой интеллект, Блиц\n"
-            "2. 🌍 <b>География и GeoGuessr</b> (1,000+) — Флаги, Столицы, Достопримечательности, Гербы\n"
-            "3. 🌌 <b>Космос и Природа</b> (800) — Астрономия, Снимки телескопов, Биология\n"
-            "4. 🔬 <b>Наука и Логика</b> (800) — Химия, Физика, Изобретения, Быстрый счёт\n"
-            "5. 📜 <b>История и Искусство</b> (1,200) — Всемирная история, Шедевры литературы, Архитектура\n"
-            "6. 👑 <b>Личности и Бренды</b> (400+) — Президенты, Знаменитости, Логотипы\n"
-            "7. 🔍 <b>Blur Reveal</b> (+300) | 8. 🎲 <b>SUPER MIX</b> (Все темы)\n\n"
-        ),
-        "en": (
-            "📁 <b>Available Categories (6 Main Categories, 4,000+ Questions):</b>\n"
-            "1. 🎓 <b>Zakovat Club</b> (500) — Black Box, Logic & Deduction, World Intellect, Blitz\n"
-            "2. 🌍 <b>Geography & GeoGuessr</b> (1,000+) — Flags, Capitals, Landmarks, Coats of Arms\n"
-            "3. 🌌 <b>Cosmos & Nature</b> (800) — Astronomy, Deep Space, Wildlife, Human Anatomy\n"
-            "4. 🔬 <b>Science & Logic</b> (800) — Chemistry, Physics, Inventions, Fast Math\n"
-            "5. 📜 <b>History, Literature & Art</b> (1,200) — World History, Literary Classics, Art\n"
-            "6. 👑 <b>People & Brands</b> (400+) — Presidents, Historical Figures, Celebrities, Logos\n"
-            "7. 🔍 <b>Blur Reveal</b> (+300) | 8. 🎲 <b>SUPER MIX</b> (All Subjects)\n\n"
-        )
-    }.get(lang, "")
+    if view_mode.startswith("hub:"):
+        hub_key = view_mode.split(":", 1)[1]
+        if hub_key in CATEGORY_HUBS_INFO:
+            cat_summary = get_category_overview_text(lang=lang, hub=hub_key) + "\n\n"
+        else:
+            cat_summary = ""
+    elif view_mode == "detailed":
+        cat_summary = ""
+    else:
+        cat_summary = {
+            "uz": (
+                "📁 <b>Mavjud toifalar (Jami 6 ta asosiy toifa, 24+ yo'nalish, 4,000+ savol):</b>\n"
+                "1. 🎓 <b>Zakovat Klubi</b> (500) — Qora quti, Deduksiya, Jahon intellekti, Blits\n"
+                "2. 🌍 <b>Geografiya & GeoGuessr</b> (1,000+) — Bayroqlar, Poytaxtlar, Obidalar, Gerblar, Xaritalar\n"
+                "3. 🌌 <b>Koinot & Tabiat</b> (800) — Astronomiya, Teleskop, Hayvonot olami, Anatomiya\n"
+                "4. 🔬 <b>Fan & Mantiq</b> (800) — Kimyo, Fizika, Ixtirolar, Tezkor Matematika\n"
+                "5. 📜 <b>Tarix, Adabiyot & San'at</b> (1,200) — Tarix, Durdona asarlar, Rassomchilik\n"
+                "6. 👑 <b>Shaxslar & Brendlar</b> (400+) — Prezidentlar, Yulduzlar, Brend logolari\n"
+                "7. 🔍 <b>Blur Reveal</b> (+300 bonus) | 8. 🎲 <b>SUPER MIX</b> (Barchasi)\n\n"
+            ),
+            "ru": (
+                "📁 <b>Доступные категории (Всего 6 категорий, 24+ направлений, 4,000+ вопросов):</b>\n"
+                "1. 🎓 <b>Клуб Заковат</b> (500) — Чёрный ящик, Дедукция, Мировой интеллект, Блиц\n"
+                "2. 🌍 <b>География и GeoGuessr</b> (1,000+) — Флаги, Столицы, Достопримечательности, Гербы\n"
+                "3. 🌌 <b>Космос и Природа</b> (800) — Астрономия, Снимки телескопов, Биология\n"
+                "4. 🔬 <b>Наука и Логика</b> (800) — Химия, Физика, Изобретения, Быстрый счёт\n"
+                "5. 📜 <b>История и Искусство</b> (1,200) — Всемирная история, Шедевры литературы, Архитектура\n"
+                "6. 👑 <b>Личности и Бренды</b> (400+) — Президенты, Знаменитости, Логотипы\n"
+                "7. 🔍 <b>Blur Reveal</b> (+300) | 8. 🎲 <b>SUPER MIX</b> (Все темы)\n\n"
+            ),
+            "en": (
+                "📁 <b>Available Categories (6 Main Categories, 4,000+ Questions):</b>\n"
+                "1. 🎓 <b>Zakovat Club</b> (500) — Black Box, Logic & Deduction, World Intellect, Blitz\n"
+                "2. 🌍 <b>Geography & GeoGuessr</b> (1,000+) — Flags, Capitals, Landmarks, Coats of Arms\n"
+                "3. 🌌 <b>Cosmos & Nature</b> (800) — Astronomy, Deep Space, Wildlife, Human Anatomy\n"
+                "4. 🔬 <b>Science & Logic</b> (800) — Chemistry, Physics, Inventions, Fast Math\n"
+                "5. 📜 <b>History, Literature & Art</b> (1,200) — World History, Literary Classics, Art\n"
+                "6. 👑 <b>People & Brands</b> (400+) — Presidents, Historical Figures, Celebrities, Logos\n"
+                "7. 🔍 <b>Blur Reveal</b> (+300) | 8. 🎲 <b>SUPER MIX</b> (All Subjects)\n\n"
+            )
+        }.get(lang, "")
 
     text = (
         f"⚙️ <b>{t('game_setup_title', lang)}</b>\n"
@@ -286,6 +312,24 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
         if not hasattr(session, "selected_modes") or session.selected_modes is None:
             session.selected_modes = []
 
+        hub_mix_submodes = {
+            "zakovat": ["black_box", "deduction", "world_intellect", "blitz"],
+            "geo_mix": [
+                "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
+                "streetview", "emoji", "contour"
+            ],
+            "cosmos_nature_mix": [
+                "astronomy", "nature", "telescope_zoom", "macro_texture", "human_anatomy"
+            ],
+            "science_logic_mix": [
+                "science", "logic_math", "elements", "flash_math", "odd_one_out"
+            ],
+            "history_culture_mix": [
+                "history", "literature", "art", "quotes", "art_fragment"
+            ],
+            "person": ["president", "historical", "celebrity", "logo"],
+        }
+
         if param == "mix":
             if set(session.selected_modes) == set(all_cat_modes) or "mix" in session.selected_modes:
                 session.selected_modes = []
@@ -293,47 +337,45 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
             else:
                 session.selected_modes = list(all_cat_modes)
                 session.mode = "mix"
+        elif param in hub_mix_submodes:
+            sub_list = hub_mix_submodes[param]
+            if "mix" in session.selected_modes:
+                session.selected_modes = [param] + list(sub_list)
+            elif param in session.selected_modes or set(sub_list).issubset(set(session.selected_modes)):
+                session.selected_modes = [m for m in session.selected_modes if m != param and m not in sub_list]
+            else:
+                for m in [param] + list(sub_list):
+                    if m not in session.selected_modes:
+                        session.selected_modes.append(m)
         elif "mix" in session.selected_modes:
             session.selected_modes = [param]
             session.mode = param
         else:
-            if param in session.selected_modes:
+            parent_mix = None
+            parent_subs = []
+            for h_mix, h_subs in hub_mix_submodes.items():
+                if param in h_subs:
+                    parent_mix = h_mix
+                    parent_subs = h_subs
+                    break
+
+            if parent_mix and (parent_mix in session.selected_modes or set(parent_subs).issubset(set(session.selected_modes))):
+                if parent_mix in session.selected_modes:
+                    session.selected_modes.remove(parent_mix)
+                for m in parent_subs:
+                    if m != param and m not in session.selected_modes:
+                        session.selected_modes.append(m)
+                if param in session.selected_modes:
+                    session.selected_modes.remove(param)
+            elif param in session.selected_modes:
                 session.selected_modes.remove(param)
+                if parent_mix and parent_mix in session.selected_modes:
+                    session.selected_modes.remove(parent_mix)
             else:
                 session.selected_modes.append(param)
-
-            if len(session.selected_modes) == 1:
-                session.mode = session.selected_modes[0]
-            elif len(session.selected_modes) > 1:
-                session.mode = "mix"
-            else:
-                session.mode = ""
-    elif action == "cat":
-        cat_key = param
-        hub_modes_map = {
-            "zakovat": ["zakovat"],
-            "geography": [
-                "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
-                "streetview", "emoji", "contour"
-            ],
-            "cosmos_nature": ["astronomy", "nature"],
-            "science_logic": ["science", "logic_math"],
-            "history_culture": ["history", "literature", "art"],
-            "people_brands": ["president", "historical", "celebrity", "logo"],
-        }
-        hub_modes = hub_modes_map.get(cat_key, [])
-        if not hasattr(session, "selected_modes") or session.selected_modes is None:
-            session.selected_modes = []
-
-        if "mix" in session.selected_modes or set(all_cat_modes).issubset(set(session.selected_modes)):
-            session.selected_modes = [m for m in all_cat_modes if m not in hub_modes]
-        else:
-            if any(m in session.selected_modes for m in hub_modes):
-                session.selected_modes = [m for m in session.selected_modes if m not in hub_modes]
-            else:
-                for m in hub_modes:
-                    if m not in session.selected_modes:
-                        session.selected_modes.append(m)
+                if parent_mix and set(parent_subs).issubset(set(session.selected_modes)):
+                    if parent_mix not in session.selected_modes:
+                        session.selected_modes.append(parent_mix)
 
         if len(session.selected_modes) == 1:
             session.mode = session.selected_modes[0]
@@ -341,6 +383,13 @@ async def cb_game_setup(query: CallbackQuery, bot: Bot):
             session.mode = "mix"
         else:
             session.mode = ""
+    elif action in ("hub", "cat"):
+        if param == "main":
+            session.view_mode = "categories"
+        elif param in CATEGORY_HUBS_INFO:
+            session.view_mode = f"hub:{param}"
+        else:
+            session.view_mode = "categories"
     elif action == "view":
         session.view_mode = param
     elif action == "all":

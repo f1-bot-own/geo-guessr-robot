@@ -36,15 +36,15 @@ def get_setup_kb(
     ]
 
     hub_modes_map = {
-        "zakovat": ["zakovat"],
+        "zakovat": ["zakovat", "black_box", "deduction", "world_intellect", "blitz"],
         "geography": [
             "flag", "capital", "landmark", "higher_lower", "coat_of_arms",
-            "streetview", "emoji", "contour"
+            "streetview", "emoji", "contour", "geo_mix"
         ],
-        "cosmos_nature": ["astronomy", "nature"],
-        "science_logic": ["science", "logic_math"],
-        "history_culture": ["history", "literature", "art"],
-        "people_brands": ["president", "historical", "celebrity", "logo"],
+        "cosmos_nature": ["astronomy", "nature", "telescope_zoom", "macro_texture", "human_anatomy", "cosmos_nature_mix"],
+        "science_logic": ["science", "logic_math", "elements", "flash_math", "odd_one_out", "science_logic_mix"],
+        "history_culture": ["history", "literature", "art", "quotes", "art_fragment", "history_culture_mix"],
+        "people_brands": ["president", "historical", "celebrity", "logo", "person"],
     }
 
     t30_prefix = "✅ " if round_time == 30 else ""
@@ -155,6 +155,87 @@ def get_setup_kb(
         ] + common_bottom_rows
         return InlineKeyboardMarkup(inline_keyboard=detailed_keyboard)
 
+    if view_mode.startswith("hub:"):
+        hub_code = view_mode.split(":", 1)[1]
+        hub_data = CATEGORY_HUBS_INFO.get(hub_code)
+        if hub_data:
+            buttons_raw = hub_data["buttons"]
+
+            def is_sub_selected(code: str) -> bool:
+                if not selected_modes:
+                    return False
+                if "mix" in selected_modes or set(all_cat_modes).issubset(set(selected_modes)):
+                    return True
+                if code in selected_modes:
+                    return True
+                hub_mix_code = {
+                    "zakovat": "zakovat",
+                    "geography": "geo_mix",
+                    "cosmos_nature": "cosmos_nature_mix",
+                    "science_logic": "science_logic_mix",
+                    "history_culture": "history_culture_mix",
+                    "people_brands": "person"
+                }.get(hub_code)
+                if hub_mix_code and hub_mix_code in selected_modes:
+                    return True
+                if code in ("zakovat", "geo_mix", "cosmos_nature_mix", "science_logic_mix", "history_culture_mix", "person"):
+                    sub_c = [c for c, _ in buttons_raw if c != code]
+                    if sub_c and set(sub_c).issubset(set(selected_modes)):
+                        return True
+                return False
+
+            hub_rows = []
+            i = 0
+            while i < len(buttons_raw):
+                c1, n1 = buttons_raw[i]
+                is_mix_1 = "mix" in c1.lower() or c1 in ("zakovat", "person")
+                if is_mix_1 or i == len(buttons_raw) - 1:
+                    pfx = "✅ " if is_sub_selected(c1) else ""
+                    hub_rows.append([
+                        InlineKeyboardButton(
+                            text=f"{pfx}{n1.get(lang, n1.get('en', c1))}",
+                            callback_data=f"setup:mode:{c1}:{session_id}"
+                        )
+                    ])
+                    i += 1
+                else:
+                    c2, n2 = buttons_raw[i + 1]
+                    is_mix_2 = "mix" in c2.lower() or c2 in ("zakovat", "person")
+                    if is_mix_2:
+                        pfx1 = "✅ " if is_sub_selected(c1) else ""
+                        hub_rows.append([
+                            InlineKeyboardButton(
+                                text=f"{pfx1}{n1.get(lang, n1.get('en', c1))}",
+                                callback_data=f"setup:mode:{c1}:{session_id}"
+                            )
+                        ])
+                        i += 1
+                    else:
+                        pfx1 = "✅ " if is_sub_selected(c1) else ""
+                        pfx2 = "✅ " if is_sub_selected(c2) else ""
+                        hub_rows.append([
+                            InlineKeyboardButton(
+                                text=f"{pfx1}{n1.get(lang, n1.get('en', c1))}",
+                                callback_data=f"setup:mode:{c1}:{session_id}"
+                            ),
+                            InlineKeyboardButton(
+                                text=f"{pfx2}{n2.get(lang, n2.get('en', c2))}",
+                                callback_data=f"setup:mode:{c2}:{session_id}"
+                            )
+                        ])
+                        i += 2
+
+            back_label = {
+                "uz": "🔙 📁 Barcha toifalar",
+                "ru": "🔙 📁 Все категории",
+                "en": "🔙 📁 All Categories"
+            }.get(lang, "🔙 📁 All Categories")
+
+            hub_rows.append([
+                InlineKeyboardButton(text=back_label, callback_data=f"setup:hub:main:{session_id}")
+            ])
+            return InlineKeyboardMarkup(inline_keyboard=hub_rows + common_bottom_rows)
+
     # DEFAULT: CATEGORY HUBS VIEW
     zako_title = CATEGORY_HUBS_INFO["zakovat"]["title"].get(lang, "Zakovat Club (500)")
     geo_title = CATEGORY_HUBS_INFO["geography"]["title"].get(lang, "Geography (1,000+)")
@@ -173,7 +254,7 @@ def get_setup_kb(
         pfx = "✅ " if is_sel else ""
         return InlineKeyboardButton(
             text=f"{pfx}{icon} {title}",
-            callback_data=f"setup:cat:{hub_code}:{session_id}"
+            callback_data=f"setup:hub:{hub_code}:{session_id}"
         )
 
     is_super_mix = (

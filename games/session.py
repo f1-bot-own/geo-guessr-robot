@@ -31,7 +31,8 @@ class GameSession:
         input_mode: str = "both",
         continent: str = "all",
         selected_modes: Optional[List[str]] = None,
-        is_blur: bool = False
+        is_blur: bool = False,
+        view_mode: str = "categories"
     ):
         self.session_id: str = str(uuid.uuid4())[:8]
         self.chat_id: int = chat_id
@@ -57,7 +58,7 @@ class GameSession:
             self.selected_modes = [mode]
 
         self.is_blur: bool = is_blur or (mode == GameMode.BLUR)
-        self.view_mode: str = "categories"
+        self.view_mode: str = view_mode
         
         # Duel settings
         self.is_duel: bool = is_duel

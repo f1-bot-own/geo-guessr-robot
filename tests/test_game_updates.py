@@ -56,7 +56,10 @@ class TestConfigAndKeyboards(unittest.TestCase):
         all_hub_buttons = [btn for row in kb_hubs.inline_keyboard for btn in row]
         hub_callbacks = [btn.callback_data for btn in all_hub_buttons]
         for h in ["zakovat", "geography", "cosmos_nature", "science_logic", "history_culture", "people_brands"]:
-            self.assertTrue(any(f"setup:cat:{h}:test1234" in cb for cb in hub_callbacks), f"Hub {h} missing!")
+            self.assertTrue(
+                any(f"setup:hub:{h}:test1234" in cb or f"setup:cat:{h}:test1234" in cb for cb in hub_callbacks),
+                f"Hub {h} missing!"
+            )
         self.assertTrue(any("setup:time:30:test1234" in cb for cb in hub_callbacks))
         self.assertTrue(any("setup:time:60:test1234" in cb for cb in hub_callbacks))
 
