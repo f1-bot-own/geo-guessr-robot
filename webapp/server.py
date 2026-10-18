@@ -11,9 +11,12 @@ from pathlib import Path
 from typing import Optional
 from aiohttp import web
 
+from webapp.admin_api import register_admin_routes
+
 logger = logging.getLogger("WebAppServer")
 
 STATIC_DIR = Path(__file__).resolve().parent
+ADMIN_DIR = STATIC_DIR / "admin"
 
 MAX_MINIAPP_SCORE = 25000
 
@@ -23,6 +26,13 @@ async def index_handler(request: web.Request) -> web.Response:
     if html_file.is_file():
         return web.FileResponse(html_file)
     return web.Response(text="GeoGuessr Mini App index.html not found", status=404)
+
+async def admin_index_handler(request: web.Request) -> web.Response:
+    """Serve the Web Admin Dashboard HTML."""
+    html_file = ADMIN_DIR / "index.html"
+    if html_file.is_file():
+        return web.FileResponse(html_file)
+    return web.Response(text="GeoGuru Web Admin Dashboard index.html not found", status=404)
 
 async def health_handler(request: web.Request) -> web.Response:
     """Health check endpoint for Railway / Cloud deployment monitoring."""
@@ -98,10 +108,18 @@ async def score_api_handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": False, "error": str(exc)}, status=400)
 
 
-def create_web_app(db=None) -> web.Application:
+def create_web_app(db=None, bot=None) -> web.Application:
     """Create and configure aiohttp Web Application."""
     app = web.Application()
     app["db"] = db
+    app["bot"] = bot
+
+    # Admin Dashboard HTML entry points
+    app.router.add_get("/admin", admin_index_handler)
+    app.router.add_get("/admin/", admin_index_handler)
+
+    # Register Admin API routes
+    register_admin_routes(app)
 
     # Routes
     app.router.add_get("/", index_handler)
@@ -115,13 +133,13 @@ def create_web_app(db=None) -> web.Application:
     return app
 
 
-async def start_web_server(port: int = 8080, host: str = "0.0.0.0", db=None):
+async def start_web_server(port: int = 8080, host: str = "0.0.0.0", db=None, bot=None):
     """
     Start the embedded web server.
     Binds to target port and fallback port 8080 if different, ensuring Railway's
     public domain proxy always finds an active listener.
     """
-    app = create_web_app(db=db)
+    app = create_web_app(db=db, bot=bot)
     runner = web.AppRunner(app)
     await runner.setup()
 

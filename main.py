@@ -43,6 +43,7 @@ try:
         callbacks_router,
         chat_member_router,
         text_answers_router,
+        admin_router,
     )
     from games.flow import load_photo_cache
 except Exception as exc:
@@ -93,6 +94,7 @@ async def setup_bot_commands(bot: Bot):
         BotCommand(command="duel", description="1v1 challenge / Duelga chaqirish"),
         BotCommand(command="language", description="Change language / Tilni o'zgartirish"),
         BotCommand(command="help", description="Rules & instructions / Qo'llanma"),
+        BotCommand(command="admin", description="Admin panel / Boshqaruv paneli"),
     ]
     try:
         await bot.set_my_commands(commands)
@@ -158,6 +160,8 @@ async def main():
     )
     bot.db = db
     bot["db"] = db
+    if runner and hasattr(runner, "app") and runner.app:
+        runner.app["bot"] = bot
 
     # Live connection test with Telegram (only in live runtime, skipped in unit tests)
     if not is_testing_env():
@@ -188,6 +192,7 @@ async def main():
     dp["db"] = db
 
     # Register routers in priority order
+    dp.include_router(admin_router)
     dp.include_router(commands_router)
     dp.include_router(callbacks_router)
     dp.include_router(chat_member_router)

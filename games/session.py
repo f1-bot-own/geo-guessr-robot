@@ -86,6 +86,16 @@ class GameSession:
     def start_game(self) -> Question:
         """Start the game session and return the first question."""
         self.status = "in_progress"
+        try:
+            from events.bus import publish
+            publish("game_started", {
+                "chat_id": self.chat_id,
+                "host_id": self.created_by_user_id,
+                "mode": self.mode,
+                "rounds": self.total_rounds,
+            })
+        except Exception:
+            pass
         return self.next_round()
 
     def next_round(self) -> Question:
@@ -149,11 +159,20 @@ class GameSession:
         """
         Evaluate user answer.
         Returns tuple: (result_type, points, elapsed_time)
-        result_type in: ["correct", "wrong", "already_wrong", "not_allowed", "inactive"]
+        result_type in: ["correct", "wrong", "already_wrong", "not_allowed", "inactive", "banned"]
         """
         async with self.lock:
             if self.status != "in_progress" or not self.current_question:
                 return ("inactive", 0, 0.0)
+
+            # Check if user is banned
+            try:
+                from database.db import get_default_db
+                db = get_default_db()
+                if hasattr(db, "is_user_banned") and await db.is_user_banned(user_id):
+                    return ("banned", 0, 0.0)
+            except Exception:
+                pass
 
             # In duel mode, only the two participants may answer
             if self.is_duel:
@@ -168,6 +187,16 @@ class GameSession:
 
             # Store player display name
             self.user_names[user_id] = user_name
+
+            # Question metadata for logging
+            q = self.current_question
+            q_options = getattr(q, "options", [])
+            sel_opt = q_options[option_index] if (0 <= option_index < len(q_options)) else str(option_index)
+            corr_idx = getattr(q, "correct_index", 0)
+            corr_opt = q_options[corr_idx] if (0 <= corr_idx < len(q_options)) else ""
+            q_id = getattr(q, "question_id", None) or getattr(q, "country_code", "") or str(self.current_round)
+            q_text = getattr(q, "text", "")
+            q_mode = getattr(q, "mode", self.mode)
 
             if option_index == self.current_question.correct_index:
                 # Correct Answer!
@@ -194,6 +223,28 @@ class GameSession:
 
                 # Mark round as answered
                 self.status = "between_rounds"
+
+                # Log answer and emit event
+                try:
+                    from database.db import get_default_db
+                    db = get_default_db()
+                    if hasattr(db, "record_answer_log"):
+                        await db.record_answer_log(
+                            user_id=user_id,
+                            username=user_name,
+                            chat_id=self.chat_id,
+                            mode=q_mode,
+                            question_id=str(q_id),
+                            question_text=q_text,
+                            selected_option=sel_opt,
+                            correct_option=corr_opt,
+                            is_correct=1,
+                            points=total_points,
+                            time_taken=elapsed
+                        )
+                except Exception:
+                    pass
+
                 return ("correct", total_points, elapsed)
             else:
                 # Wrong Answer
@@ -201,7 +252,30 @@ class GameSession:
                 self.user_streaks[user_id] = 0
                 penalty = config.POINTS_WRONG_PENALTY
                 self.scores[user_id] = max(0, self.scores.get(user_id, 0) - penalty)
+
+                # Log answer and emit event
+                try:
+                    from database.db import get_default_db
+                    db = get_default_db()
+                    if hasattr(db, "record_answer_log"):
+                        await db.record_answer_log(
+                            user_id=user_id,
+                            username=user_name,
+                            chat_id=self.chat_id,
+                            mode=q_mode,
+                            question_id=str(q_id),
+                            question_text=q_text,
+                            selected_option=sel_opt,
+                            correct_option=corr_opt,
+                            is_correct=0,
+                            points=-penalty,
+                            time_taken=elapsed
+                        )
+                except Exception:
+                    pass
+
                 return ("wrong", penalty, elapsed)
+
 
     def is_game_finished(self) -> bool:
         """Check if all rounds are completed."""

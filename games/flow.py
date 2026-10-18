@@ -739,9 +739,21 @@ async def finish_game(bot: Bot, chat_id: int, session: GameSession, db):
         players_count=len(podium) if not session.is_duel else 2
     )
 
+    try:
+        from events.bus import publish
+        publish("game_finished", {
+            "chat_id": chat_id,
+            "winner_id": winner_id,
+            "winner_name": winner_name,
+            "winner_score": winner_score,
+        })
+    except Exception:
+        pass
+
     # Handle duel outcome in database
     if session.is_duel and getattr(session, "duel_id", None):
         await db.update_duel_status(session.duel_id, status="completed", winner_id=winner_id)
+
 
     header = f"{t('game_over_title', session.lang)}\n\n{t('final_standings_header', session.lang)}\n"
 

@@ -83,3 +83,33 @@ def resolve_webapp_url() -> str:
     return ""
 
 WEBAPP_URL = resolve_webapp_url()
+
+# Admin Configuration
+def resolve_admin_ids() -> list[int]:
+    raw = os.getenv("ADMIN_IDS", "12345678,") or os.getenv("ADMIN_ID", "") or os.getenv("ADMIN_USER_ID", "")
+    admin_list: list[int] = []
+    for item in raw.split(","):
+        clean_item = item.strip()
+        if clean_item.isdigit():
+            admin_list.append(int(clean_item))
+        elif clean_item.startswith("-") and clean_item[1:].isdigit():
+            admin_list.append(int(clean_item))
+    return admin_list
+
+ADMIN_IDS: list[int] = resolve_admin_ids()
+
+def is_admin(user_id: int | None) -> bool:
+    """Return True if user_id is in configured ADMIN_IDS."""
+    if user_id is None:
+        return False
+    try:
+        uid = int(user_id)
+        # Check against both dynamic global list and resolved env list
+        return uid in ADMIN_IDS or uid in resolve_admin_ids()
+    except (ValueError, TypeError):
+        return False
+
+# Admin JWT Secret & Master Password
+ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "geoguru-super-secret-admin-jwt-token-key-2026")
+ADMIN_MASTER_PASSWORD = os.getenv("ADMIN_MASTER_PASSWORD", "")
+

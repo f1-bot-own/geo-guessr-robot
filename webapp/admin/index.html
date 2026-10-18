@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="uz" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoGuru & GeoGuessr — Boshqaruv Paneli (Web Admin)</title>
+  
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+            },
+            dark: {
+              800: '#111928',
+              900: '#0a0f1d',
+              950: '#060a14',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body class="bg-[#0a0f1d] text-gray-100 min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- ================= AUTH SCREEN / 2FA MODAL ================= -->
+  <div id="authScreen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#060a14]/90 backdrop-blur-md">
+    <div class="glass-panel w-full max-w-md rounded-2xl p-8 relative overflow-hidden shadow-2xl border border-white/10">
+      <!-- Glow background circles -->
+      <div class="absolute -top-16 -right-16 w-44 h-44 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-16 w-44 h-44 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="text-center mb-8 relative">
+        <div class="w-16 h-16 mx-auto mb-3 bg-gradient-to-tr from-cyan-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/25">
+          <i class="fa-solid fa-earth-americas text-2xl text-white"></i>
+        </div>
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+          GeoGuru Admin
+        </h1>
+        <p class="text-xs text-gray-400 mt-1">Xavfsiz 2FA Autentifikatsiyasi</p>
+        <div id="webappAutoLoginNotice" class="hidden mt-3 text-xs text-cyan-400 bg-cyan-950/60 border border-cyan-800/60 rounded-lg p-2.5 flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+          <span>Telegram Mini App orqali kirilmoqda...</span>
+        </div>
+      </div>
+
+      <!-- Error message banner -->
+      <div id="authErrorAlert" class="hidden mb-5 p-3 rounded-xl bg-rose-950/80 border border-rose-800/80 text-rose-300 text-xs flex items-start space-x-2">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+        <span id="authErrorText">Xatolik yuz berdi</span>
+      </div>
+
+      <!-- Success message banner -->
+      <div id="authSuccessAlert" class="hidden mb-5 p-3 rounded-xl bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 text-xs flex items-start space-x-2">
+        <i class="fa-solid fa-circle-check mt-0.5"></i>
+        <span id="authSuccessText">Tasdiq kodi yuborildi</span>
+      </div>
+
+      <!-- Step 1: Enter Admin ID -->
+      <div id="authStep1">
+        <div class="mb-5">
+          <label class="block text-xs font-medium text-gray-300 mb-2">Telegram Admin ID</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 text-sm">
+              <i class="fa-solid fa-id-badge"></i>
+            </span>
+            <input type="number" id="inputAdminId" placeholder="Masalan: 12345678" 
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-sm text-white placeholder-gray-500 outline-none transition">
+          </div>
+          <p class="text-[11px] text-gray-400 mt-1.5">ID raqamingiz @userinfobot orqali aniqlanadi.</p>
+        </div>
+
+        <button id="btnRequestOtp" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-white font-medium text-sm shadow-lg shadow-cyan-500/25 flex items-center justify-center space-x-2 transition disabled:opacity-50">
+          <span>Kodni olish (Send 2FA Code)</span>
+          <i class="fa-solid fa-paper-plane text-xs"></i>
+        </button>
+      </div>
+
+      <!-- Step 2: Enter 6-digit OTP -->
+      <div id="authStep2" class="hidden">
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-medium text-gray-300">6 xonali tasdiq kodi</label>
+            <span id="otpTimer" class="text-[11px] text-cyan-400">05:00</span>
+          </div>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 text-sm">
+              <i class="fa-solid fa-key"></i>
+            </span>
+            <input type="text" id="inputOtpCode" maxlength="6" placeholder="123456" 
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-center tracking-widest font-mono text-lg text-white placeholder-gray-600 outline-none transition">
+          </div>
+          <p class="text-[11px] text-gray-400 mt-1.5">Telegram botingiz chatiga yuborilgan kodni kiriting.</p>
+        </div>
+
+        <button id="btnVerifyOtp" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-medium text-sm shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 transition mb-3">
+          <span>Kirish (Login)</span>
+          <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
+        </button>
+
+        <button id="btnBackToStep1" class="w-full py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs transition flex items-center justify-center space-x-1">
+          <i class="fa-solid fa-arrow-left text-[10px]"></i>
+          <span>Boshqa ID kiritish</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= MAIN DASHBOARD SHELL ================= -->
+  <div id="mainDashboard" class="hidden flex-1 flex flex-col">
+
+    <!-- Top Header Bar -->
+    <header class="glass-panel sticky top-0 z-40 border-b border-white/10 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+      <!-- Left: Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 bg-gradient-to-tr from-cyan-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-md shadow-cyan-500/20">
+          <i class="fa-solid fa-earth-americas text-white text-base"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-base text-white tracking-wide">GeoGuru Admin</span>
+            <span class="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-700/50">v2.0</span>
+          </div>
+          <p class="text-[11px] text-gray-400 hidden sm:block">Telegram Bot & Mini App Boshqaruv Markazi</p>
+        </div>
+      </div>
+
+      <!-- Center: Live Stream Indicator -->
+      <div class="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-900/60 border border-white/10 text-xs">
+        <span id="liveStatusDot" class="pulse-dot connecting"></span>
+        <span id="liveStatusText" class="text-gray-300 font-medium">Ulanmoqda...</span>
+      </div>
+
+      <!-- Right: Admin profile & Quick Actions -->
+      <div class="flex items-center space-x-3">
+        <a href="/api/admin/backup-db" target="_blank" title="SQLite bazasini yuklab olish" 
+          class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition">
+          <i class="fa-solid fa-database text-cyan-400"></i>
+          <span>DB Backup</span>
+        </a>
+
+        <div class="flex items-center space-x-2 px-2.5 py-1 rounded-xl bg-gray-800/50 border border-white/5">
+          <div class="w-7 h-7 rounded-lg bg-cyan-600/30 text-cyan-300 flex items-center justify-center text-xs font-bold">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <div class="text-left hidden md:block">
+            <div id="adminProfileName" class="text-xs font-semibold text-white leading-tight">Admin</div>
+            <div id="adminProfileId" class="text-[10px] text-gray-400 leading-tight">ID: -</div>
+          </div>
+        </div>
+
+        <button id="btnLogout" title="Tizimdan chiqish" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/20 transition">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs Bar -->
+    <nav class="bg-gray-950/70 border-b border-white/5 px-4 lg:px-8 py-2 overflow-x-auto">
+      <div class="flex space-x-2 min-w-max">
+        <button class="nav-tab active flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-medium text-white bg-cyan-500/20 border border-cyan-500/30 transition" data-tab="tabOverview">
+          <i class="fa-solid fa-chart-pie text-cyan-400"></i>
+          <span>Asosiy (Overview)</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 border border-transparent transition" data-tab="tabUsers">
+          <i class="fa-solid fa-users text-blue-400"></i>
+          <span>Foydalanuvchilar (Users)</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 border border-transparent transition" data-tab="tabGroups">
+          <i class="fa-solid fa-comments text-emerald-400"></i>
+          <span>Guruhlar (Groups)</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 border border-transparent transition" data-tab="tabAnswers">
+          <i class="fa-solid fa-circle-question text-amber-400"></i>
+          <span>Savollar & Javoblar</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 border border-transparent transition" data-tab="tabBroadcast">
+          <i class="fa-solid fa-bullhorn text-purple-400"></i>
+          <span>Broadcast (Xabarnoma)</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 border border-transparent transition" data-tab="tabLogs">
+          <i class="fa-solid fa-terminal text-rose-400"></i>
+          <span>Server Loglari</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content Body -->
+    <main class="flex-1 p-4 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+
+      <!-- ================= TAB 1: OVERVIEW ================= -->
+      <div id="tabOverview" class="tab-content space-y-6">
+        <!-- 5 KPI Cards Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <!-- KPI 1: Users -->
+          <div class="glass-card rounded-2xl p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-gray-400 text-xs mb-2">
+              <span>Foydalanuvchilar</span>
+              <span class="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <i class="fa-solid fa-user-group text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div id="statTotalUsers" class="text-2xl font-bold text-white">0</div>
+              <div class="text-[11px] text-gray-400 mt-1 flex items-center space-x-1">
+                <span id="statActiveToday" class="text-emerald-400 font-semibold">0</span>
+                <span>bugun faol</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI 2: Groups -->
+          <div class="glass-card rounded-2xl p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-gray-400 text-xs mb-2">
+              <span>Faol Guruhlar</span>
+              <span class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <i class="fa-solid fa-people-roof text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div id="statTotalGroups" class="text-2xl font-bold text-white">0</div>
+              <div class="text-[11px] text-gray-400 mt-1">Ulanishlar</div>
+            </div>
+          </div>
+
+          <!-- KPI 3: Games -->
+          <div class="glass-card rounded-2xl p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-gray-400 text-xs mb-2">
+              <span>O'yinlar Soni</span>
+              <span class="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                <i class="fa-solid fa-gamepad text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div id="statTotalGames" class="text-2xl font-bold text-white">0</div>
+              <div class="text-[11px] text-gray-400 mt-1">Guruh & Solo</div>
+            </div>
+          </div>
+
+          <!-- KPI 4: Answers -->
+          <div class="glass-card rounded-2xl p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-gray-400 text-xs mb-2">
+              <span>Jami Javoblar</span>
+              <span class="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+                <i class="fa-solid fa-circle-check text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div id="statTotalAnswers" class="text-2xl font-bold text-white">0</div>
+              <div class="text-[11px] text-gray-400 mt-1 flex items-center space-x-1">
+                <span id="statCorrectAnswers" class="text-cyan-400 font-semibold">0</span>
+                <span>to'g'ri</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI 5: Accuracy -->
+          <div class="glass-card rounded-2xl p-4 flex flex-col justify-between col-span-2 sm:col-span-1">
+            <div class="flex items-center justify-between text-gray-400 text-xs mb-2">
+              <span>To'g'rilik Ko'rsatkichi</span>
+              <span class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <i class="fa-solid fa-bullseye text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div id="statAccuracyPercent" class="text-2xl font-bold text-emerald-400">0.0%</div>
+              <div class="text-[11px] text-gray-400 mt-1">O'rtacha aniqlik</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid (24h Activity + Mode distribution) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- 24h Activity Line Chart -->
+          <div class="glass-card rounded-2xl p-5 lg:col-span-2 flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-chart-line text-cyan-400"></i>
+                <span>24 Soatlik Faollik Dinamikasi</span>
+              </h2>
+              <span class="text-xs text-gray-400">Soatlar kesimida</span>
+            </div>
+            <div class="flex-1 min-h-[240px]">
+              <canvas id="chartActivity24h"></canvas>
+            </div>
+          </div>
+
+          <!-- Mode Distribution Doughnut Chart -->
+          <div class="glass-card rounded-2xl p-5 flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-pie-chart text-purple-400"></i>
+                <span>O'yin Rejimlari Taqqoslash</span>
+              </h2>
+            </div>
+            <div class="flex-1 min-h-[240px] flex items-center justify-center">
+              <canvas id="chartModeDistribution"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-Time Live Event Ticker Feed -->
+        <div class="glass-card rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <h2 class="text-sm font-semibold text-white">Jonli Hodisalar Oqimi (Live Event Ticker)</h2>
+            </div>
+            <button id="btnClearTicker" class="text-xs text-gray-400 hover:text-white transition">Tozalash</button>
+          </div>
+          <div id="liveTickerFeed" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <div class="text-xs text-gray-500 py-3 text-center">Jonli hodisalar kutilmoqda...</div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= TAB 2: USERS ================= -->
+      <div id="tabUsers" class="tab-content hidden space-y-4">
+        <!-- Search & Control Header -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="relative w-full sm:w-80">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 text-sm">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input type="text" id="inputUserSearch" placeholder="Foydalanuvchi ID, ism yoki @username..." 
+              class="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 text-xs text-white placeholder-gray-500 outline-none transition">
+          </div>
+          <button id="btnRefreshUsers" class="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition flex items-center space-x-1.5 self-end sm:self-auto">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Yangilash</span>
+          </button>
+        </div>
+
+        <!-- Users Table -->
+        <div class="glass-card rounded-2xl overflow-hidden border border-white/10">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-gray-900/80 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/5">
+                <tr>
+                  <th class="p-3.5">Foydalanuvchi</th>
+                  <th class="p-3.5">Telegram ID</th>
+                  <th class="p-3.5">Daraja & XP</th>
+                  <th class="p-3.5">Natija (G'alaba/O'yin)</th>
+                  <th class="p-3.5">To'g'ri / Jami</th>
+                  <th class="p-3.5">Holat</th>
+                  <th class="p-3.5 text-right">Amallar</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody" class="divide-y divide-white/5">
+                <tr><td colspan="7" class="p-4 text-center text-gray-500">Yuklanmoqda...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Pagination bar -->
+          <div class="p-3 bg-gray-900/60 border-t border-white/5 flex items-center justify-between text-xs text-gray-400">
+            <span id="usersPaginationInfo">0-0 dan 0 ta</span>
+            <div class="flex space-x-1">
+              <button id="btnUsersPrev" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30">Oldingi</button>
+              <button id="btnUsersNext" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30">Keyingi</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= TAB 3: GROUPS ================= -->
+      <div id="tabGroups" class="tab-content hidden space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-white">Ulangan Telegram Guruhlari</h2>
+          <button id="btnRefreshGroups" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Yangilash
+          </button>
+        </div>
+
+        <div class="glass-card rounded-2xl overflow-hidden border border-white/10">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-gray-900/80 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/5">
+                <tr>
+                  <th class="p-3.5">Guruh Nomi</th>
+                  <th class="p-3.5">Chat ID</th>
+                  <th class="p-3.5">Til</th>
+                  <th class="p-3.5">O'yinlar</th>
+                  <th class="p-3.5">Ishtirokchilar</th>
+                  <th class="p-3.5">Jami Ballar</th>
+                </tr>
+              </thead>
+              <tbody id="groupsTableBody" class="divide-y divide-white/5">
+                <tr><td colspan="6" class="p-4 text-center text-gray-500">Yuklanmoqda...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= TAB 4: ANSWERS & QUESTIONS ================= -->
+      <div id="tabAnswers" class="tab-content hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Recent Answer Logs -->
+          <div class="glass-card rounded-2xl p-5 flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-list-check text-cyan-400"></i>
+                <span>Oxirgi Javoblar Logi</span>
+              </h2>
+              <button id="btnRefreshAnswers" class="text-xs text-gray-400 hover:text-white">Yangilash</button>
+            </div>
+            <div class="flex-1 overflow-y-auto max-h-[460px] divide-y divide-white/5" id="recentAnswersList">
+              <div class="p-3 text-center text-gray-500 text-xs">Yuklanmoqda...</div>
+            </div>
+          </div>
+
+          <!-- Hardest Questions -->
+          <div class="glass-card rounded-2xl p-5 flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-brain text-amber-400"></i>
+                <span>Eng Qiyin Savollar</span>
+              </h2>
+              <span class="text-[11px] text-gray-400">Eng past to'g'rilik foizi</span>
+            </div>
+            <div class="flex-1 overflow-y-auto max-h-[460px] divide-y divide-white/5" id="difficultQuestionsList">
+              <div class="p-3 text-center text-gray-500 text-xs">Yuklanmoqda...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= TAB 5: BROADCAST ================= -->
+      <div id="tabBroadcast" class="tab-content hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Composer Panel -->
+          <div class="glass-card rounded-2xl p-6 space-y-4">
+            <h2 class="text-base font-semibold text-white flex items-center space-x-2">
+              <i class="fa-solid fa-bullhorn text-purple-400"></i>
+              <span>Ommaviy Xabarnoma Yaratish</span>
+            </h2>
+
+            <!-- Target Selection -->
+            <div>
+              <label class="block text-xs font-medium text-gray-300 mb-2">Qabul qiluvchilar auditoriyasi</label>
+              <div class="grid grid-cols-3 gap-2">
+                <label class="cursor-pointer">
+                  <input type="radio" name="broadcastTarget" value="all" checked class="peer sr-only">
+                  <div class="peer-checked:bg-cyan-500/20 peer-checked:border-cyan-500 text-center p-2.5 rounded-xl border border-white/10 text-xs text-gray-300 peer-checked:text-white transition">
+                    <i class="fa-solid fa-globe block text-sm mb-1 text-cyan-400"></i>
+                    Barchaga
+                  </div>
+                </label>
+                <label class="cursor-pointer">
+                  <input type="radio" name="broadcastTarget" value="users" class="peer sr-only">
+                  <div class="peer-checked:bg-cyan-500/20 peer-checked:border-cyan-500 text-center p-2.5 rounded-xl border border-white/10 text-xs text-gray-300 peer-checked:text-white transition">
+                    <i class="fa-solid fa-users block text-sm mb-1 text-blue-400"></i>
+                    Foydalanuvchilar
+                  </div>
+                </label>
+                <label class="cursor-pointer">
+                  <input type="radio" name="broadcastTarget" value="groups" class="peer sr-only">
+                  <div class="peer-checked:bg-cyan-500/20 peer-checked:border-cyan-500 text-center p-2.5 rounded-xl border border-white/10 text-xs text-gray-300 peer-checked:text-white transition">
+                    <i class="fa-solid fa-comments block text-sm mb-1 text-emerald-400"></i>
+                    Guruhlar
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Message Text -->
+            <div>
+              <label class="block text-xs font-medium text-gray-300 mb-2">Xabar matni (HTML format qo'llab-quvvatlanadi)</label>
+              <textarea id="broadcastText" rows="6" placeholder="Assalomu alaykum! Yangi haftalik musobaqa boshlandi..." 
+                class="w-full p-3 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 text-xs text-white placeholder-gray-500 outline-none transition font-sans"></textarea>
+              <div class="flex space-x-1 mt-1 text-[11px] text-gray-400">
+                <span>Formatlar: <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;a href="..."&gt;</code></span>
+              </div>
+            </div>
+
+            <!-- Optional Photo URL -->
+            <div>
+              <label class="block text-xs font-medium text-gray-300 mb-1">Rasm URL (ixtiyoriy)</label>
+              <input type="url" id="broadcastPhoto" placeholder="https://example.com/banner.jpg" 
+                class="w-full px-3 py-2 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 text-xs text-white placeholder-gray-500 outline-none transition">
+            </div>
+
+            <!-- Optional Inline Button -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-300 mb-1">Tugma matni (ixtiyoriy)</label>
+                <input type="text" id="broadcastBtnText" placeholder="O'yinni boshlash" 
+                  class="w-full px-3 py-2 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 text-xs text-white placeholder-gray-500 outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-300 mb-1">Tugma havolasi (URL)</label>
+                <input type="url" id="broadcastBtnUrl" placeholder="https://t.me/geoguru_bot" 
+                  class="w-full px-3 py-2 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 text-xs text-white placeholder-gray-500 outline-none transition">
+              </div>
+            </div>
+
+            <button id="btnStartBroadcast" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-medium text-sm shadow-lg shadow-purple-500/25 flex items-center justify-center space-x-2 transition">
+              <i class="fa-solid fa-paper-plane text-xs"></i>
+              <span>Xabarnomani Yuborish</span>
+            </button>
+          </div>
+
+          <!-- Live Preview & Progress Panel -->
+          <div class="space-y-6">
+            <!-- Telegram Mockup Preview -->
+            <div class="glass-card rounded-2xl p-6">
+              <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Telegramda ko'rinishi (Live Preview)</h3>
+              <div class="tg-preview-box p-4 rounded-2xl max-w-sm mx-auto">
+                <div class="flex items-center space-x-2 mb-2 pb-2 border-b border-white/5">
+                  <div class="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center text-[10px] text-white font-bold">G</div>
+                  <span class="text-xs font-semibold text-cyan-400">GeoGuru Bot</span>
+                  <span class="text-[10px] text-gray-400 ml-auto">hozir</span>
+                </div>
+                
+                <div id="previewPhotoContainer" class="hidden mb-2 rounded-lg overflow-hidden">
+                  <img id="previewPhotoImg" src="" alt="Photo" class="w-full max-h-48 object-cover">
+                </div>
+
+                <div id="previewTextMessage" class="text-xs text-white leading-relaxed break-words">
+                  Xabar matni bu yerda ko'rinadi...
+                </div>
+
+                <div id="previewButtonContainer" class="hidden mt-3">
+                  <a id="previewButton" href="#" target="_blank" class="block w-full text-center py-2 px-3 rounded-lg tg-btn text-white text-xs font-medium shadow">
+                    Tugma matni
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Broadcast Progress Card -->
+            <div id="broadcastProgressCard" class="glass-card rounded-2xl p-5 border border-purple-500/30">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-semibold text-white flex items-center space-x-2">
+                  <i class="fa-solid fa-spinner fa-spin text-purple-400" id="broadcastSpinner"></i>
+                  <span id="broadcastStatusTitle">Xabarnoma holati: Kutmoqda</span>
+                </span>
+                <span id="broadcastPercent" class="text-xs font-bold text-cyan-400">0%</span>
+              </div>
+
+              <!-- Progress bar -->
+              <div class="w-full bg-gray-900 rounded-full h-2.5 mb-4 overflow-hidden border border-white/10">
+                <div id="broadcastProgressBar" class="bg-gradient-to-r from-purple-500 to-cyan-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+
+              <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                <div class="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <div class="text-[10px] text-gray-400">Yuborildi</div>
+                  <div id="broadcastSentCount" class="font-bold text-emerald-400 text-sm">0</div>
+                </div>
+                <div class="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                  <div class="text-[10px] text-gray-400">Xato</div>
+                  <div id="broadcastFailedCount" class="font-bold text-rose-400 text-sm">0</div>
+                </div>
+                <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <div class="text-[10px] text-gray-400">Bloklagan</div>
+                  <div id="broadcastBlockedCount" class="font-bold text-amber-400 text-sm">0</div>
+                </div>
+                <div class="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <div class="text-[10px] text-gray-400">Jami</div>
+                  <div id="broadcastTotalCount" class="font-bold text-blue-400 text-sm">0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= TAB 6: LOGS ================= -->
+      <div id="tabLogs" class="tab-content hidden space-y-4">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex items-center space-x-2 w-full sm:w-auto">
+            <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
+              <i class="fa-solid fa-terminal text-rose-400"></i>
+              <span>Jonli Ilova Loglari</span>
+            </h2>
+            <span class="text-xs text-gray-500">(Oxirgi 100 qator)</span>
+          </div>
+
+          <div class="flex items-center space-x-3 w-full sm:w-auto justify-end">
+            <input type="text" id="inputLogFilter" placeholder="Filtrlash..." 
+              class="px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white placeholder-gray-500 outline-none">
+            <label class="flex items-center space-x-1.5 text-xs text-gray-400 cursor-pointer">
+              <input type="checkbox" id="checkAutoScroll" checked class="rounded border-gray-700 bg-gray-900 text-cyan-500">
+              <span>Avto-scroll</span>
+            </label>
+            <button id="btnRefreshLogs" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition">
+              <i class="fa-solid fa-arrows-rotate mr-1"></i> Yangilash
+            </button>
+          </div>
+        </div>
+
+        <div id="terminalWindow" class="terminal-window rounded-2xl p-4 h-[550px] overflow-y-auto font-mono text-xs text-gray-300 border border-white/10">
+          <div class="text-gray-500">Loglar yuklanmoqda...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Adjust XP Modal -->
+  <div id="modalAdjustXp" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="glass-panel w-full max-w-sm rounded-2xl p-6 border border-white/10">
+      <h3 class="text-sm font-bold text-white mb-2 flex items-center space-x-2">
+        <i class="fa-solid fa-star text-amber-400"></i>
+        <span>Foydalanuvchi XP Ballini O'zgartirish</span>
+      </h3>
+      <p id="modalAdjustXpSubtitle" class="text-xs text-gray-400 mb-4">User: -</p>
+      <input type="hidden" id="modalAdjustUserId">
+
+      <div class="mb-4">
+        <label class="block text-xs text-gray-300 mb-1">Yangi XP Qiymati</label>
+        <input type="number" id="inputNewXp" min="0" placeholder="Masalan: 1250"
+          class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-sm text-white focus:border-cyan-500 outline-none">
+      </div>
+
+      <div class="flex space-x-2">
+        <button id="btnCancelAdjustXp" class="w-1/2 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs transition">Bekor qilish</button>
+        <button id="btnSaveAdjustXp" class="w-1/2 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition">Saqlash</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ban / Unban Modal -->
+  <div id="modalBanUser" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="glass-panel w-full max-w-sm rounded-2xl p-6 border border-white/10">
+      <h3 id="modalBanTitle" class="text-sm font-bold text-white mb-2 flex items-center space-x-2">
+        <i class="fa-solid fa-ban text-rose-500"></i>
+        <span>Foydalanuvchini Bloklash</span>
+      </h3>
+      <p id="modalBanSubtitle" class="text-xs text-gray-400 mb-4">User: -</p>
+      <input type="hidden" id="modalBanUserId">
+      <input type="hidden" id="modalBanAction"> <!-- 'ban' or 'unban' -->
+
+      <div id="modalBanReasonContainer" class="mb-4">
+        <label class="block text-xs text-gray-300 mb-1">Bloklash sababi</label>
+        <input type="text" id="inputBanReason" placeholder="Qoidalarni buzish, spam..."
+          class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-sm text-white focus:border-rose-500 outline-none">
+      </div>
+
+      <div class="flex space-x-2">
+        <button id="btnCancelBan" class="w-1/2 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs transition">Bekor qilish</button>
+        <button id="btnConfirmBan" class="w-1/2 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition">Tasdiqlash</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

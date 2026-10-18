@@ -77,8 +77,11 @@ async def cb_group_answer(query: CallbackQuery, bot: Bot):
     user_name = user.first_name or user.username or f"User {user.id}"
     result, points, elapsed = await session.check_answer(user.id, user_name, opt_idx)
 
-    if result == "inactive":
+    if result == "banned":
+        await query.answer("⛔ Your account has been banned from participating.", show_alert=True)
+    elif result == "inactive":
         await query.answer("⏰ Round has ended or question answered!", show_alert=False)
+
     elif result == "not_allowed":
         await query.answer("⚔️ This duel is only between the challenged players!", show_alert=True)
     elif result == "already_wrong":

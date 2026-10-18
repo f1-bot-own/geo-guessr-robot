@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS users (
     current_streak INTEGER DEFAULT 0,
     last_daily_date TEXT,
     daily_streak INTEGER DEFAULT 0,
+    is_banned INTEGER DEFAULT 0,
+    ban_reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
@@ -103,13 +105,35 @@ CREATE TABLE IF NOT EXISTS score_events (
 );
 """
 
+CREATE_ANSWER_LOGS_TABLE = """
+CREATE TABLE IF NOT EXISTS answer_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    username TEXT,
+    chat_id INTEGER,
+    mode TEXT,
+    question_id TEXT,
+    question_text TEXT,
+    selected_option TEXT,
+    correct_option TEXT,
+    is_correct INTEGER DEFAULT 0,
+    points INTEGER DEFAULT 0,
+    time_taken REAL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 INDEX_STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS idx_users_total_score ON users(total_score DESC);",
     "CREATE INDEX IF NOT EXISTS idx_users_xp ON users(xp DESC);",
+    "CREATE INDEX IF NOT EXISTS idx_users_banned ON users(is_banned);",
     "CREATE INDEX IF NOT EXISTS idx_group_score ON group_scores(chat_id, score DESC);",
     "CREATE INDEX IF NOT EXISTS idx_score_events_created ON score_events(created_at);",
     "CREATE INDEX IF NOT EXISTS idx_score_events_user_time ON score_events(user_id, created_at);",
     "CREATE INDEX IF NOT EXISTS idx_score_events_chat_time ON score_events(chat_id, created_at);",
+    "CREATE INDEX IF NOT EXISTS idx_answer_logs_user ON answer_logs(user_id);",
+    "CREATE INDEX IF NOT EXISTS idx_answer_logs_created ON answer_logs(created_at);",
+    "CREATE INDEX IF NOT EXISTS idx_answer_logs_question ON answer_logs(question_id);",
 ]
 
 ALL_TABLES = [
@@ -120,4 +144,5 @@ ALL_TABLES = [
     CREATE_MATCHES_TABLE,
     CREATE_DAILY_CHALLENGES_TABLE,
     CREATE_SCORE_EVENTS_TABLE,
+    CREATE_ANSWER_LOGS_TABLE,
 ]

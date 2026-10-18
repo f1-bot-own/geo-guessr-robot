@@ -13,6 +13,7 @@ import html
 
 import config
 from database import schema
+from events.bus import event_bus
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,13 @@ def format_user_mention(user_id: Optional[int], name: Optional[str]) -> str:
         return f'<a href="tg://user?id={user_id}">{safe_name}</a>'
     return f'<b>{safe_name}</b>'
 
+class SearchUsersResult(dict):
+    """Dictionary supporting unpacking as (users, total) and key access."""
+    def __iter__(self):
+        return iter((self.get("users", []), self.get("total", 0)))
+
 class Database:
+
     def __init__(self, db_path: str):
         self.db_path = db_path
 
@@ -51,6 +58,32 @@ class Database:
 
             for table_ddl in schema.ALL_TABLES:
                 await db.execute(table_ddl)
+
+            # Migrations for existing databases
+            try:
+                await db.execute("ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0")
+            except Exception:
+                pass
+            try:
+                await db.execute("ALTER TABLE users ADD COLUMN ban_reason TEXT")
+            except Exception:
+                pass
+
+            # Migrations for answer_logs columns
+            for col, col_def in [
+                ("username", "TEXT"),
+                ("mode", "TEXT"),
+                ("question_id", "TEXT"),
+                ("selected_option", "TEXT"),
+                ("correct_option", "TEXT"),
+                ("points", "INTEGER DEFAULT 0"),
+                ("time_taken", "REAL DEFAULT 0"),
+            ]:
+                try:
+                    await db.execute(f"ALTER TABLE answer_logs ADD COLUMN {col} {col_def}")
+                except Exception:
+                    pass
+
 
             for index_ddl in schema.INDEX_STATEMENTS:
                 await db.execute(index_ddl)
@@ -179,6 +212,8 @@ class Database:
 
     async def record_answer_result(self, user_id: int, is_correct: bool, xp_earned: int = 0, user_name: Optional[str] = None):
         """Record player's answer, streak, and XP update, auto-registering user if needed."""
+        if await self.is_user_banned(user_id):
+            return
         async with self._connect() as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute("SELECT xp, total_score, current_streak, best_streak FROM users WHERE user_id = ?", (user_id,))
@@ -224,6 +259,13 @@ class Database:
 
             await db.commit()
 
+        event_bus.publish("answer", {
+            "user_id": user_id,
+            "is_correct": is_correct,
+            "xp": xp_earned,
+            "user_name": user_name
+        })
+
         if is_correct and xp_earned > 0:
             await self.record_score_event(user_id, points=0, xp=xp_earned)
 
@@ -243,6 +285,8 @@ class Database:
 
     async def record_answer(self, user_id: int, is_correct: bool, points: int = 0, xp: int = 0, user_name: Optional[str] = None, username: Optional[str] = None, chat_id: Optional[int] = None):
         """Record answer with points and xp, auto-registering user if needed."""
+        if await self.is_user_banned(user_id):
+            return
         async with self._connect() as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute("SELECT xp, total_score, current_streak, best_streak FROM users WHERE user_id = ?", (user_id,))
@@ -289,6 +333,15 @@ class Database:
 
             await db.commit()
 
+        event_bus.publish("answer", {
+            "user_id": user_id,
+            "is_correct": is_correct,
+            "points": points,
+            "xp": xp,
+            "chat_id": chat_id,
+            "user_name": user_name
+        })
+
         if is_correct and (points > 0 or xp > 0):
             await self.record_score_event(user_id, points, xp, chat_id=chat_id)
 
@@ -297,6 +350,8 @@ class Database:
         Award XP directly to a user (e.g. from Mini App completion), updating level and recording score event.
         Returns the new total XP.
         """
+        if await self.is_user_banned(user_id):
+            return 0
         xp_to_add = max(0, int(xp_to_add))
         if xp_to_add == 0:
             user = await self.get_user(user_id)
@@ -669,14 +724,523 @@ class Database:
             )
             await db.commit()
 
+    async def ban_user(self, user_id: int, reason: str = "") -> bool:
+        """Ban user and record reason."""
+        async with self._connect() as db:
+            await db.execute(
+                """
+                INSERT INTO users (user_id, is_banned, ban_reason)
+                VALUES (?, 1, ?)
+                ON CONFLICT(user_id) DO UPDATE SET is_banned = 1, ban_reason = excluded.ban_reason
+                """,
+                (user_id, reason or "Banned by administrator")
+            )
+            await db.commit()
+        event_bus.publish("user_banned", {"user_id": user_id, "reason": reason})
+        return True
+
+    async def unban_user(self, user_id: int) -> bool:
+        """Unban user."""
+        async with self._connect() as db:
+            await db.execute(
+                "UPDATE users SET is_banned = 0, ban_reason = NULL WHERE user_id = ?",
+                (user_id,)
+            )
+            await db.commit()
+        event_bus.publish("user_unbanned", {"user_id": user_id})
+        return True
+
+    async def is_user_banned(self, user_id: int) -> bool:
+        """Check if user is banned."""
+        async with self._connect() as db:
+            cursor = await db.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,))
+            row = await cursor.fetchone()
+            return bool(row and row[0])
+
+    async def adjust_user_xp(self, user_id: int, xp: int) -> int:
+        """Set user's total XP to a specific value and recompute level."""
+        new_xp = max(0, int(xp))
+        new_level = self.calculate_level(new_xp)
+        async with self._connect() as db:
+            await db.execute(
+                """
+                INSERT INTO users (user_id, xp, level)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET xp = excluded.xp, level = excluded.level
+                """,
+                (user_id, new_xp, new_level)
+            )
+            await db.commit()
+        event_bus.publish("xp_adjusted", {"user_id": user_id, "xp": new_xp, "level": new_level})
+        return new_xp
+
+    async def record_answer_log(
+        self,
+        user_id: int,
+        username: Optional[str] = None,
+        chat_id: Optional[int] = None,
+        mode: Optional[str] = None,
+        question_id: Optional[str] = None,
+        question_text: Optional[str] = None,
+        selected_option: Optional[str] = None,
+        correct_option: Optional[str] = None,
+        is_correct: bool | int = False,
+        points: int = 0,
+        time_taken: float = 0.0
+    ) -> int:
+        """Insert an answer log record and publish to EventBus."""
+        async with self._connect() as db:
+            cursor = await db.execute(
+                """
+                INSERT INTO answer_logs (
+                    user_id, username, chat_id, mode, question_id,
+                    question_text, selected_option, correct_option,
+                    is_correct, points, time_taken
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    user_id,
+                    username or "",
+                    chat_id,
+                    mode or "",
+                    question_id or "",
+                    question_text or "",
+                    selected_option or "",
+                    correct_option or "",
+                    1 if is_correct else 0,
+                    int(points),
+                    float(time_taken)
+                )
+            )
+            await db.commit()
+            row_id = cursor.lastrowid
+
+        event_bus.publish("answer_submitted", {
+            "user_id": user_id,
+            "username": username or "",
+            "chat_id": chat_id,
+            "mode": mode or "",
+            "question_id": question_id or "",
+            "question_text": question_text or "",
+            "selected_option": selected_option or "",
+            "correct_option": correct_option or "",
+            "is_correct": bool(is_correct),
+            "points": int(points),
+            "time_taken": float(time_taken)
+        })
+        return row_id
+
+    async def log_answer(self, user_id: int, chat_id: Optional[int], question_text: str, user_answer: str, correct_answer: str, is_correct: bool):
+        """Compatibility wrapper for recording answer logs."""
+        return await self.record_answer_log(
+            user_id=user_id,
+            chat_id=chat_id,
+            question_text=question_text,
+            selected_option=user_answer,
+            correct_option=correct_answer,
+            is_correct=is_correct
+        )
+
+    async def get_admin_dashboard_stats(self) -> Dict[str, Any]:
+        """Aggregate platform metrics for admin dashboard."""
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+
+            # Users stats
+            cursor = await db.execute("""
+                SELECT 
+                    COUNT(*) as total_users,
+                    SUM(CASE WHEN is_banned = 1 THEN 1 ELSE 0 END) as banned_users,
+                    COALESCE(SUM(correct_answers), 0) as total_correct,
+                    COALESCE(SUM(total_answers), 0) as total_answers
+                FROM users
+            """)
+            u_row = dict(await cursor.fetchone() or {})
+            total_users = u_row.get("total_users") or 0
+            banned_users = u_row.get("banned_users") or 0
+
+            # New users today
+            cursor = await db.execute("SELECT COUNT(*) FROM users WHERE DATE(created_at) = DATE('now')")
+            new_users_today = (await cursor.fetchone())[0]
+
+            # Groups count
+            cursor = await db.execute("SELECT COUNT(*) FROM chats WHERE chat_type IN ('group', 'supergroup') OR chat_id < 0")
+            total_groups = (await cursor.fetchone())[0]
+
+            # Total games (max of matches count or chat total_games sum)
+            cursor = await db.execute("SELECT COUNT(*) FROM matches")
+            matches_count = (await cursor.fetchone())[0]
+            cursor = await db.execute("SELECT COALESCE(SUM(total_games), 0) FROM chats")
+            chat_games_count = (await cursor.fetchone())[0]
+            total_games = max(matches_count, chat_games_count)
+
+            # Answers from answer_logs
+            cursor = await db.execute("""
+                SELECT 
+                    COUNT(*) as total_logs,
+                    COALESCE(SUM(is_correct), 0) as correct_logs,
+                    COALESCE(SUM(CASE WHEN DATE(created_at) = DATE('now') THEN 1 ELSE 0 END), 0) as answers_today,
+                    COALESCE(SUM(CASE WHEN DATE(created_at) = DATE('now') AND is_correct = 1 THEN 1 ELSE 0 END), 0) as correct_today
+                FROM answer_logs
+            """)
+            al_row = dict(await cursor.fetchone() or {})
+            total_answers = al_row.get("total_logs") or 0
+            correct_answers = al_row.get("correct_logs") or 0
+            answers_today = al_row.get("answers_today") or 0
+            correct_answers_today = al_row.get("correct_today") or 0
+
+            # Fallback if answer_logs has no records yet
+            if total_answers == 0:
+                total_answers = u_row.get("total_answers") or 0
+                correct_answers = u_row.get("total_correct") or 0
+
+            accuracy_pct = round((correct_answers / total_answers * 100), 1) if total_answers > 0 else 0.0
+
+            # Top modes: list of (mode, count)
+            cursor = await db.execute("""
+                SELECT mode, COUNT(*) as cnt
+                FROM answer_logs
+                WHERE mode IS NOT NULL AND mode != ''
+                GROUP BY mode
+                ORDER BY cnt DESC
+                LIMIT 5
+            """)
+            top_modes = [(r["mode"], r["cnt"]) for r in await cursor.fetchall()]
+            if not top_modes:
+                cursor = await db.execute("""
+                    SELECT mode, COUNT(*) as cnt
+                    FROM matches
+                    WHERE mode IS NOT NULL AND mode != ''
+                    GROUP BY mode
+                    ORDER BY cnt DESC
+                    LIMIT 5
+                """)
+                top_modes = [(r["mode"], r["cnt"]) for r in await cursor.fetchall()]
+
+            # Active users today (from score_events)
+            cursor = await db.execute("SELECT COUNT(DISTINCT user_id) as active_today FROM score_events WHERE created_at >= date('now')")
+            active_today = (await cursor.fetchone())[0]
+
+            # 24h activity by hour
+            cursor = await db.execute("""
+                SELECT strftime('%H:00', created_at) as hour_label, COUNT(*) as event_count, COALESCE(SUM(points), 0) as points_sum
+                FROM score_events
+                WHERE created_at >= datetime('now', '-24 hours')
+                GROUP BY strftime('%H:00', created_at)
+                ORDER BY hour_label ASC
+            """)
+            activity_24h = [dict(r) for r in await cursor.fetchall()]
+
+            # Recent 5 top users
+            cursor = await db.execute("""
+                SELECT user_id, username, first_name, total_score, xp, level
+                FROM users
+                ORDER BY total_score DESC, xp DESC
+                LIMIT 5
+            """)
+            top_users = [dict(r) for r in await cursor.fetchall()]
+
+            mode_dist = [{"mode": m, "match_count": c} for m, c in top_modes]
+
+            return {
+                "total_users": total_users,
+                "new_users_today": new_users_today,
+                "total_groups": total_groups,
+                "total_games": total_games,
+                "total_answers": total_answers,
+                "answers_today": answers_today,
+                "correct_answers_today": correct_answers_today,
+                "accuracy_pct": accuracy_pct,
+                "accuracy_percent": accuracy_pct,
+                "banned_users": banned_users,
+                "top_modes": top_modes,
+                "active_today": active_today,
+                "activity_24h": activity_24h,
+                "mode_distribution": mode_dist,
+                "top_users": top_users,
+            }
+
+    async def search_users(self, query: str = "", limit: int = 50, offset: int = 0) -> SearchUsersResult:
+        """Search users matching user_id, username, or first_name with total count."""
+        limit = max(1, min(100, int(limit)))
+        offset = max(0, int(offset))
+        query = (query or "").strip()
+
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            if not query:
+                cursor = await db.execute("SELECT COUNT(*) FROM users")
+                total = (await cursor.fetchone())[0]
+
+                cursor = await db.execute(
+                    """
+                    SELECT user_id, username, first_name, language, xp, level, total_score,
+                           games_played, games_won, correct_answers, total_answers,
+                           best_streak, current_streak, is_banned, ban_reason, created_at
+                    FROM users
+                    ORDER BY total_score DESC, xp DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                    (limit, offset)
+                )
+            else:
+                clean_q = f"%{query}%"
+                uid = int(query) if query.isdigit() or (query.startswith("-") and query[1:].isdigit()) else None
+                if uid is not None:
+                    cursor = await db.execute(
+                        "SELECT COUNT(*) FROM users WHERE user_id = ? OR username LIKE ? OR first_name LIKE ?",
+                        (uid, clean_q, clean_q)
+                    )
+                    total = (await cursor.fetchone())[0]
+
+                    cursor = await db.execute(
+                        """
+                        SELECT user_id, username, first_name, language, xp, level, total_score,
+                               games_played, games_won, correct_answers, total_answers,
+                               best_streak, current_streak, is_banned, ban_reason, created_at
+                        FROM users
+                        WHERE user_id = ? OR username LIKE ? OR first_name LIKE ?
+                        ORDER BY total_score DESC, xp DESC
+                        LIMIT ? OFFSET ?
+                        """,
+                        (uid, clean_q, clean_q, limit, offset)
+                    )
+                else:
+                    cursor = await db.execute(
+                        "SELECT COUNT(*) FROM users WHERE username LIKE ? OR first_name LIKE ?",
+                        (clean_q, clean_q)
+                    )
+                    total = (await cursor.fetchone())[0]
+
+                    cursor = await db.execute(
+                        """
+                        SELECT user_id, username, first_name, language, xp, level, total_score,
+                               games_played, games_won, correct_answers, total_answers,
+                               best_streak, current_streak, is_banned, ban_reason, created_at
+                        FROM users
+                        WHERE username LIKE ? OR first_name LIKE ?
+                        ORDER BY total_score DESC, xp DESC
+                        LIMIT ? OFFSET ?
+                        """,
+                        (clean_q, clean_q, limit, offset)
+                    )
+
+            rows = await cursor.fetchall()
+            users_list = [dict(r) for r in rows]
+            return SearchUsersResult({
+                "users": users_list,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+            })
+
+    async def get_admin_users(self, query: Optional[str] = None, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """Compatibility wrapper for user search and pagination."""
+        return await self.search_users(query=query or "", limit=limit, offset=offset)
+
+    async def get_user_detail(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user details including recent 10 answer logs and verified stats."""
+        user = await self.get_user(user_id)
+        if not user:
+            return None
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT * FROM answer_logs
+                WHERE user_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT 10
+                """,
+                (user_id,)
+            )
+            answers = [dict(r) for r in await cursor.fetchall()]
+
+            data = dict(user)
+            data["user"] = dict(user)
+            data["recent_answers"] = answers
+            return data
+
+    async def get_admin_user_detail(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Detailed user profile with recent activity, answers, and group scores."""
+        detail = await self.get_user_detail(user_id)
+        if not detail:
+            return None
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT id, chat_id, points, xp, created_at FROM score_events WHERE user_id = ? ORDER BY id DESC LIMIT 20",
+                (user_id,)
+            )
+            detail["recent_events"] = [dict(r) for r in await cursor.fetchall()]
+
+            cursor = await db.execute(
+                """
+                SELECT gs.chat_id, gs.score, gs.wins, gs.games_played, c.title
+                FROM group_scores gs
+                LEFT JOIN chats c ON gs.chat_id = c.chat_id
+                WHERE gs.user_id = ?
+                ORDER BY gs.score DESC
+                """,
+                (user_id,)
+            )
+            detail["groups"] = [dict(r) for r in await cursor.fetchall()]
+
+            cursor = await db.execute(
+                "SELECT challenge_date, score, completed_at FROM daily_challenges WHERE user_id = ? ORDER BY challenge_date DESC LIMIT 10",
+                (user_id,)
+            )
+            detail["daily_history"] = [dict(r) for r in await cursor.fetchall()]
+            return detail
+
+    async def get_chat_list(self, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+        """List groups and chats with total_games, title, language."""
+        limit = max(1, min(100, int(limit)))
+        offset = max(0, int(offset))
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT chat_id, chat_type, title, language, total_games, created_at
+                FROM chats
+                ORDER BY total_games DESC, created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (limit, offset)
+            )
+            return [dict(r) for r in await cursor.fetchall()]
+
+    async def get_admin_groups(self, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """List groups with game and member statistics."""
+        limit = max(1, min(100, int(limit)))
+        offset = max(0, int(offset))
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("SELECT COUNT(*) FROM chats WHERE chat_type IN ('group', 'supergroup')")
+            total = (await cursor.fetchone())[0]
+
+            cursor = await db.execute(
+                """
+                SELECT c.chat_id, c.title, c.chat_type, c.language, c.total_games, c.created_at,
+                       COUNT(gs.user_id) as players_count,
+                       COALESCE(SUM(gs.score), 0) as total_group_score
+                FROM chats c
+                LEFT JOIN group_scores gs ON c.chat_id = gs.chat_id
+                WHERE c.chat_type IN ('group', 'supergroup')
+                GROUP BY c.chat_id
+                ORDER BY c.total_games DESC, total_group_score DESC
+                LIMIT ? OFFSET ?
+                """,
+                (limit, offset)
+            )
+            groups = [dict(r) for r in await cursor.fetchall()]
+            return {
+                "total": total,
+                "groups": groups
+            }
+
+    async def get_recent_answer_logs(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        user_id: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """Retrieve recent answer logs, optionally filtered by user_id."""
+        limit = max(1, min(100, int(limit)))
+        offset = max(0, int(offset))
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            if user_id is not None:
+                cursor = await db.execute(
+                    """
+                    SELECT al.*, COALESCE(u.username, '') as user_username, COALESCE(u.first_name, 'Player') as first_name
+                    FROM answer_logs al
+                    LEFT JOIN users u ON al.user_id = u.user_id
+                    WHERE al.user_id = ?
+                    ORDER BY al.id DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                    (user_id, limit, offset)
+                )
+            else:
+                cursor = await db.execute(
+                    """
+                    SELECT al.*, COALESCE(u.username, '') as user_username, COALESCE(u.first_name, 'Player') as first_name
+                    FROM answer_logs al
+                    LEFT JOIN users u ON al.user_id = u.user_id
+                    ORDER BY al.id DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                    (limit, offset)
+                )
+            return [dict(r) for r in await cursor.fetchall()]
+
+    async def get_difficult_questions(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Return questions with lowest accuracy rate from answer_logs."""
+        limit = max(1, min(100, int(limit)))
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT 
+                    question_id,
+                    question_text,
+                    mode,
+                    COUNT(*) as total_attempts,
+                    SUM(is_correct) as correct_count,
+                    ROUND(CAST(SUM(is_correct) AS REAL) / COUNT(*) * 100, 1) as accuracy_pct
+                FROM answer_logs
+                WHERE (question_id IS NOT NULL AND question_id != '')
+                   OR (question_text IS NOT NULL AND question_text != '')
+                GROUP BY COALESCE(NULLIF(question_id, ''), question_text)
+                ORDER BY accuracy_pct ASC, total_attempts DESC
+                LIMIT ?
+                """,
+                (limit,)
+            )
+            return [dict(r) for r in await cursor.fetchall()]
+
+    async def get_admin_answers(self, limit: int = 50) -> Dict[str, Any]:
+        """Fetch recent answer logs and difficult questions analysis."""
+        limit = max(1, min(100, int(limit)))
+        recent_logs = await self.get_recent_answer_logs(limit=limit)
+        difficult_questions = await self.get_difficult_questions(limit=15)
+        return {
+            "recent_answers": recent_logs,
+            "difficult_questions": difficult_questions
+        }
+
+    async def get_all_broadcast_recipients(self, target: str = "all") -> List[int]:
+        """Fetch recipient chat/user IDs for broadcasting."""
+        target = (target or "all").lower()
+        recipients = set()
+        async with self._connect() as db:
+            if target in ("all", "users"):
+                cursor = await db.execute("SELECT user_id FROM users WHERE is_banned = 0")
+                for r in await cursor.fetchall():
+                    recipients.add(r[0])
+            if target in ("all", "groups"):
+                cursor = await db.execute("SELECT chat_id FROM chats WHERE chat_type IN ('group', 'supergroup')")
+                for r in await cursor.fetchall():
+                    recipients.add(r[0])
+        return sorted(list(recipients))
+
+
+
 # Default singleton instance for convenience functions
 _default_instance: Optional[Database] = None
 
 def get_default_db() -> Database:
     global _default_instance
-    if _default_instance is None or _default_instance.db_path != config.DB_PATH:
+    if _default_instance is None:
         _default_instance = Database(config.DB_PATH)
     return _default_instance
+
+def set_default_db(db: Optional[Database]) -> None:
+    global _default_instance
+    _default_instance = db
+
 
 def calculate_level(xp: int) -> int:
     return Database.calculate_level(xp)
@@ -738,3 +1302,79 @@ async def set_chat_language(chat_id: int, language: str):
 
 async def get_chat_language(chat_id: int) -> str:
     return await get_default_db().get_chat_language(chat_id)
+
+async def ban_user(user_id: int, reason: str = "") -> bool:
+    return await get_default_db().ban_user(user_id, reason)
+
+async def unban_user(user_id: int) -> bool:
+    return await get_default_db().unban_user(user_id)
+
+async def is_user_banned(user_id: int) -> bool:
+    return await get_default_db().is_user_banned(user_id)
+
+async def adjust_user_xp(user_id: int, xp: int) -> int:
+    return await get_default_db().adjust_user_xp(user_id, xp)
+
+async def get_admin_dashboard_stats() -> Dict[str, Any]:
+    return await get_default_db().get_admin_dashboard_stats()
+
+async def get_admin_users(query: Optional[str] = None, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    return await get_default_db().get_admin_users(query, limit, offset)
+
+async def get_admin_user_detail(user_id: int) -> Optional[Dict[str, Any]]:
+    return await get_default_db().get_admin_user_detail(user_id)
+
+async def get_admin_groups(limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    return await get_default_db().get_admin_groups(limit, offset)
+
+async def get_admin_answers(limit: int = 50) -> Dict[str, Any]:
+    return await get_default_db().get_admin_answers(limit)
+
+async def log_answer(user_id: int, chat_id: Optional[int], question_text: str, user_answer: str, correct_answer: str, is_correct: bool):
+    return await get_default_db().log_answer(user_id, chat_id, question_text, user_answer, correct_answer, is_correct)
+
+async def record_answer_log(
+    user_id: int,
+    username: Optional[str] = None,
+    chat_id: Optional[int] = None,
+    mode: Optional[str] = None,
+    question_id: Optional[str] = None,
+    question_text: Optional[str] = None,
+    selected_option: Optional[str] = None,
+    correct_option: Optional[str] = None,
+    is_correct: bool | int = False,
+    points: int = 0,
+    time_taken: float = 0.0
+) -> int:
+    return await get_default_db().record_answer_log(
+        user_id=user_id,
+        username=username,
+        chat_id=chat_id,
+        mode=mode,
+        question_id=question_id,
+        question_text=question_text,
+        selected_option=selected_option,
+        correct_option=correct_option,
+        is_correct=is_correct,
+        points=points,
+        time_taken=time_taken
+    )
+
+async def search_users(query: str = "", limit: int = 50, offset: int = 0) -> SearchUsersResult:
+    return await get_default_db().search_users(query=query, limit=limit, offset=offset)
+
+async def get_user_detail(user_id: int) -> Optional[Dict[str, Any]]:
+    return await get_default_db().get_user_detail(user_id)
+
+async def get_chat_list(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+    return await get_default_db().get_chat_list(limit=limit, offset=offset)
+
+async def get_recent_answer_logs(limit: int = 50, offset: int = 0, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    return await get_default_db().get_recent_answer_logs(limit=limit, offset=offset, user_id=user_id)
+
+async def get_difficult_questions(limit: int = 20) -> List[Dict[str, Any]]:
+    return await get_default_db().get_difficult_questions(limit=limit)
+
+async def get_all_broadcast_recipients(target: str = "all") -> List[int]:
+    return await get_default_db().get_all_broadcast_recipients(target)
+
