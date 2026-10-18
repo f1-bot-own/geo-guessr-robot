@@ -45,8 +45,218 @@
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="/admin/admin.css">
+  <!-- Custom CSS with cache-busting -->
+  <link rel="stylesheet" href="/admin/admin.css?v=3.5.2">
+  <style>
+    /* Direct embedded styles for Atlas Telemetry Terminal & Components */
+    .atlas-terminal {
+      background: #040914 !important;
+      border: 1px solid #10253e !important;
+      border-radius: 16px !important;
+      overflow: hidden !important;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    }
+    .atlas-header {
+      background: #071020 !important;
+      border-bottom: 1px solid #142a45 !important;
+      padding: 10px 16px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      flex-wrap: wrap !important;
+      gap: 12px !important;
+    }
+    .terminal-dots {
+      display: flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+    }
+    .terminal-dot {
+      width: 12px !important;
+      height: 12px !important;
+      border-radius: 9999px !important;
+      display: inline-block !important;
+    }
+    .terminal-dot.red { background-color: #ef4444 !important; box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
+    .terminal-dot.yellow { background-color: #f59e0b !important; box-shadow: 0 0 6px rgba(245, 158, 11, 0.4); }
+    .terminal-dot.green { background-color: #10b981 !important; box-shadow: 0 0 6px rgba(16, 185, 129, 0.4); }
+    .atlas-title {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      font-size: 13px !important;
+      font-weight: 600 !important;
+    }
+    .atlas-title .prompt-sym { color: #06b6d4 !important; }
+    .atlas-title .daemon-name { color: #22d3ee !important; }
+    .atlas-title .tilde { color: #64748b !important; }
+    .atlas-title .stream-uri { color: #94a3b8 !important; font-weight: 400 !important; }
+    .streaming-live-pill {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      padding: 3px 12px !important;
+      border-radius: 9999px !important;
+      background: rgba(6, 78, 59, 0.4) !important;
+      border: 1px solid rgba(16, 185, 129, 0.45) !important;
+      color: #34d399 !important;
+      font-size: 10px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.08em !important;
+      text-transform: uppercase !important;
+    }
+    .streaming-dot {
+      width: 8px !important;
+      height: 8px !important;
+      border-radius: 9999px !important;
+      background-color: #10b981 !important;
+      box-shadow: 0 0 8px #10b981 !important;
+      animation: pulse-ring 2s infinite !important;
+    }
+    .atlas-search-input {
+      background: #081628 !important;
+      border: 1px solid #1e3a5f !important;
+      border-radius: 8px !important;
+      padding: 5px 12px 5px 28px !important;
+      font-size: 12px !important;
+      color: #f1f5f9 !important;
+      outline: none !important;
+      width: 220px !important;
+      font-family: inherit !important;
+    }
+    .atlas-search-input:focus {
+      border-color: #06b6d4 !important;
+      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2) !important;
+    }
+    .atlas-terminal-body {
+      background: #050c18 !important;
+      padding: 10px 14px !important;
+      min-height: 240px !important;
+      max-height: 400px !important;
+      overflow-y: auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 7px !important;
+    }
+    .atlas-row {
+      background: #081729 !important;
+      border: 1px solid #122842 !important;
+      border-radius: 8px !important;
+      padding: 8px 14px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 12px !important;
+      font-size: 12px !important;
+      color: #e2e8f0 !important;
+      cursor: pointer !important;
+      transition: all 0.15s ease !important;
+    }
+    .atlas-row:hover {
+      background: #0d223c !important;
+      border-color: #1e4a78 !important;
+      transform: translateY(-1px);
+    }
+    .atlas-time {
+      color: #64748b !important;
+      width: 62px !important;
+      flex-shrink: 0 !important;
+      font-size: 11px !important;
+    }
+    .atlas-badge {
+      display: inline-block !important;
+      padding: 2px 7px !important;
+      border-radius: 4px !important;
+      font-size: 10px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.04em !important;
+      text-transform: uppercase !important;
+      flex-shrink: 0 !important;
+    }
+    .badge-zakovat { background: rgba(16, 185, 129, 0.15) !important; color: #34d399 !important; border: 1px solid rgba(16, 185, 129, 0.35) !important; }
+    .badge-geography { background: rgba(168, 85, 247, 0.15) !important; color: #c084fc !important; border: 1px solid rgba(168, 85, 247, 0.35) !important; }
+    .badge-cosmos { background: rgba(14, 165, 233, 0.15) !important; color: #38bdf8 !important; border: 1px solid rgba(14, 165, 233, 0.35) !important; }
+    .badge-science { background: rgba(20, 184, 166, 0.15) !important; color: #2dd4bf !important; border: 1px solid rgba(20, 184, 166, 0.35) !important; }
+    .badge-history { background: rgba(244, 63, 94, 0.15) !important; color: #fb7185 !important; border: 1px solid rgba(244, 63, 94, 0.35) !important; }
+    .badge-duel { background: rgba(245, 158, 11, 0.15) !important; color: #fbbf24 !important; border: 1px solid rgba(245, 158, 11, 0.35) !important; }
+    .badge-group { background: rgba(99, 102, 241, 0.15) !important; color: #818cf8 !important; border: 1px solid rgba(99, 102, 241, 0.35) !important; }
+    .badge-solo { background: rgba(100, 116, 139, 0.2) !important; color: #94a3b8 !important; border: 1px solid rgba(100, 116, 139, 0.35) !important; }
+    .atlas-location {
+      color: #38bdf8 !important;
+      font-size: 11px !important;
+      font-weight: 500 !important;
+      flex-shrink: 0 !important;
+    }
+    .atlas-desc {
+      display: flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      flex: 1 !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+    .atlas-desc .user-tag {
+      color: #ffffff !important;
+      font-weight: 600 !important;
+      flex-shrink: 0 !important;
+    }
+    .atlas-desc .action-arrow { color: #64748b !important; flex-shrink: 0; }
+    .atlas-desc .question-snippet { color: #cbd5e1 !important; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
+    .atlas-desc .result-check { font-weight: 600 !important; flex-shrink: 0; }
+    .atlas-desc .score-pill {
+      font-size: 10px !important;
+      padding: 2px 7px !important;
+      border-radius: 9999px !important;
+      font-weight: 700 !important;
+      flex-shrink: 0 !important;
+    }
+    .atlas-desc .score-pill.correct {
+      background: rgba(16, 185, 129, 0.18) !important;
+      color: #34d399 !important;
+      border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    }
+    .atlas-desc .score-pill.incorrect {
+      background: rgba(244, 63, 94, 0.18) !important;
+      color: #fb7185 !important;
+      border: 1px solid rgba(244, 63, 94, 0.35) !important;
+    }
+    .atlas-node-hash {
+      color: #0284c7 !important;
+      font-size: 11px !important;
+      flex-shrink: 0 !important;
+    }
+    .atlas-footer {
+      background: #071020 !important;
+      border-top: 1px solid #142a45 !important;
+      padding: 8px 16px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      font-size: 11px !important;
+      color: #94a3b8 !important;
+    }
+    .atlas-integrity-indicator {
+      display: flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+    }
+    .integrity-dot {
+      width: 7px !important;
+      height: 7px !important;
+      border-radius: 9999px !important;
+      background-color: #06b6d4 !important;
+      box-shadow: 0 0 6px #06b6d4 !important;
+    }
+    .modal-stat-card {
+      background: rgba(15, 23, 42, 0.8) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      border-radius: 12px !important;
+      padding: 10px 14px !important;
+    }
+  </style>
 </head>
 <body class="bg-[#0a0f1d] text-gray-100 min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-white">
 
@@ -337,52 +547,52 @@
           </div>
         </div>
 
-        <!-- ATLAS TELEMETRY DAEMON TERMINAL (Overview Tab) -->
-        <div class="atlas-terminal">
+        <!-- ATLAS TELEMETRY DAEMON TERMINAL (Overview Tab - Image 3 Design) -->
+        <div class="atlas-terminal my-2" style="background: #040914; border: 1px solid #10253e; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
           <!-- Window Header -->
-          <div class="atlas-header">
+          <div class="atlas-header" style="background: #071020; border-bottom: 1px solid #142a45; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
             <div class="flex items-center space-x-3">
-              <div class="terminal-dots">
-                <span class="terminal-dot red"></span>
-                <span class="terminal-dot yellow"></span>
-                <span class="terminal-dot green"></span>
+              <div class="terminal-dots" style="display: flex; align-items: center; gap: 7px;">
+                <span class="terminal-dot red" style="width: 12px; height: 12px; border-radius: 9999px; background: #ef4444; display: inline-block;"></span>
+                <span class="terminal-dot yellow" style="width: 12px; height: 12px; border-radius: 9999px; background: #f59e0b; display: inline-block;"></span>
+                <span class="terminal-dot green" style="width: 12px; height: 12px; border-radius: 9999px; background: #10b981; display: inline-block;"></span>
               </div>
-              <div class="atlas-title">
-                <span class="prompt-sym">&gt;_</span>
-                <span class="daemon-name">atlas-telemetry-daemon</span>
-                <span class="tilde">~</span>
-                <span class="stream-uri">stream://live-events</span>
+              <div class="atlas-title" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; font-family: monospace;">
+                <span class="prompt-sym" style="color: #06b6d4;">&gt;_</span>
+                <span class="daemon-name" style="color: #22d3ee;">atlas-telemetry-daemon</span>
+                <span class="tilde" style="color: #64748b;">~</span>
+                <span class="stream-uri" style="color: #94a3b8; font-weight: 400;">stream://live-events</span>
               </div>
             </div>
 
             <div class="flex items-center space-x-3">
-              <div class="streaming-live-pill">
-                <span class="streaming-dot"></span>
+              <div class="streaming-live-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; background: rgba(6, 78, 59, 0.45); border: 1px solid rgba(16, 185, 129, 0.45); color: #34d399; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-family: monospace;">
+                <span class="streaming-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
                 <span>STREAMING LIVE</span>
               </div>
 
               <div class="relative">
                 <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
-                <input type="text" id="atlasSearchOverview" placeholder="Hodisalarni qidirish..." class="atlas-search-input">
+                <input type="text" id="atlasSearchOverview" placeholder="Hodisalarni qidirish..." class="atlas-search-input" style="background: #081628; border: 1px solid #1e3a5f; border-radius: 8px; padding: 5px 12px 5px 28px; font-size: 12px; color: #f1f5f9; outline: none; width: 220px; font-family: monospace;">
               </div>
 
-              <button id="btnClearAtlasOverview" title="Buffer tozalash" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition text-xs">
+              <button id="btnClearAtlasOverview" title="Buffer tozalash" style="padding: 6px 10px; background: rgba(255,255,255,0.05); border: 1px solid #1e3a5f; border-radius: 8px; color: #94a3b8; cursor: pointer;" class="hover:bg-white/10 hover:text-white transition text-xs">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
             </div>
           </div>
 
           <!-- Terminal Body (Event rows) -->
-          <div id="atlasBodyOverview" class="atlas-terminal-body">
+          <div id="atlasBodyOverview" class="atlas-terminal-body" style="background: #050c18; padding: 12px; min-height: 240px; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; font-family: monospace;">
             <div class="text-xs text-gray-500 py-6 text-center font-mono">Jonli hodisalar kutilmoqda va buferlanmoqda...</div>
           </div>
 
           <!-- Terminal Footer -->
-          <div class="atlas-footer">
-            <div class="atlas-integrity-indicator">
-              <span class="integrity-dot"></span>
-              <span class="text-cyan-400 font-semibold">100% telemetry integrity</span>
-              <span class="text-gray-400 ml-2">Buffered: <strong id="atlasCountOverview" class="text-white">0</strong> events</span>
+          <div class="atlas-footer" style="background: #071020; border-top: 1px solid #142a45; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #94a3b8; font-family: monospace;">
+            <div class="atlas-integrity-indicator" style="display: flex; align-items: center; gap: 7px;">
+              <span class="integrity-dot" style="display: inline-block; width: 7px; height: 7px; border-radius: 9999px; background: #06b6d4; box-shadow: 0 0 6px #06b6d4;"></span>
+              <span style="color: #22d3ee; font-weight: 600;">100% telemetry integrity</span>
+              <span style="color: #64748b; margin-left: 8px;">Buffered: <strong id="atlasCountOverview" style="color: #ffffff;">0</strong> events</span>
             </div>
 
             <label class="flex items-center space-x-2 cursor-pointer text-gray-400 hover:text-gray-300">
@@ -392,39 +602,51 @@
           </div>
         </div>
 
-        <!-- So'nggi 50 ta Admin Loginlar Tarixi (Admin Audit Log) -->
+        <!-- So'nggi 50 ta Yangi / Faol Foydalanuvchilar (Qachon, soat nechida kirgan) -->
         <div class="glass-card rounded-2xl p-5 border border-white/10 space-y-3">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-              <span class="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs">
-                <i class="fa-solid fa-shield-halved"></i>
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm border border-emerald-500/20">
+                <i class="fa-solid fa-user-plus"></i>
               </span>
               <div>
-                <h3 class="text-sm font-semibold text-white">So'nggi 50 ta Admin Loginlar Tarixi (Admin Audit Log)</h3>
-                <p class="text-[11px] text-gray-400">Tizimga kirishlar, IP manzillari va qurilma ma'lumotlari</p>
+                <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
+                  <span>So'nggi 50 ta Yangi / Faol Foydalanuvchilar</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-semibold">50 TA</span>
+                </h3>
+                <p class="text-[11px] text-gray-400">Botga kirgan aniq sana va soati, ko'rsatkichlari va hisobni boshqarish</p>
               </div>
             </div>
-            <button id="btnRefreshLogins" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition flex items-center space-x-1.5">
-              <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
-              <span>Yangilash</span>
-            </button>
+
+            <div class="flex items-center space-x-2 w-full sm:w-auto">
+              <div class="relative flex-1 sm:w-64">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+                <input type="text" id="inputRecentUserSearchOverview" placeholder="Foydalanuvchi qidirish..."
+                  class="w-full pl-8 pr-3 py-1.5 rounded-xl bg-gray-900/80 border border-gray-700/80 text-xs text-white placeholder-gray-500 focus:border-cyan-500 outline-none transition">
+              </div>
+              <button id="btnRefreshRecentUsersOverview" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition flex items-center space-x-1.5 flex-shrink-0">
+                <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+                <span>Yangilash</span>
+              </button>
+            </div>
           </div>
 
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs font-mono">
-              <thead class="bg-gray-900/80 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/5 font-sans">
+          <div class="overflow-x-auto rounded-xl border border-white/5 bg-gray-950/40">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-gray-900/90 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/5 font-sans">
                 <tr>
                   <th class="p-3">Vaqti & Soati</th>
-                  <th class="p-3">Admin ID</th>
-                  <th class="p-3">Ismi / Username</th>
-                  <th class="p-3">IP Manzili</th>
-                  <th class="p-3">Kirish Usuli</th>
-                  <th class="p-3">Qurilma / User-Agent</th>
-                  <th class="p-3 text-right">Holati</th>
+                  <th class="p-3">Foydalanuvchi</th>
+                  <th class="p-3">Telegram ID</th>
+                  <th class="p-3">Jami Ball</th>
+                  <th class="p-3">Daraja & XP</th>
+                  <th class="p-3">To'g'ri / Jami</th>
+                  <th class="p-3">Holati</th>
+                  <th class="p-3 text-right">Amallar & Boshqaruv</th>
                 </tr>
               </thead>
-              <tbody id="loginsTableBody" class="divide-y divide-white/5 text-[11px]">
-                <tr><td colspan="7" class="p-4 text-center text-gray-500 font-sans">Loginlar tarixi yuklanmoqda...</td></tr>
+              <tbody id="recentUsersOverviewTableBody" class="divide-y divide-white/5 text-[11px]">
+                <tr><td colspan="8" class="p-6 text-center text-gray-500 font-sans">Yangi foydalanuvchilar yuklanmoqda...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1109,7 +1331,7 @@
     </div>
   </div>
 
-  <!-- Main JavaScript File -->
-  <script src="/admin/admin.js"></script>
+  <!-- Main JavaScript File with cache-busting -->
+  <script src="/admin/admin.js?v=3.5.2"></script>
 </body>
 </html>

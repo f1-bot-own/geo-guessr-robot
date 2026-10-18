@@ -77,7 +77,12 @@
     atlasCountOverview: document.getElementById('atlasCountOverview'),
     atlasAutoScrollOverview: document.getElementById('atlasAutoScrollOverview'),
 
-    // Admin Logins Audit Log Table
+    // Overview Tab - Recent 50 Users Table
+    inputRecentUserSearchOverview: document.getElementById('inputRecentUserSearchOverview'),
+    btnRefreshRecentUsersOverview: document.getElementById('btnRefreshRecentUsersOverview'),
+    recentUsersOverviewTableBody: document.getElementById('recentUsersOverviewTableBody'),
+
+    // Admin Logins Audit Log Table (optional fallback)
     loginsTableBody: document.getElementById('loginsTableBody'),
     btnRefreshLogins: document.getElementById('btnRefreshLogins'),
 
@@ -399,93 +404,101 @@
   }
 
   // Step 1: Request OTP
-  el.btnRequestOtp.addEventListener('click', async () => {
-    clearAuthAlerts();
-    const userId = el.inputAdminId.value.trim();
-    if (!userId) {
-      showAuthError("Telegram Admin ID raqamini kiriting.");
-      return;
-    }
-
-    el.btnRequestOtp.disabled = true;
-    el.btnRequestOtp.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Yuborilmoqda...`;
-
-    try {
-      const res = await api('/api/admin/request-otp', {
-        method: 'POST',
-        body: { user_id: parseInt(userId, 10) }
-      });
-
-      if (res.ok) {
-        showAuthSuccess("Tasdiqlash kodi Telegram botingizga yuborildi!");
-        el.authStep1.classList.add('hidden');
-        el.authStep2.classList.remove('hidden');
-        el.inputOtpCode.focus();
-        startOtpTimer(300);
-      } else {
-        showAuthError(res.error || "Xatolik yuz berdi");
+  if (el.btnRequestOtp) {
+    el.btnRequestOtp.addEventListener('click', async () => {
+      clearAuthAlerts();
+      const userId = el.inputAdminId ? el.inputAdminId.value.trim() : '';
+      if (!userId) {
+        showAuthError("Telegram Admin ID raqamini kiriting.");
+        return;
       }
-    } catch (err) {
-      showAuthError("Server bilan bog'lanishda xatolik.");
-    } finally {
-      el.btnRequestOtp.disabled = false;
-      el.btnRequestOtp.innerHTML = `<span>Kodni olish (Send 2FA Code)</span><i class="fa-solid fa-paper-plane text-xs"></i>`;
-    }
-  });
 
-  el.btnBackToStep1.addEventListener('click', () => {
-    clearAuthAlerts();
-    clearInterval(state.otpTimerInterval);
-    el.authStep2.classList.add('hidden');
-    el.authStep1.classList.remove('hidden');
-  });
+      el.btnRequestOtp.disabled = true;
+      el.btnRequestOtp.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Yuborilmoqda...`;
+
+      try {
+        const res = await api('/api/admin/request-otp', {
+          method: 'POST',
+          body: { user_id: parseInt(userId, 10) }
+        });
+
+        if (res.ok) {
+          showAuthSuccess("Tasdiqlash kodi Telegram botingizga yuborildi!");
+          if (el.authStep1) el.authStep1.classList.add('hidden');
+          if (el.authStep2) el.authStep2.classList.remove('hidden');
+          if (el.inputOtpCode) el.inputOtpCode.focus();
+          startOtpTimer(300);
+        } else {
+          showAuthError(res.error || "Xatolik yuz berdi");
+        }
+      } catch (err) {
+        showAuthError("Server bilan bog'lanishda xatolik.");
+      } finally {
+        el.btnRequestOtp.disabled = false;
+        el.btnRequestOtp.innerHTML = `<span>Kodni olish (Send 2FA Code)</span><i class="fa-solid fa-paper-plane text-xs"></i>`;
+      }
+    });
+  }
+
+  if (el.btnBackToStep1) {
+    el.btnBackToStep1.addEventListener('click', () => {
+      clearAuthAlerts();
+      clearInterval(state.otpTimerInterval);
+      if (el.authStep2) el.authStep2.classList.add('hidden');
+      if (el.authStep1) el.authStep1.classList.remove('hidden');
+    });
+  }
 
   // Step 2: Verify OTP
-  el.btnVerifyOtp.addEventListener('click', async () => {
-    clearAuthAlerts();
-    const userId = el.inputAdminId.value.trim();
-    const otp = el.inputOtpCode.value.trim();
-    if (!otp || otp.length !== 6) {
-      showAuthError("6 xonali tasdiqlash kodini to'liq kiriting.");
-      return;
-    }
-
-    el.btnVerifyOtp.disabled = true;
-    el.btnVerifyOtp.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Tekshirilmoqda...`;
-
-    try {
-      const res = await api('/api/admin/verify-otp', {
-        method: 'POST',
-        body: { user_id: parseInt(userId, 10), otp: otp }
-      });
-
-      if (res.ok) {
-        state.user = res.user;
-        state.token = res.token;
-        loginSuccess();
-      } else {
-        showAuthError(res.error || "Kiritilgan kod noto'g'ri yoki eskirgan.");
+  if (el.btnVerifyOtp) {
+    el.btnVerifyOtp.addEventListener('click', async () => {
+      clearAuthAlerts();
+      const userId = el.inputAdminId ? el.inputAdminId.value.trim() : '';
+      const otp = el.inputOtpCode ? el.inputOtpCode.value.trim() : '';
+      if (!otp || otp.length !== 6) {
+        showAuthError("6 xonali tasdiqlash kodini to'liq kiriting.");
+        return;
       }
-    } catch (err) {
-      showAuthError("Server bilan bog'lanishda xatolik.");
-    } finally {
-      el.btnVerifyOtp.disabled = false;
-      el.btnVerifyOtp.innerHTML = `<span>Kirish (Login)</span><i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>`;
-    }
-  });
+
+      el.btnVerifyOtp.disabled = true;
+      el.btnVerifyOtp.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Tekshirilmoqda...`;
+
+      try {
+        const res = await api('/api/admin/verify-otp', {
+          method: 'POST',
+          body: { user_id: parseInt(userId, 10), otp: otp }
+        });
+
+        if (res.ok) {
+          state.user = res.user;
+          state.token = res.token;
+          loginSuccess();
+        } else {
+          showAuthError(res.error || "Kiritilgan kod noto'g'ri yoki eskirgan.");
+        }
+      } catch (err) {
+        showAuthError("Server bilan bog'lanishda xatolik.");
+      } finally {
+        el.btnVerifyOtp.disabled = false;
+        el.btnVerifyOtp.innerHTML = `<span>Kirish (Login)</span><i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>`;
+      }
+    });
+  }
 
   // Logout handler
-  el.btnLogout.addEventListener('click', async () => {
-    if (confirm("Haqiqatan ham boshqaruv panelidan chiqmoqchimisiz?")) {
-      try {
-        await api('/api/admin/logout', { method: 'POST' });
-      } catch {}
-      if (state.sseSource) {
-        state.sseSource.close();
+  if (el.btnLogout) {
+    el.btnLogout.addEventListener('click', async () => {
+      if (confirm("Haqiqatan ham boshqaruv panelidan chiqmoqchimisiz?")) {
+        try {
+          await api('/api/admin/logout', { method: 'POST' });
+        } catch {}
+        if (state.sseSource) {
+          state.sseSource.close();
+        }
+        location.reload();
       }
-      location.reload();
-    }
-  });
+    });
+  }
 
   function loginSuccess() {
     el.authScreen.classList.add('hidden');
@@ -502,7 +515,7 @@
     // Initialize all components
     initLiveStream();
     loadDashboardStats();
-    loadAdminLogins();
+    loadRecentUsersOverview();
     setupNavigation();
     setupAtlasControls();
     setupAnswersFilters();
@@ -649,35 +662,42 @@
     const relTime = getRelativeTime(evt.timestamp);
     const badgeClass = getCategoryBadgeClass(evt.category);
     const safeName = escapeHtml(evt.user_name);
-    const qSnippet = evt.question_text ? escapeHtml(evt.question_text.length > 38 ? evt.question_text.slice(0, 36) + '...' : evt.question_text) : 'savol';
+    const qSnippet = evt.question_text ? escapeHtml(evt.question_text.length > 40 ? evt.question_text.slice(0, 38) + '...' : evt.question_text) : 'savol';
 
     const div = document.createElement('div');
     div.className = 'atlas-row';
     div.dataset.id = evt.id;
     div.dataset.timestamp = typeof evt.timestamp === 'number' ? evt.timestamp : new Date(evt.timestamp).getTime();
     div.dataset.userId = evt.user_id;
+    div.style.cssText = "background: #081729; border: 1px solid #122842; border-radius: 8px; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; font-family: monospace; color: #e2e8f0; cursor: pointer; transition: all 0.15s ease;";
+
+    const isCorr = Boolean(evt.is_correct);
+    const resultCheckText = isCorr ? "to'g'ri javob" : "noto'g'ri";
+    const resultCheckColor = isCorr ? "#34d399" : "#fb7185";
+    const pillBg = isCorr ? "rgba(16, 185, 129, 0.18)" : "rgba(244, 63, 94, 0.18)";
+    const pillColor = isCorr ? "#34d399" : "#fb7185";
+    const pillBorder = isCorr ? "rgba(16, 185, 129, 0.35)" : "rgba(244, 63, 94, 0.35)";
+    const pillText = isCorr ? `+${evt.points} ball, +${evt.xp} XP` : `${evt.points} ball`;
 
     div.innerHTML = `
-      <span class="atlas-time">${relTime}</span>
-      <span class="atlas-badge ${badgeClass}">[${escapeHtml(evt.category)}]</span>
-      <span class="atlas-location font-mono">${escapeHtml(evt.chat_tag)}</span>
-      <div class="atlas-desc">
-        <span class="user-tag cursor-pointer hover:underline" data-user-id="${evt.user_id}">${safeName}</span>
-        <span class="action-arrow">→</span>
-        <span class="question-snippet">${qSnippet}</span>
-        <span class="result-check ${evt.is_correct ? 'text-emerald-400' : 'text-rose-400'}">
-          ${evt.is_correct ? "to'g'ri javob" : "noto'g'ri"}
-        </span>
-        <span class="score-pill ${evt.is_correct ? 'correct' : 'incorrect'}">
-          ${evt.is_correct ? `+${evt.points} ball, +${evt.xp} XP` : `${evt.points} ball`}
-        </span>
+      <span class="atlas-time" style="color: #64748b; width: 62px; flex-shrink: 0; font-size: 11px;">${relTime}</span>
+      <span class="atlas-badge ${badgeClass}" style="padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; flex-shrink: 0; text-transform: uppercase;">[${escapeHtml(evt.category)}]</span>
+      <span class="atlas-location" style="color: #38bdf8; font-size: 11px; font-weight: 500; flex-shrink: 0;">${escapeHtml(evt.chat_tag)}</span>
+      <div class="atlas-desc" style="display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+        <span class="user-tag" style="color: #ffffff; font-weight: 600; flex-shrink: 0;" data-user-id="${evt.user_id}">${safeName}</span>
+        <span class="action-arrow" style="color: #64748b; flex-shrink: 0;">→</span>
+        <span class="question-snippet" style="color: #cbd5e1; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis;">${qSnippet}</span>
+        <span class="result-check" style="color: ${resultCheckColor}; font-weight: 600; flex-shrink: 0;">${resultCheckText}</span>
+        <span class="score-pill ${isCorr ? 'correct' : 'incorrect'}" style="font-size: 10px; padding: 2px 7px; border-radius: 9999px; font-weight: 700; flex-shrink: 0; background: ${pillBg}; color: ${pillColor}; border: 1px solid ${pillBorder};">${pillText}</span>
       </div>
-      <span class="atlas-node-hash font-mono">${escapeHtml(evt.node_hash)}</span>
+      <span class="atlas-node-hash" style="color: #0284c7; font-size: 11px; flex-shrink: 0;">${escapeHtml(evt.node_hash)}</span>
     `;
 
-    // Make clicking the row or user tag open Full User Profile Modal
+    // Make clicking anywhere on the row open Full User Profile Modal
     div.addEventListener('click', (e) => {
-      openUserProfileModal(evt.user_id);
+      if (evt.user_id) {
+        openUserProfileModal(evt.user_id);
+      }
     });
 
     return div;
@@ -882,9 +902,11 @@
     }
   }
 
-  el.btnClearTicker.addEventListener('click', () => {
-    el.liveTickerFeed.innerHTML = '<div class="text-xs text-gray-500 py-3 text-center">Jonli hodisalar kutilmoqda...</div>';
-  });
+  if (el.btnClearTicker && el.liveTickerFeed) {
+    el.btnClearTicker.addEventListener('click', () => {
+      el.liveTickerFeed.innerHTML = '<div class="text-xs text-gray-500 py-3 text-center">Jonli hodisalar kutilmoqda...</div>';
+    });
+  }
 
   function incrementAnswerCount(isCorrect) {
     if (!el.statTotalAnswers) return;
@@ -934,7 +956,7 @@
     // Trigger tab data fetch
     if (tabId === 'tabOverview') {
       loadDashboardStats();
-      loadAdminLogins();
+      loadRecentUsersOverview();
     } else if (tabId === 'tabUsers') {
       loadUsers();
       loadRecentUsers();
@@ -1136,6 +1158,160 @@
   }
 
   // -------------------------------------------------------------
+  // Overview Tab: Recent 50 Users (Qachon, soat nechida kirgani)
+  // -------------------------------------------------------------
+
+  let overviewRecentUsersData = [];
+
+  async function loadRecentUsersOverview() {
+    if (!el.recentUsersOverviewTableBody) return;
+    el.recentUsersOverviewTableBody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500 font-sans">So'nggi 50 ta foydalanuvchilar yuklanmoqda...</td></tr>`;
+
+    const res = await api('/api/admin/users/recent?limit=50');
+    if (!res.ok) {
+      el.recentUsersOverviewTableBody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-rose-400 font-sans">Yangi foydalanuvchilarni yuklashda xatolik</td></tr>`;
+      return;
+    }
+
+    overviewRecentUsersData = res.recent_users || [];
+    renderRecentUsersOverviewTable(overviewRecentUsersData);
+  }
+
+  function renderRecentUsersOverviewTable(users) {
+    if (!el.recentUsersOverviewTableBody) return;
+    if (!users || users.length === 0) {
+      el.recentUsersOverviewTableBody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500 font-sans">Foydalanuvchilar topilmadi.</td></tr>`;
+      return;
+    }
+
+    el.recentUsersOverviewTableBody.innerHTML = users.map(u => {
+      const isBanned = Boolean(u.is_banned);
+      const safeName = formatUserName(u, u.user_id, u.username);
+      const username = u.username ? `@${escapeHtml(u.username)}` : `<span class="text-gray-500">-</span>`;
+      const regTime = formatDate(u.created_at);
+      const score = (u.total_score || u.score || 0).toLocaleString();
+      const xp = (u.xp || 0).toLocaleString();
+      const level = u.level || 1;
+      const totalAnswers = u.total_answers || 0;
+      const correctAnswers = u.correct_answers || 0;
+
+      return `
+        <tr class="hover:bg-white/[0.04] transition cursor-pointer" data-id="${u.user_id}">
+          <td class="p-3 font-mono text-cyan-300 font-medium text-xs whitespace-nowrap">
+            <i class="fa-regular fa-clock mr-1 text-gray-400"></i> ${regTime}
+          </td>
+          <td class="p-3">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-7 h-7 rounded-full bg-emerald-600/30 text-emerald-300 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                ${safeName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div class="font-medium text-white hover:text-cyan-400 transition">${escapeHtml(safeName)}</div>
+                <div class="text-[11px] text-gray-400">${username}</div>
+              </div>
+            </div>
+          </td>
+          <td class="p-3 font-mono text-gray-300">${u.user_id}</td>
+          <td class="p-3 font-mono text-amber-400 font-semibold">${score} ball</td>
+          <td class="p-3 text-gray-300 whitespace-nowrap">
+            <span class="px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700/50 text-[10px] font-semibold mr-1">
+              Lvl ${level}
+            </span>
+            <span class="text-xs font-medium">${xp} XP</span>
+          </td>
+          <td class="p-3 text-gray-300 whitespace-nowrap">
+            <span class="text-emerald-400 font-semibold">${correctAnswers}</span>
+            <span class="text-gray-500">/</span>
+            <span>${totalAnswers}</span>
+          </td>
+          <td class="p-3">
+            ${isBanned 
+              ? `<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[10px] font-semibold">Bloklangan</span>` 
+              : `<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-semibold">Faol</span>`}
+          </td>
+          <td class="p-3 text-right space-x-1 whitespace-nowrap" onclick="event.stopPropagation()">
+            <button class="btn-ov-profile px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/20 text-xs transition"
+              data-id="${u.user_id}" title="Profilni ko'rish">
+              <i class="fa-solid fa-address-card mr-1 text-[10px]"></i> Profil
+            </button>
+            <button class="btn-ov-points px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 text-xs transition"
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-score="${u.total_score || u.score || 0}" title="Ball o'zgartirish">
+              <i class="fa-solid fa-trophy mr-1 text-[10px]"></i> Ball
+            </button>
+            <button class="btn-ov-level px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/20 text-xs transition"
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-level="${level}" title="Daraja o'rnatish">
+              <i class="fa-solid fa-medal mr-1 text-[10px]"></i> Level
+            </button>
+            <button class="btn-ov-ban px-2 py-1 rounded-lg ${isBanned ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'} border border-white/10 text-xs transition"
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-banned="${isBanned}" title="${isBanned ? 'Blokdan chiqarish' : 'Bloklash'}">
+              <i class="fa-solid ${isBanned ? 'fa-lock-open' : 'fa-ban'} mr-1 text-[10px]"></i> ${isBanned ? 'Ochish' : 'Blok'}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Row clicks open profile modal
+    el.recentUsersOverviewTableBody.querySelectorAll('tr').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const id = tr.dataset.id;
+        if (id) openUserProfileModal(id);
+      });
+    });
+
+    // Button clicks
+    el.recentUsersOverviewTableBody.querySelectorAll('.btn-ov-profile').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openUserProfileModal(b.dataset.id);
+      });
+    });
+
+    el.recentUsersOverviewTableBody.querySelectorAll('.btn-ov-points').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openAdjustPointsModal(b.dataset.id, b.dataset.name, b.dataset.score);
+      });
+    });
+
+    el.recentUsersOverviewTableBody.querySelectorAll('.btn-ov-level').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSetLevelModal(b.dataset.id, b.dataset.name, b.dataset.level);
+      });
+    });
+
+    el.recentUsersOverviewTableBody.querySelectorAll('.btn-ov-ban').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isBanned = b.dataset.banned === 'true';
+        openBanModal(b.dataset.id, b.dataset.name, isBanned);
+      });
+    });
+  }
+
+  if (el.btnRefreshRecentUsersOverview) {
+    el.btnRefreshRecentUsersOverview.addEventListener('click', () => loadRecentUsersOverview());
+  }
+
+  if (el.inputRecentUserSearchOverview) {
+    el.inputRecentUserSearchOverview.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) {
+        renderRecentUsersOverviewTable(overviewRecentUsersData);
+        return;
+      }
+      const filtered = overviewRecentUsersData.filter(u => {
+        const name = (u.first_name || u.clean_name || '').toLowerCase();
+        const uname = (u.username || '').toLowerCase();
+        const uid = String(u.user_id);
+        return name.includes(q) || uname.includes(q) || uid.includes(q);
+      });
+      renderRecentUsersOverviewTable(filtered);
+    });
+  }
+
+  // -------------------------------------------------------------
   // Tab 2: Users Management & Recent Users Table
   // -------------------------------------------------------------
 
@@ -1202,18 +1378,26 @@
               ? `<span class="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-800 text-[10px] font-semibold">Bloklangan</span>` 
               : `<span class="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-semibold">Faol</span>`}
           </td>
-          <td class="p-3.5 text-right space-x-1" onclick="event.stopPropagation()">
-            <button class="btn-user-profile px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/20 transition"
+          <td class="p-3.5 text-right space-x-1 whitespace-nowrap" onclick="event.stopPropagation()">
+            <button class="btn-user-profile px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/20 text-xs transition"
               data-id="${u.user_id}" title="To'liq profilni ko'rish">
               <i class="fa-solid fa-address-card text-[10px] mr-1"></i> Profil
             </button>
-            <button class="btn-adjust-xp px-2 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 border border-white/10 transition"
-              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-xp="${u.xp || 0}">
+            <button class="btn-adjust-points px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 text-xs transition"
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-score="${u.total_score || u.score || 0}" title="Ball o'zgartirish">
+              <i class="fa-solid fa-trophy text-[10px] mr-1"></i> Ball
+            </button>
+            <button class="btn-set-level px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/20 text-xs transition"
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-level="${u.level || 1}" title="Daraja o'rnatish">
+              <i class="fa-solid fa-medal text-[10px] mr-1"></i> Lvl
+            </button>
+            <button class="btn-adjust-xp px-2 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 border border-white/10 text-xs transition"
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-xp="${u.xp || 0}" title="XP o'zgartirish">
               <i class="fa-solid fa-star text-[10px] mr-1"></i> XP
             </button>
-            <button class="btn-toggle-ban px-2 py-1 rounded-lg ${isBanned ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'} border border-white/10 transition"
-              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-banned="${isBanned}">
-              <i class="fa-solid ${isBanned ? 'fa-lock-open' : 'fa-ban'} text-[10px] mr-1"></i> ${isBanned ? 'Ochish' : 'Bloklash'}
+            <button class="btn-toggle-ban px-2 py-1 rounded-lg ${isBanned ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'} border border-white/10 text-xs transition"
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-banned="${isBanned}" title="${isBanned ? 'Blokdan chiqarish' : 'Bloklash'}">
+              <i class="fa-solid ${isBanned ? 'fa-lock-open' : 'fa-ban'} text-[10px] mr-1"></i> ${isBanned ? 'Ochish' : 'Blok'}
             </button>
           </td>
         </tr>
@@ -1233,6 +1417,20 @@
       b.addEventListener('click', (e) => {
         e.stopPropagation();
         openUserProfileModal(b.dataset.id);
+      });
+    });
+
+    el.usersTableBody.querySelectorAll('.btn-adjust-points').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openAdjustPointsModal(b.dataset.id, b.dataset.name, b.dataset.score);
+      });
+    });
+
+    el.usersTableBody.querySelectorAll('.btn-set-level').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSetLevelModal(b.dataset.id, b.dataset.name, b.dataset.level);
       });
     });
 
@@ -1342,34 +1540,43 @@
     el.btnUsersNext.disabled = end >= state.usersTotal;
   }
 
-  el.btnUsersPrev.addEventListener('click', () => {
-    if (state.usersPage > 0) {
-      state.usersPage--;
-      loadUsers();
-    }
-  });
+  if (el.btnUsersPrev) {
+    el.btnUsersPrev.addEventListener('click', () => {
+      if (state.usersPage > 0) {
+        state.usersPage--;
+        loadUsers();
+      }
+    });
+  }
 
-  el.btnUsersNext.addEventListener('click', () => {
-    if ((state.usersPage + 1) * state.usersLimit < state.usersTotal) {
-      state.usersPage++;
-      loadUsers();
-    }
-  });
+  if (el.btnUsersNext) {
+    el.btnUsersNext.addEventListener('click', () => {
+      if ((state.usersPage + 1) * state.usersLimit < state.usersTotal) {
+        state.usersPage++;
+        loadUsers();
+      }
+    });
+  }
 
   let searchDebounce = null;
-  el.inputUserSearch.addEventListener('input', (e) => {
-    clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => {
-      state.currentSearchQuery = e.target.value.trim();
-      state.usersPage = 0;
-      loadUsers();
-    }, 350);
-  });
+  if (el.inputUserSearch) {
+    el.inputUserSearch.addEventListener('input', (e) => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        state.currentSearchQuery = e.target.value.trim();
+        state.usersPage = 0;
+        loadUsers();
+      }, 350);
+    });
+  }
 
-  el.btnRefreshUsers.addEventListener('click', () => {
-    loadUsers();
-    loadRecentUsers();
-  });
+  if (el.btnRefreshUsers) {
+    el.btnRefreshUsers.addEventListener('click', () => {
+      loadUsers();
+      loadRecentUsers();
+      loadRecentUsersOverview();
+    });
+  }
 
   // -------------------------------------------------------------
   // Full User Profile Modal Logic
@@ -1475,166 +1682,207 @@
     el.userModalBtnResetStats.onclick = () => confirmResetUserStats(u.user_id, safeName);
   }
 
-  el.btnCloseUserProfile.addEventListener('click', () => {
-    el.modalUserProfile.classList.add('hidden');
-    state.activeUserProfileId = null;
-  });
+  if (el.btnCloseUserProfile) {
+    el.btnCloseUserProfile.addEventListener('click', () => {
+      if (el.modalUserProfile) el.modalUserProfile.classList.add('hidden');
+      state.activeUserProfileId = null;
+    });
+  }
 
   // Modal 1: Adjust Points
   function openAdjustPointsModal(userId, name, currentPoints) {
-    el.modalAdjustPointsUserId.value = userId;
-    el.modalAdjustPointsSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi ball: ${currentPoints}`;
-    el.inputNewPoints.value = currentPoints;
+    if (!el.modalAdjustPoints) return;
+    if (el.modalAdjustPointsUserId) el.modalAdjustPointsUserId.value = userId;
+    if (el.modalAdjustPointsSubtitle) el.modalAdjustPointsSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi ball: ${currentPoints}`;
+    if (el.inputNewPoints) el.inputNewPoints.value = currentPoints;
     el.modalAdjustPoints.classList.remove('hidden');
-    el.inputNewPoints.focus();
+    if (el.inputNewPoints) el.inputNewPoints.focus();
   }
 
-  el.btnCancelAdjustPoints.addEventListener('click', () => el.modalAdjustPoints.classList.add('hidden'));
-
-  el.btnSaveAdjustPoints.addEventListener('click', async () => {
-    const userId = el.modalAdjustPointsUserId.value;
-    const newPoints = parseInt(el.inputNewPoints.value, 10);
-    if (isNaN(newPoints) || newPoints < 0) {
-      alert("Yaroqli musbat ball kiriting.");
-      return;
-    }
-
-    const res = await api('/api/admin/users/adjust-points', {
-      method: 'POST',
-      body: { user_id: parseInt(userId, 10), points: newPoints }
+  if (el.btnCancelAdjustPoints) {
+    el.btnCancelAdjustPoints.addEventListener('click', () => {
+      if (el.modalAdjustPoints) el.modalAdjustPoints.classList.add('hidden');
     });
+  }
 
-    if (res.ok) {
-      el.modalAdjustPoints.classList.add('hidden');
-      loadUsers();
-      if (state.activeUserProfileId == userId) {
-        openUserProfileModal(userId);
+  if (el.btnSaveAdjustPoints) {
+    el.btnSaveAdjustPoints.addEventListener('click', async () => {
+      const userId = el.modalAdjustPointsUserId ? el.modalAdjustPointsUserId.value : '';
+      const newPoints = parseInt(el.inputNewPoints ? el.inputNewPoints.value : '', 10);
+      if (isNaN(newPoints) || newPoints < 0) {
+        alert("Yaroqli musbat ball kiriting.");
+        return;
       }
-    } else {
-      alert(res.error || "Ballarni yangilashda xatolik");
-    }
-  });
+
+      const res = await api('/api/admin/users/adjust-points', {
+        method: 'POST',
+        body: { user_id: parseInt(userId, 10), points: newPoints }
+      });
+
+      if (res.ok) {
+        if (el.modalAdjustPoints) el.modalAdjustPoints.classList.add('hidden');
+        loadUsers();
+        loadRecentUsers();
+        loadRecentUsersOverview();
+        if (state.activeUserProfileId == userId) {
+          openUserProfileModal(userId);
+        }
+      } else {
+        alert(res.error || "Ballarni yangilashda xatolik");
+      }
+    });
+  }
 
   // Modal 2: Adjust XP
   function openAdjustXpModal(userId, name, currentXp) {
-    el.modalAdjustUserId.value = userId;
-    el.modalAdjustXpSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi XP: ${currentXp}`;
-    el.inputNewXp.value = currentXp;
+    if (!el.modalAdjustXp) return;
+    if (el.modalAdjustUserId) el.modalAdjustUserId.value = userId;
+    if (el.modalAdjustXpSubtitle) el.modalAdjustXpSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi XP: ${currentXp}`;
+    if (el.inputNewXp) el.inputNewXp.value = currentXp;
     el.modalAdjustXp.classList.remove('hidden');
-    el.inputNewXp.focus();
+    if (el.inputNewXp) el.inputNewXp.focus();
   }
 
-  el.btnCancelAdjustXp.addEventListener('click', () => el.modalAdjustXp.classList.add('hidden'));
-
-  el.btnSaveAdjustXp.addEventListener('click', async () => {
-    const userId = el.modalAdjustUserId.value;
-    const newXp = parseInt(el.inputNewXp.value, 10);
-    if (isNaN(newXp) || newXp < 0) {
-      alert("Yaroqli musbat son kiriting.");
-      return;
-    }
-
-    const res = await api('/api/admin/users/adjust-xp', {
-      method: 'POST',
-      body: { user_id: parseInt(userId, 10), xp: newXp }
+  if (el.btnCancelAdjustXp) {
+    el.btnCancelAdjustXp.addEventListener('click', () => {
+      if (el.modalAdjustXp) el.modalAdjustXp.classList.add('hidden');
     });
+  }
 
-    if (res.ok) {
-      el.modalAdjustXp.classList.add('hidden');
-      loadUsers();
-      if (state.activeUserProfileId == userId) {
-        openUserProfileModal(userId);
+  if (el.btnSaveAdjustXp) {
+    el.btnSaveAdjustXp.addEventListener('click', async () => {
+      const userId = el.modalAdjustUserId ? el.modalAdjustUserId.value : '';
+      const newXp = parseInt(el.inputNewXp ? el.inputNewXp.value : '', 10);
+      if (isNaN(newXp) || newXp < 0) {
+        alert("Yaroqli musbat son kiriting.");
+        return;
       }
-    } else {
-      alert(res.error || "XP yangilashda xatolik");
-    }
-  });
+
+      const res = await api('/api/admin/users/adjust-xp', {
+        method: 'POST',
+        body: { user_id: parseInt(userId, 10), xp: newXp }
+      });
+
+      if (res.ok) {
+        if (el.modalAdjustXp) el.modalAdjustXp.classList.add('hidden');
+        loadUsers();
+        loadRecentUsers();
+        loadRecentUsersOverview();
+        if (state.activeUserProfileId == userId) {
+          openUserProfileModal(userId);
+        }
+      } else {
+        alert(res.error || "XP yangilashda xatolik");
+      }
+    });
+  }
 
   // Modal 3: Set Level
   function openSetLevelModal(userId, name, currentLevel) {
-    el.modalSetLevelUserId.value = userId;
-    el.modalSetLevelSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi daraja: ${currentLevel}`;
-    el.inputNewLevel.value = currentLevel;
+    if (!el.modalSetLevel) return;
+    if (el.modalSetLevelUserId) el.modalSetLevelUserId.value = userId;
+    if (el.modalSetLevelSubtitle) el.modalSetLevelSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi daraja: ${currentLevel}`;
+    if (el.inputNewLevel) el.inputNewLevel.value = currentLevel;
     el.modalSetLevel.classList.remove('hidden');
-    el.inputNewLevel.focus();
+    if (el.inputNewLevel) el.inputNewLevel.focus();
   }
 
-  el.btnCancelSetLevel.addEventListener('click', () => el.modalSetLevel.classList.add('hidden'));
-
-  el.btnSaveSetLevel.addEventListener('click', async () => {
-    const userId = el.modalSetLevelUserId.value;
-    const newLevel = parseInt(el.inputNewLevel.value, 10);
-    if (isNaN(newLevel) || newLevel < 1 || newLevel > 100) {
-      alert("Daraja 1 dan 100 gacha bo'lishi kerak.");
-      return;
-    }
-
-    const res = await api('/api/admin/users/set-level', {
-      method: 'POST',
-      body: { user_id: parseInt(userId, 10), level: newLevel }
+  if (el.btnCancelSetLevel) {
+    el.btnCancelSetLevel.addEventListener('click', () => {
+      if (el.modalSetLevel) el.modalSetLevel.classList.add('hidden');
     });
+  }
 
-    if (res.ok) {
-      el.modalSetLevel.classList.add('hidden');
-      loadUsers();
-      if (state.activeUserProfileId == userId) {
-        openUserProfileModal(userId);
+  if (el.btnSaveSetLevel) {
+    el.btnSaveSetLevel.addEventListener('click', async () => {
+      const userId = el.modalSetLevelUserId ? el.modalSetLevelUserId.value : '';
+      const newLevel = parseInt(el.inputNewLevel ? el.inputNewLevel.value : '', 10);
+      if (isNaN(newLevel) || newLevel < 1 || newLevel > 100) {
+        alert("Daraja 1 dan 100 gacha bo'lishi kerak.");
+        return;
       }
-    } else {
-      alert(res.error || "Darajani yangilashda xatolik");
-    }
-  });
+
+      const res = await api('/api/admin/users/set-level', {
+        method: 'POST',
+        body: { user_id: parseInt(userId, 10), level: newLevel }
+      });
+
+      if (res.ok) {
+        if (el.modalSetLevel) el.modalSetLevel.classList.add('hidden');
+        loadUsers();
+        loadRecentUsers();
+        loadRecentUsersOverview();
+        if (state.activeUserProfileId == userId) {
+          openUserProfileModal(userId);
+        }
+      } else {
+        alert(res.error || "Darajani yangilashda xatolik");
+      }
+    });
+  }
 
   // Modal 4: Ban / Unban
   function openBanModal(userId, name, isCurrentlyBanned) {
-    el.modalBanUserId.value = userId;
-    el.modalBanAction.value = isCurrentlyBanned ? 'unban' : 'ban';
-    el.modalBanSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId})`;
+    if (!el.modalBanUser) return;
+    if (el.modalBanUserId) el.modalBanUserId.value = userId;
+    if (el.modalBanAction) el.modalBanAction.value = isCurrentlyBanned ? 'unban' : 'ban';
+    if (el.modalBanSubtitle) el.modalBanSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId})`;
 
     if (isCurrentlyBanned) {
-      el.modalBanTitle.innerHTML = `<i class="fa-solid fa-lock-open text-emerald-400"></i><span>Foydalanuvchini Blokdan Chiqarish</span>`;
-      el.modalBanReasonContainer.classList.add('hidden');
-      el.btnConfirmBan.textContent = "Blokdan Ochish";
-      el.btnConfirmBan.className = "w-1/2 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition";
+      if (el.modalBanTitle) el.modalBanTitle.innerHTML = `<i class="fa-solid fa-lock-open text-emerald-400"></i><span>Foydalanuvchini Blokdan Chiqarish</span>`;
+      if (el.modalBanReasonContainer) el.modalBanReasonContainer.classList.add('hidden');
+      if (el.btnConfirmBan) {
+        el.btnConfirmBan.textContent = "Blokdan Ochish";
+        el.btnConfirmBan.className = "w-1/2 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition";
+      }
     } else {
-      el.modalBanTitle.innerHTML = `<i class="fa-solid fa-ban text-rose-500"></i><span>Foydalanuvchini Bloklash</span>`;
-      el.modalBanReasonContainer.classList.remove('hidden');
-      el.inputBanReason.value = "";
-      el.btnConfirmBan.textContent = "Bloklash";
-      el.btnConfirmBan.className = "w-1/2 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition";
+      if (el.modalBanTitle) el.modalBanTitle.innerHTML = `<i class="fa-solid fa-ban text-rose-500"></i><span>Foydalanuvchini Bloklash</span>`;
+      if (el.modalBanReasonContainer) el.modalBanReasonContainer.classList.remove('hidden');
+      if (el.inputBanReason) el.inputBanReason.value = "";
+      if (el.btnConfirmBan) {
+        el.btnConfirmBan.textContent = "Bloklash";
+        el.btnConfirmBan.className = "w-1/2 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition";
+      }
     }
 
     el.modalBanUser.classList.remove('hidden');
   }
 
-  el.btnCancelBan.addEventListener('click', () => el.modalBanUser.classList.add('hidden'));
+  if (el.btnCancelBan) {
+    el.btnCancelBan.addEventListener('click', () => {
+      if (el.modalBanUser) el.modalBanUser.classList.add('hidden');
+    });
+  }
 
-  el.btnConfirmBan.addEventListener('click', async () => {
-    const userId = parseInt(el.modalBanUserId.value, 10);
-    const action = el.modalBanAction.value;
-    const isBan = action === 'ban';
-    const reason = el.inputBanReason.value.trim();
+  if (el.btnConfirmBan) {
+    el.btnConfirmBan.addEventListener('click', async () => {
+      const userId = parseInt(el.modalBanUserId ? el.modalBanUserId.value : '', 10);
+      const action = el.modalBanAction ? el.modalBanAction.value : 'ban';
+      const isBan = action === 'ban';
+      const reason = el.inputBanReason ? el.inputBanReason.value.trim() : '';
 
-    const res = await api('/api/admin/users/ban', {
-      method: 'POST',
-      body: {
-        user_id: userId,
-        ban: isBan,
-        reason: reason
+      const res = await api('/api/admin/users/ban', {
+        method: 'POST',
+        body: {
+          user_id: userId,
+          ban: isBan,
+          reason: reason
+        }
+      });
+
+      if (res.ok) {
+        if (el.modalBanUser) el.modalBanUser.classList.add('hidden');
+        loadUsers();
+        loadRecentUsers();
+        loadRecentUsersOverview();
+        if (state.activeUserProfileId == userId) {
+          openUserProfileModal(userId);
+        }
+      } else {
+        alert(res.error || "Amalni bajarishda xatolik");
       }
     });
-
-    if (res.ok) {
-      el.modalBanUser.classList.add('hidden');
-      loadUsers();
-      loadRecentUsers();
-      if (state.activeUserProfileId == userId) {
-        openUserProfileModal(userId);
-      }
-    } else {
-      alert(res.error || "Amalni bajarishda xatolik");
-    }
-  });
+  }
 
   // Action: Reset User Stats
   async function confirmResetUserStats(userId, name) {
@@ -1651,6 +1899,7 @@
       alert("Foydalanuvchi statistikasi muvaffaqiyatli nollashdi!");
       loadUsers();
       loadRecentUsers();
+      loadRecentUsersOverview();
       if (state.activeUserProfileId == userId) {
         openUserProfileModal(userId);
       }
@@ -1713,7 +1962,9 @@
     }).join('');
   }
 
-  el.btnRefreshGroups.addEventListener('click', () => loadGroups());
+  if (el.btnRefreshGroups) {
+    el.btnRefreshGroups.addEventListener('click', () => loadGroups());
+  }
 
   // -------------------------------------------------------------
   // Tab 4: Answers & Questions (Filterable Answers History)
@@ -1890,10 +2141,10 @@
       }
     };
 
-    el.broadcastText.addEventListener('input', updatePreview);
-    el.broadcastPhoto.addEventListener('input', updatePreview);
-    el.broadcastBtnText.addEventListener('input', updatePreview);
-    el.broadcastBtnUrl.addEventListener('input', updatePreview);
+    if (el.broadcastText) el.broadcastText.addEventListener('input', updatePreview);
+    if (el.broadcastPhoto) el.broadcastPhoto.addEventListener('input', updatePreview);
+    if (el.broadcastBtnText) el.broadcastBtnText.addEventListener('input', updatePreview);
+    if (el.broadcastBtnUrl) el.broadcastBtnUrl.addEventListener('input', updatePreview);
   }
 
   function renderTelegramHtml(raw) {
@@ -1905,51 +2156,53 @@
     return clean;
   }
 
-  el.btnStartBroadcast.addEventListener('click', async () => {
-    const target = document.querySelector('input[name="broadcastTarget"]:checked')?.value || 'all';
-    const text = el.broadcastText.value.trim();
-    const photo = el.broadcastPhoto.value.trim() || null;
-    const btnText = el.broadcastBtnText.value.trim() || null;
-    const btnUrl = el.broadcastBtnUrl.value.trim() || null;
+  if (el.btnStartBroadcast) {
+    el.btnStartBroadcast.addEventListener('click', async () => {
+      const target = document.querySelector('input[name="broadcastTarget"]:checked')?.value || 'all';
+      const text = el.broadcastText ? el.broadcastText.value.trim() : '';
+      const photo = (el.broadcastPhoto && el.broadcastPhoto.value.trim()) || null;
+      const btnText = (el.broadcastBtnText && el.broadcastBtnText.value.trim()) || null;
+      const btnUrl = (el.broadcastBtnUrl && el.broadcastBtnUrl.value.trim()) || null;
 
-    if (!text) {
-      alert("Xabar matnini kiriting!");
-      return;
-    }
-
-    if (!confirm(`Haqiqatan ham ushbu xabarni "${target}" auditoriyasiga yubormoqchimisiz?`)) {
-      return;
-    }
-
-    el.btnStartBroadcast.disabled = true;
-    el.btnStartBroadcast.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Boshlanmoqda...`;
-
-    try {
-      const res = await api('/api/admin/broadcast', {
-        method: 'POST',
-        body: {
-          target: target,
-          text: text,
-          photo_url: photo,
-          button_text: btnText,
-          button_url: btnUrl
-        }
-      });
-
-      if (res.ok) {
-        el.broadcastStatusTitle.textContent = "Xabarnoma holati: Boshlandi...";
-        el.broadcastSpinner.classList.remove('hidden');
-        pollBroadcastStatus(res.broadcast_id);
-      } else {
-        alert(res.error || "Xabarnomani boshlashda xatolik");
+      if (!text) {
+        alert("Xabar matnini kiriting!");
+        return;
       }
-    } catch (e) {
-      alert("Server xatosi: " + e.message);
-    } finally {
-      el.btnStartBroadcast.disabled = false;
-      el.btnStartBroadcast.innerHTML = `<i class="fa-solid fa-paper-plane text-xs"></i><span>Xabarnomani Yuborish</span>`;
-    }
-  });
+
+      if (!confirm(`Haqiqatan ham ushbu xabarni "${target}" auditoriyasiga yubormoqchimisiz?`)) {
+        return;
+      }
+
+      el.btnStartBroadcast.disabled = true;
+      el.btnStartBroadcast.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Boshlanmoqda...`;
+
+      try {
+        const res = await api('/api/admin/broadcast', {
+          method: 'POST',
+          body: {
+            target: target,
+            text: text,
+            photo_url: photo,
+            button_text: btnText,
+            button_url: btnUrl
+          }
+        });
+
+        if (res.ok) {
+          if (el.broadcastStatusTitle) el.broadcastStatusTitle.textContent = "Xabarnoma holati: Boshlandi...";
+          if (el.broadcastSpinner) el.broadcastSpinner.classList.remove('hidden');
+          pollBroadcastStatus(res.broadcast_id);
+        } else {
+          alert(res.error || "Xabarnomani boshlashda xatolik");
+        }
+      } catch (e) {
+        alert("Server xatosi: " + e.message);
+      } finally {
+        el.btnStartBroadcast.disabled = false;
+        el.btnStartBroadcast.innerHTML = `<i class="fa-solid fa-paper-plane text-xs"></i><span>Xabarnomani Yuborish</span>`;
+      }
+    });
+  }
 
   function updateBroadcastProgressUI(data) {
     const pct = data.progress_pct || (data.total > 0 ? Math.round(((data.sent + data.failed + data.blocked) / data.total) * 100) : 0);
@@ -2018,8 +2271,12 @@
     }
   }
 
-  el.btnRefreshLogs.addEventListener('click', () => loadLogs());
-  el.inputLogFilter.addEventListener('input', () => loadLogs());
+  if (el.btnRefreshLogs) {
+    el.btnRefreshLogs.addEventListener('click', () => loadLogs());
+  }
+  if (el.inputLogFilter) {
+    el.inputLogFilter.addEventListener('input', () => loadLogs());
+  }
 
   // Utility: Escape HTML
   function escapeHtml(text) {

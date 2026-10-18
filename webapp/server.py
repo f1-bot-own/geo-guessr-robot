@@ -28,11 +28,39 @@ async def index_handler(request: web.Request) -> web.Response:
     return web.Response(text="GeoGuessr Mini App index.html not found", status=404)
 
 async def admin_index_handler(request: web.Request) -> web.Response:
-    """Serve the Web Admin Dashboard HTML."""
+    """Serve the Web Admin Dashboard HTML with no-cache headers."""
     html_file = ADMIN_DIR / "index.html"
     if html_file.is_file():
-        return web.FileResponse(html_file)
+        return web.FileResponse(html_file, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        })
     return web.Response(text="GeoGuru Web Admin Dashboard index.html not found", status=404)
+
+async def admin_css_handler(request: web.Request) -> web.Response:
+    """Serve admin.css with no-cache headers."""
+    css_file = ADMIN_DIR / "admin.css"
+    if css_file.is_file():
+        return web.FileResponse(css_file, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Content-Type": "text/css; charset=utf-8"
+        })
+    return web.Response(text="admin.css not found", status=404)
+
+async def admin_js_handler(request: web.Request) -> web.Response:
+    """Serve admin.js with no-cache headers."""
+    js_file = ADMIN_DIR / "admin.js"
+    if js_file.is_file():
+        return web.FileResponse(js_file, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Content-Type": "application/javascript; charset=utf-8"
+        })
+    return web.Response(text="admin.js not found", status=404)
 
 async def health_handler(request: web.Request) -> web.Response:
     """Health check endpoint for Railway / Cloud deployment monitoring."""
@@ -114,9 +142,11 @@ def create_web_app(db=None, bot=None) -> web.Application:
     app["db"] = db
     app["bot"] = bot
 
-    # Admin Dashboard HTML entry points
+    # Admin Dashboard HTML and asset entry points with strict no-cache
     app.router.add_get("/admin", admin_index_handler)
     app.router.add_get("/admin/", admin_index_handler)
+    app.router.add_get("/admin/admin.css", admin_css_handler)
+    app.router.add_get("/admin/admin.js", admin_js_handler)
 
     # Register Admin API routes
     register_admin_routes(app)
