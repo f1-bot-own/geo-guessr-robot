@@ -159,8 +159,17 @@
         <span id="liveStatusText" class="text-gray-300 font-medium">Ulanmoqda...</span>
       </div>
 
-      <!-- Right: Admin profile & Quick Actions -->
+      <!-- Right: Strict 2FA, DB Backup, Admin profile & Prominent Chiqish -->
       <div class="flex items-center space-x-3">
+        <!-- Strict 2FA toggle -->
+        <div class="hidden sm:flex items-center space-x-2 px-2.5 py-1.5 rounded-xl bg-gray-900/60 border border-white/10 text-xs text-gray-300" title="Har doim 2FA OTP kod so'rash (Auto-loginni cheklash)">
+          <label class="switch">
+            <input type="checkbox" id="toggleStrict2fa">
+            <span class="slider"></span>
+          </label>
+          <span class="text-[11px] font-medium text-gray-300">Strict 2FA</span>
+        </div>
+
         <a href="/api/admin/backup-db" target="_blank" title="SQLite bazasini yuklab olish" 
           class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition">
           <i class="fa-solid fa-database text-cyan-400"></i>
@@ -177,8 +186,9 @@
           </div>
         </div>
 
-        <button id="btnLogout" title="Tizimdan chiqish" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/20 transition">
+        <button id="btnLogout" title="Tizimdan chiqish" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs border border-rose-500/30 transition font-medium">
           <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Chiqish</span>
         </button>
       </div>
     </header>
@@ -327,17 +337,96 @@
           </div>
         </div>
 
-        <!-- Real-Time Live Event Ticker Feed -->
-        <div class="glass-card rounded-2xl p-5">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center space-x-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              <h2 class="text-sm font-semibold text-white">Jonli Hodisalar Oqimi (Live Event Ticker)</h2>
+        <!-- ATLAS TELEMETRY DAEMON TERMINAL (Overview Tab) -->
+        <div class="atlas-terminal">
+          <!-- Window Header -->
+          <div class="atlas-header">
+            <div class="flex items-center space-x-3">
+              <div class="terminal-dots">
+                <span class="terminal-dot red"></span>
+                <span class="terminal-dot yellow"></span>
+                <span class="terminal-dot green"></span>
+              </div>
+              <div class="atlas-title">
+                <span class="prompt-sym">&gt;_</span>
+                <span class="daemon-name">atlas-telemetry-daemon</span>
+                <span class="tilde">~</span>
+                <span class="stream-uri">stream://live-events</span>
+              </div>
             </div>
-            <button id="btnClearTicker" class="text-xs text-gray-400 hover:text-white transition">Tozalash</button>
+
+            <div class="flex items-center space-x-3">
+              <div class="streaming-live-pill">
+                <span class="streaming-dot"></span>
+                <span>STREAMING LIVE</span>
+              </div>
+
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+                <input type="text" id="atlasSearchOverview" placeholder="Hodisalarni qidirish..." class="atlas-search-input">
+              </div>
+
+              <button id="btnClearAtlasOverview" title="Buffer tozalash" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition text-xs">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
           </div>
-          <div id="liveTickerFeed" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-            <div class="text-xs text-gray-500 py-3 text-center">Jonli hodisalar kutilmoqda...</div>
+
+          <!-- Terminal Body (Event rows) -->
+          <div id="atlasBodyOverview" class="atlas-terminal-body">
+            <div class="text-xs text-gray-500 py-6 text-center font-mono">Jonli hodisalar kutilmoqda va buferlanmoqda...</div>
+          </div>
+
+          <!-- Terminal Footer -->
+          <div class="atlas-footer">
+            <div class="atlas-integrity-indicator">
+              <span class="integrity-dot"></span>
+              <span class="text-cyan-400 font-semibold">100% telemetry integrity</span>
+              <span class="text-gray-400 ml-2">Buffered: <strong id="atlasCountOverview" class="text-white">0</strong> events</span>
+            </div>
+
+            <label class="flex items-center space-x-2 cursor-pointer text-gray-400 hover:text-gray-300">
+              <input type="checkbox" id="atlasAutoScrollOverview" checked class="rounded border-gray-700 bg-gray-900 text-cyan-500 text-xs">
+              <span>Auto-scroll on ingest</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- So'nggi 50 ta Admin Loginlar Tarixi (Admin Audit Log) -->
+        <div class="glass-card rounded-2xl p-5 border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-shield-halved"></i>
+              </span>
+              <div>
+                <h3 class="text-sm font-semibold text-white">So'nggi 50 ta Admin Loginlar Tarixi (Admin Audit Log)</h3>
+                <p class="text-[11px] text-gray-400">Tizimga kirishlar, IP manzillari va qurilma ma'lumotlari</p>
+              </div>
+            </div>
+            <button id="btnRefreshLogins" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition flex items-center space-x-1.5">
+              <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+              <span>Yangilash</span>
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="bg-gray-900/80 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/5 font-sans">
+                <tr>
+                  <th class="p-3">Vaqti & Soati</th>
+                  <th class="p-3">Admin ID</th>
+                  <th class="p-3">Ismi / Username</th>
+                  <th class="p-3">IP Manzili</th>
+                  <th class="p-3">Kirish Usuli</th>
+                  <th class="p-3">Qurilma / User-Agent</th>
+                  <th class="p-3 text-right">Holati</th>
+                </tr>
+              </thead>
+              <tbody id="loginsTableBody" class="divide-y divide-white/5 text-[11px]">
+                <tr><td colspan="7" class="p-4 text-center text-gray-500 font-sans">Loginlar tarixi yuklanmoqda...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -389,6 +478,44 @@
             </div>
           </div>
         </div>
+
+        <!-- So'nggi 50 ta Yangi Foydalanuvchilar Section -->
+        <div class="glass-card rounded-2xl p-5 border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-user-plus"></i>
+              </span>
+              <div>
+                <h3 class="text-sm font-semibold text-white">So'nggi 50 ta Yangi Foydalanuvchilar</h3>
+                <p class="text-[11px] text-gray-400">Yangi ro'yxatdan o'tgan o'yinchilar va ularning aniq ro'yxat vaqti</p>
+              </div>
+            </div>
+            <button id="btnRefreshRecentUsers" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition flex items-center space-x-1.5">
+              <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+              <span>Yangilash</span>
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-gray-900/80 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/5">
+                <tr>
+                  <th class="p-3">Foydalanuvchi</th>
+                  <th class="p-3">Telegram ID</th>
+                  <th class="p-3">Ro'yxatdan o'tgan sana va vaqt</th>
+                  <th class="p-3">Til</th>
+                  <th class="p-3">Daraja & XP</th>
+                  <th class="p-3">Holat</th>
+                  <th class="p-3 text-right">Amal</th>
+                </tr>
+              </thead>
+              <tbody id="recentUsersTableBody" class="divide-y divide-white/5">
+                <tr><td colspan="7" class="p-4 text-center text-gray-500">Yangi foydalanuvchilar yuklanmoqda...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
 
@@ -425,32 +552,133 @@
 
       <!-- ================= TAB 4: ANSWERS & QUESTIONS ================= -->
       <div id="tabAnswers" class="tab-content hidden space-y-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Recent Answer Logs -->
-          <div class="glass-card rounded-2xl p-5 flex flex-col">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
-                <i class="fa-solid fa-list-check text-cyan-400"></i>
-                <span>Oxirgi Javoblar Logi</span>
-              </h2>
-              <button id="btnRefreshAnswers" class="text-xs text-gray-400 hover:text-white">Yangilash</button>
+
+        <!-- ATLAS TELEMETRY DAEMON TERMINAL (Answers Tab) -->
+        <div class="atlas-terminal">
+          <!-- Window Header -->
+          <div class="atlas-header">
+            <div class="flex items-center space-x-3">
+              <div class="terminal-dots">
+                <span class="terminal-dot red"></span>
+                <span class="terminal-dot yellow"></span>
+                <span class="terminal-dot green"></span>
+              </div>
+              <div class="atlas-title">
+                <span class="prompt-sym">&gt;_</span>
+                <span class="daemon-name">atlas-telemetry-daemon</span>
+                <span class="tilde">~</span>
+                <span class="stream-uri">stream://live-events</span>
+              </div>
             </div>
-            <div class="flex-1 overflow-y-auto max-h-[460px] divide-y divide-white/5" id="recentAnswersList">
-              <div class="p-3 text-center text-gray-500 text-xs">Yuklanmoqda...</div>
+
+            <div class="flex items-center space-x-3">
+              <div class="streaming-live-pill">
+                <span class="streaming-dot"></span>
+                <span>STREAMING LIVE</span>
+              </div>
+
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+                <input type="text" id="atlasSearchAnswers" placeholder="Hodisalarni qidirish..." class="atlas-search-input">
+              </div>
+
+              <button id="btnClearAtlasAnswers" title="Buffer tozalash" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition text-xs">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
             </div>
           </div>
 
-          <!-- Hardest Questions -->
-          <div class="glass-card rounded-2xl p-5 flex flex-col">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
-                <i class="fa-solid fa-brain text-amber-400"></i>
-                <span>Eng Qiyin Savollar</span>
-              </h2>
-              <span class="text-[11px] text-gray-400">Eng past to'g'rilik foizi</span>
+          <!-- Terminal Body (Event rows) -->
+          <div id="atlasBodyAnswers" class="atlas-terminal-body">
+            <div class="text-xs text-gray-500 py-6 text-center font-mono">Jonli hodisalar kutilmoqda va buferlanmoqda...</div>
+          </div>
+
+          <!-- Terminal Footer -->
+          <div class="atlas-footer">
+            <div class="atlas-integrity-indicator">
+              <span class="integrity-dot"></span>
+              <span class="text-cyan-400 font-semibold">100% telemetry integrity</span>
+              <span class="text-gray-400 ml-2">Buffered: <strong id="atlasCountAnswers" class="text-white">0</strong> events</span>
             </div>
-            <div class="flex-1 overflow-y-auto max-h-[460px] divide-y divide-white/5" id="difficultQuestionsList">
-              <div class="p-3 text-center text-gray-500 text-xs">Yuklanmoqda...</div>
+
+            <label class="flex items-center space-x-2 cursor-pointer text-gray-400 hover:text-gray-300">
+              <input type="checkbox" id="atlasAutoScrollAnswers" checked class="rounded border-gray-700 bg-gray-900 text-cyan-500 text-xs">
+              <span>Auto-scroll on ingest</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Recent Answer Logs (2 Columns) -->
+          <div class="glass-card rounded-2xl p-5 lg:col-span-2 flex flex-col space-y-4">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-list-check"></i>
+                </span>
+                <div>
+                  <h2 class="text-sm font-semibold text-white">Oxirgi Javoblar Logi (Answers History)</h2>
+                  <p class="text-[11px] text-gray-400">Filtrlash va savol-javoblar tahlili</p>
+                </div>
+              </div>
+
+              <button id="btnRefreshAnswers" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs border border-white/10 transition flex items-center space-x-1.5 self-end sm:self-auto">
+                <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+                <span>Yangilash</span>
+              </button>
+            </div>
+
+            <!-- Filters Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-gray-900/60 p-2.5 rounded-xl border border-white/5 text-xs">
+              <!-- Search query -->
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+                <input type="text" id="inputAnswerFilterQuery" placeholder="Savol, user yoki javob..." 
+                  class="w-full pl-8 pr-3 py-1.5 rounded-lg bg-gray-950/80 border border-gray-700/80 text-white placeholder-gray-500 outline-none text-xs">
+              </div>
+
+              <!-- Mode filter -->
+              <select id="selectAnswerFilterMode" class="px-2.5 py-1.5 rounded-lg bg-gray-950/80 border border-gray-700/80 text-gray-200 outline-none text-xs">
+                <option value="all">Barcha Rejimlar</option>
+                <option value="ZAKOVAT">Zakovat</option>
+                <option value="GEOGRAPHY">Geography</option>
+                <option value="COSMOS">Cosmos</option>
+                <option value="SCIENCE">Science</option>
+                <option value="HISTORY">History</option>
+                <option value="SOLO">Solo</option>
+                <option value="GROUP">Group</option>
+                <option value="DUEL">Duel</option>
+              </select>
+
+              <!-- Correctness filter -->
+              <select id="selectAnswerFilterCorrect" class="px-2.5 py-1.5 rounded-lg bg-gray-950/80 border border-gray-700/80 text-gray-200 outline-none text-xs">
+                <option value="all">Barcha Natijalar</option>
+                <option value="1">To'g'ri javoblar (✅)</option>
+                <option value="0">Noto'g'ri javoblar (❌)</option>
+              </select>
+            </div>
+
+            <div class="flex-1 overflow-y-auto max-h-[500px] divide-y divide-white/5 pr-1 font-mono text-xs" id="recentAnswersList">
+              <div class="p-4 text-center text-gray-500 font-sans">Javoblar logi yuklanmoqda...</div>
+            </div>
+          </div>
+
+          <!-- Hardest Questions (1 Column) -->
+          <div class="glass-card rounded-2xl p-5 flex flex-col space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-brain"></i>
+                </span>
+                <div>
+                  <h2 class="text-sm font-semibold text-white">Eng Qiyin Savollar</h2>
+                  <p class="text-[11px] text-gray-400">Eng past to'g'rilik foizi bo'yicha</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto max-h-[550px] divide-y divide-white/5 pr-1 text-xs" id="difficultQuestionsList">
+              <div class="p-4 text-center text-gray-500">Qiyin savollar hisoblanmoqda...</div>
             </div>
           </div>
         </div>
@@ -677,6 +905,206 @@
       <div class="flex space-x-2">
         <button id="btnCancelBan" class="w-1/2 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs transition">Bekor qilish</button>
         <button id="btnConfirmBan" class="w-1/2 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition">Tasdiqlash</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Profile Full Modal -->
+  <div id="modalUserProfile" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-panel w-full max-w-4xl rounded-2xl p-6 border border-white/10 my-8 space-y-6 relative max-h-[90vh] overflow-y-auto">
+      
+      <!-- Modal Close Button -->
+      <button id="btnCloseUserProfile" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+
+      <!-- User Info Header -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-white/10">
+        <div class="flex items-center space-x-4">
+          <div id="userModalAvatar" class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-600 to-emerald-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-cyan-500/20">
+            U
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h2 id="userModalName" class="text-xl font-bold text-white">-</h2>
+              <span id="userModalStatusBadge" class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Faol</span>
+            </div>
+            <div class="flex items-center space-x-3 text-xs text-gray-400 mt-1">
+              <span id="userModalUsername" class="text-cyan-400 font-mono">@-</span>
+              <span>•</span>
+              <span>ID: <strong id="userModalId" class="text-white font-mono">-</strong></span>
+              <span>•</span>
+              <span id="userModalRegistered" class="text-gray-400">Ro'yxatdan: -</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Stats Cards Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <!-- Stat: Score -->
+        <div class="modal-stat-card">
+          <div class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider mb-1 flex items-center justify-between">
+            <span>Jami Ballar</span>
+            <i class="fa-solid fa-trophy text-amber-400 text-xs"></i>
+          </div>
+          <div id="userModalScore" class="text-lg font-bold text-white font-mono">0</div>
+        </div>
+
+        <!-- Stat: XP -->
+        <div class="modal-stat-card">
+          <div class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider mb-1 flex items-center justify-between">
+            <span>Tajriba (XP)</span>
+            <i class="fa-solid fa-star text-cyan-400 text-xs"></i>
+          </div>
+          <div id="userModalXp" class="text-lg font-bold text-cyan-300 font-mono">0 XP</div>
+        </div>
+
+        <!-- Stat: Level -->
+        <div class="modal-stat-card">
+          <div class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider mb-1 flex items-center justify-between">
+            <span>Daraja</span>
+            <i class="fa-solid fa-medal text-purple-400 text-xs"></i>
+          </div>
+          <div id="userModalLevel" class="text-lg font-bold text-purple-300 font-mono">1-daraja</div>
+        </div>
+
+        <!-- Stat: Win Rate -->
+        <div class="modal-stat-card">
+          <div class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider mb-1 flex items-center justify-between">
+            <span>G'alaba Foizi</span>
+            <i class="fa-solid fa-fire text-rose-400 text-xs"></i>
+          </div>
+          <div id="userModalWinRate" class="text-lg font-bold text-emerald-400 font-mono">0%</div>
+        </div>
+
+        <!-- Stat: Accuracy -->
+        <div class="modal-stat-card">
+          <div class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider mb-1 flex items-center justify-between">
+            <span>To'g'rilik</span>
+            <i class="fa-solid fa-bullseye text-blue-400 text-xs"></i>
+          </div>
+          <div id="userModalAccuracy" class="text-lg font-bold text-blue-300 font-mono">0 / 0</div>
+        </div>
+
+        <!-- Stat: Streak -->
+        <div class="modal-stat-card">
+          <div class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider mb-1 flex items-center justify-between">
+            <span>Ketma-ketlik</span>
+            <i class="fa-solid fa-bolt text-yellow-400 text-xs"></i>
+          </div>
+          <div id="userModalStreak" class="text-lg font-bold text-yellow-300 font-mono">0 / 0</div>
+        </div>
+      </div>
+
+      <!-- Controls Action Bar -->
+      <div class="p-4 rounded-xl bg-gray-900/60 border border-white/5 space-y-2">
+        <div class="text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+          <i class="fa-solid fa-sliders text-cyan-400"></i>
+          <span>Boshqaruv va O'zgartirish Amallari</span>
+        </div>
+        <div class="flex flex-wrap gap-2.5">
+          <button id="userModalBtnAdjustPoints" class="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-medium transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-plus-minus text-[11px]"></i>
+            <span>➕ / ➖ Ballarni o'zgartirish</span>
+          </button>
+
+          <button id="userModalBtnAdjustXp" class="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-medium transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-star text-[11px]"></i>
+            <span>➕ / ➖ XP ni o'zgartirish</span>
+          </button>
+
+          <button id="userModalBtnSetLevel" class="px-3.5 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 text-xs font-medium transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-arrow-up-right-dots text-[11px]"></i>
+            <span>⬆️ / ⬇️ Darajani o'rnatish</span>
+          </button>
+
+          <button id="userModalBtnBanToggle" class="px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-medium transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-ban text-[11px]"></i>
+            <span id="userModalBtnBanText">🚫 Bloklash</span>
+          </button>
+
+          <button id="userModalBtnResetStats" class="px-3.5 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-800/40 text-xs font-medium transition flex items-center space-x-1.5 ml-auto">
+            <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+            <span>🔄 Statistikani nollash</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- User Answers History Table (Top 100) -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i>
+            <h3 class="text-sm font-semibold text-white">Oxirgi Javoblar Tarixi (Top 100)</h3>
+          </div>
+          <span id="userModalAnswersCount" class="text-xs text-gray-400">0 ta javob</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-white/5 bg-gray-900/40 max-h-72 overflow-y-auto">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-gray-900/80 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/5 sticky top-0 font-sans">
+              <tr>
+                <th class="p-3">Vaqti</th>
+                <th class="p-3">Kategoriya / Rejim</th>
+                <th class="p-3">Savol</th>
+                <th class="p-3">Tanlangan javob</th>
+                <th class="p-3">Natija</th>
+                <th class="p-3 text-right">Ball / XP</th>
+              </tr>
+            </thead>
+            <tbody id="userModalAnswersTableBody" class="divide-y divide-white/5 text-[11px]">
+              <tr><td colspan="6" class="p-4 text-center text-gray-500 font-sans">Javoblar tarixi yo'q</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Adjust Points Modal -->
+  <div id="modalAdjustPoints" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="glass-panel w-full max-w-sm rounded-2xl p-6 border border-white/10 space-y-4">
+      <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+        <i class="fa-solid fa-trophy text-amber-400"></i>
+        <span>Foydalanuvchi Ballarini O'zgartirish</span>
+      </h3>
+      <p id="modalAdjustPointsSubtitle" class="text-xs text-gray-400">User: -</p>
+      <input type="hidden" id="modalAdjustPointsUserId">
+
+      <div>
+        <label class="block text-xs text-gray-300 mb-1">Yangi Jami Ball Miqdori</label>
+        <input type="number" id="inputNewPoints" min="0" placeholder="Masalan: 500"
+          class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-sm text-white focus:border-cyan-500 outline-none">
+      </div>
+
+      <div class="flex space-x-2">
+        <button id="btnCancelAdjustPoints" class="w-1/2 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs transition">Bekor qilish</button>
+        <button id="btnSaveAdjustPoints" class="w-1/2 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition">Saqlash</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Set Level Modal -->
+  <div id="modalSetLevel" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="glass-panel w-full max-w-sm rounded-2xl p-6 border border-white/10 space-y-4">
+      <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+        <i class="fa-solid fa-medal text-purple-400"></i>
+        <span>Foydalanuvchi Darajasini O'rnatish</span>
+      </h3>
+      <p id="modalSetLevelSubtitle" class="text-xs text-gray-400">User: -</p>
+      <input type="hidden" id="modalSetLevelUserId">
+
+      <div>
+        <label class="block text-xs text-gray-300 mb-1">Yangi Daraja (1 - 100)</label>
+        <input type="number" id="inputNewLevel" min="1" max="100" placeholder="Masalan: 5"
+          class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-sm text-white focus:border-cyan-500 outline-none">
+      </div>
+
+      <div class="flex space-x-2">
+        <button id="btnCancelSetLevel" class="w-1/2 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs transition">Bekor qilish</button>
+        <button id="btnSaveSetLevel" class="w-1/2 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition">Saqlash</button>
       </div>
     </div>
   </div>

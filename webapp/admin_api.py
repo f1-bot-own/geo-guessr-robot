@@ -170,6 +170,21 @@ async def api_verify_otp(request: web.Request) -> web.Response:
 
     token = create_session(user_id, user_info)
 
+    # Record successful admin login
+    user_agent = request.headers.get("User-Agent", "")
+    username = user_info.get("username", "") if user_info else ""
+    if db and hasattr(db, "record_admin_login"):
+        try:
+            await db.record_admin_login(
+                user_id=user_id,
+                username=username,
+                ip=ip,
+                user_agent=user_agent,
+                auth_method="OTP"
+            )
+        except Exception as exc:
+            logger.error(f"Error recording OTP admin login: {exc}")
+
     response = web.json_response({
         "ok": True,
         "token": token,
@@ -231,6 +246,22 @@ async def api_verify_webapp(request: web.Request) -> web.Response:
         }
 
     token = create_session(user_id, full_user)
+
+    # Record successful WebApp admin login
+    user_agent = request.headers.get("User-Agent", "")
+    username = full_user.get("username", "") if full_user else ""
+    if db and hasattr(db, "record_admin_login"):
+        try:
+            await db.record_admin_login(
+                user_id=user_id,
+                username=username,
+                ip=ip,
+                user_agent=user_agent,
+                auth_method="WebApp"
+            )
+        except Exception as exc:
+            logger.error(f"Error recording WebApp admin login: {exc}")
+
     response = web.json_response({
         "ok": True,
         "token": token,
@@ -317,7 +348,73 @@ async def api_live_stream(request: web.Request) -> web.StreamResponse:
     # Initial connection payload
     await response.write(b"event: connected\ndata: {\"status\": \"ok\", \"time\": " + str(time.time()).encode() + b"}\n\n")
 
-    # Send recent history so newly connected admin gets recent events immediately
+    # Push last 100 answer events from answer_logs as historical events
+    db = request.app.get("db")
+    if db and hasattr(db, "get_answers_history"):
+        try:
+            hist_res = await db.get_answers_history(limit=100)
+            hist_answers = hist_res.get("answers", [])
+            # Send reversed so oldest is first, newest ends up at top of buffer
+            hist_answers.reverse()
+            for al in hist_answers:
+                fname = al.get("first_name", "")
+                uname = al.get("username", "")
+                uid = al.get("user_id", 0)
+                if fname and fname.strip() not in (".", "..", "...", ""):
+                    disp_name = f"{fname} (@{uname})" if uname else fname
+                elif uname:
+                    disp_name = f"@{uname}"
+                else:
+                    disp_name = f"User #{uid}"
+
+                mode = (al.get("mode") or "ZAKOVAT").upper()
+                if "GEO" in mode or "FLAG" in mode or "CAPITAL" in mode:
+                    cat = "GEOGRAPHY"
+                elif "COSMOS" in mode or "ASTRO" in mode:
+                    cat = "COSMOS"
+                elif "SCIENCE" in mode:
+                    cat = "SCIENCE"
+                elif "HIST" in mode:
+                    cat = "HISTORY"
+                elif "DUEL" in mode:
+                    cat = "DUEL"
+                elif al.get("chat_id") and al.get("chat_id") < 0:
+                    cat = "GROUP"
+                elif "SOLO" in mode:
+                    cat = "SOLO"
+                else:
+                    cat = "ZAKOVAT"
+
+                chat_title = al.get("chat_title")
+                chat_id = al.get("chat_id")
+                chat_tag = f"Guruh: {chat_title}" if chat_title else (f"Guruh: #{chat_id}" if chat_id and chat_id < 0 else "Shaxsiy")
+
+                ev_payload = {
+                    "id": al.get("id"),
+                    "user_id": uid,
+                    "first_name": fname,
+                    "username": uname,
+                    "user_name": disp_name,
+                    "chat_id": chat_id,
+                    "chat_tag": chat_tag,
+                    "category": cat,
+                    "mode": mode,
+                    "question_id": al.get("question_id", ""),
+                    "question_text": al.get("question_text", ""),
+                    "selected_option": al.get("selected_option", ""),
+                    "correct_option": al.get("correct_option", ""),
+                    "is_correct": bool(al.get("is_correct")),
+                    "points": al.get("points", 0),
+                    "xp": al.get("points", 0) // 4 if al.get("is_correct") else 0,
+                    "created_at": al.get("created_at"),
+                    "node_hash": f"tg-dc{((uid or 0) % 5) + 1} · #{str(uid or 0)[-4:]}"
+                }
+                line = f"event: answer\ndata: {json.dumps(ev_payload)}\n\n"
+                await response.write(line.encode("utf-8"))
+        except Exception as exc:
+            logger.error(f"Error streaming historical answer logs: {exc}")
+
+    # Also send any recent bus events
     for hist_event in event_bus.get_history(limit=10):
         try:
             line = f"event: {hist_event['type']}\ndata: {json.dumps(hist_event['data'])}\n\n"
@@ -495,6 +592,192 @@ async def api_answers(request: web.Request) -> web.Response:
         limit = 50
 
     result = await db.get_admin_answers(limit=limit)
+    return web.json_response({"ok": True, **result})
+
+
+@require_admin
+async def api_logins(request: web.Request) -> web.Response:
+    """
+    GET /api/admin/logins
+    Returns last 50 admin logins with timestamp, IP, username, user_id.
+    """
+    db = request.app.get("db")
+    if not db:
+        return web.json_response({"ok": False, "error": "Database unavailable"}, status=500)
+    raw_limit = request.query.get("limit", "50")
+    try:
+        limit = int(raw_limit)
+    except ValueError:
+        limit = 50
+    logins = await db.get_admin_logins(limit=limit)
+    return web.json_response({"ok": True, "logins": logins})
+
+
+@require_admin
+async def api_users_recent(request: web.Request) -> web.Response:
+    """
+    GET /api/admin/users/recent
+    Returns last 50 newly registered users (created_at DESC).
+    """
+    db = request.app.get("db")
+    if not db:
+        return web.json_response({"ok": False, "error": "Database unavailable"}, status=500)
+    raw_limit = request.query.get("limit", "50")
+    try:
+        limit = int(raw_limit)
+    except ValueError:
+        limit = 50
+    users = await db.get_recent_users(limit=limit)
+    return web.json_response({"ok": True, "users": users})
+
+
+@require_admin
+async def api_user_full_profile(request: web.Request) -> web.Response:
+    """
+    GET /api/admin/users/{user_id}/full
+    Returns user full profile with stats and last 100 answers.
+    """
+    db = request.app.get("db")
+    if not db:
+        return web.json_response({"ok": False, "error": "Database unavailable"}, status=500)
+    raw_user_id = request.match_info.get("user_id")
+    try:
+        user_id = int(raw_user_id)
+    except (ValueError, TypeError):
+        return web.json_response({"ok": False, "error": "Invalid user_id"}, status=400)
+
+    profile = await db.get_user_full_profile(user_id)
+    if not profile:
+        return web.json_response({"ok": False, "error": "User not found"}, status=404)
+    return web.json_response({"ok": True, **profile})
+
+
+@require_admin
+async def api_user_adjust_points(request: web.Request) -> web.Response:
+    """
+    POST /api/admin/users/adjust-points
+    Payload: {"user_id": int, "points": int, "mode": Optional["set"|"add"], "delta": Optional[int]}
+    Sets user total score / points or applies delta addition/deduction.
+    """
+    db = request.app.get("db")
+    if not db:
+        return web.json_response({"ok": False, "error": "Database unavailable"}, status=500)
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Invalid JSON body"}, status=400)
+
+    raw_user_id = body.get("user_id")
+    raw_points = body.get("points")
+    if raw_points is None:
+        raw_points = body.get("score")
+    if raw_points is None:
+        raw_points = body.get("delta")
+
+    try:
+        user_id = int(raw_user_id)
+        points = int(raw_points)
+    except (ValueError, TypeError):
+        return web.json_response({"ok": False, "error": "user_id and points must be integers"}, status=400)
+
+    mode = body.get("mode")
+    if mode == "add" or "delta" in body or points < 0:
+        if hasattr(db, "adjust_user_score"):
+            new_points = await db.adjust_user_score(user_id, points)
+        else:
+            new_points = await db.adjust_user_points(user_id, points)
+    else:
+        if hasattr(db, "adjust_user_points"):
+            new_points = await db.adjust_user_points(user_id, points)
+        elif hasattr(db, "adjust_user_score"):
+            new_points = await db.adjust_user_score(user_id, points)
+        else:
+            new_points = max(0, points)
+
+    return web.json_response({
+        "ok": True,
+        "user_id": user_id,
+        "points": new_points,
+        "total_score": new_points,
+        "score": new_points
+    })
+
+
+@require_admin
+async def api_user_set_level(request: web.Request) -> web.Response:
+    """
+    POST /api/admin/users/set-level
+    Payload: {"user_id": int, "level": int}
+    Sets user level directly.
+    """
+    db = request.app.get("db")
+    if not db:
+        return web.json_response({"ok": False, "error": "Database unavailable"}, status=500)
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Invalid JSON body"}, status=400)
+
+    raw_user_id = body.get("user_id")
+    raw_level = body.get("level")
+    try:
+        user_id = int(raw_user_id)
+        level = int(raw_level)
+    except (ValueError, TypeError):
+        return web.json_response({"ok": False, "error": "user_id and level must be integers"}, status=400)
+
+    new_level = await db.set_user_level(user_id, level)
+    return web.json_response({"ok": True, "user_id": user_id, "level": new_level})
+
+
+@require_admin
+async def api_user_reset_stats(request: web.Request) -> web.Response:
+    """
+    POST /api/admin/users/reset-stats
+    Payload: {"user_id": int}
+    Resets user's game stats, scores, XP, answers.
+    """
+    db = request.app.get("db")
+    if not db:
+        return web.json_response({"ok": False, "error": "Database unavailable"}, status=500)
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Invalid JSON body"}, status=400)
+
+    raw_user_id = body.get("user_id")
+    try:
+        user_id = int(raw_user_id)
+    except (ValueError, TypeError):
+        return web.json_response({"ok": False, "error": "user_id must be an integer"}, status=400)
+
+    await db.reset_user_stats(user_id)
+    return web.json_response({"ok": True, "user_id": user_id, "message": "User stats reset successfully"})
+
+
+@require_admin
+async def api_answers_history(request: web.Request) -> web.Response:
+    """
+    GET /api/admin/answers/history?query=...&mode=...&correct=...&limit=100&offset=0
+    Returns last 100 answer logs with search query, mode filter, correctness filter.
+    """
+    db = request.app.get("db")
+    if not db:
+        return web.json_response({"ok": False, "error": "Database unavailable"}, status=500)
+
+    query = request.query.get("query")
+    mode = request.query.get("mode")
+    correct = request.query.get("correct")
+    raw_limit = request.query.get("limit", "100")
+    raw_offset = request.query.get("offset", "0")
+
+    try:
+        limit = int(raw_limit)
+        offset = int(raw_offset)
+    except ValueError:
+        limit, offset = 100, 0
+
+    result = await db.get_answers_history(query=query, mode=mode, correct=correct, limit=limit, offset=offset)
     return web.json_response({"ok": True, **result})
 
 
@@ -748,12 +1031,13 @@ async def api_logs(request: web.Request) -> web.Response:
 
 def register_admin_routes(app: web.Application) -> None:
     """Register all Admin API routes into an aiohttp application."""
-    # Auth
+    # Auth & Audit
     app.router.add_post("/api/admin/request-otp", api_request_otp)
     app.router.add_post("/api/admin/verify-otp", api_verify_otp)
     app.router.add_post("/api/admin/verify-webapp", api_verify_webapp)
     app.router.add_post("/api/admin/logout", api_logout)
     app.router.add_get("/api/admin/me", api_me)
+    app.router.add_get("/api/admin/logins", api_logins)
 
     # Dashboard & Analytics
     app.router.add_get("/api/admin/stats", api_stats)
@@ -761,13 +1045,19 @@ def register_admin_routes(app: web.Application) -> None:
 
     # User Management
     app.router.add_get("/api/admin/users", api_users)
+    app.router.add_get("/api/admin/users/recent", api_users_recent)
     app.router.add_get("/api/admin/users/{user_id}", api_user_detail)
+    app.router.add_get("/api/admin/users/{user_id}/full", api_user_full_profile)
     app.router.add_post("/api/admin/users/ban", api_user_ban)
+    app.router.add_post("/api/admin/users/adjust-points", api_user_adjust_points)
     app.router.add_post("/api/admin/users/adjust-xp", api_user_adjust_xp)
+    app.router.add_post("/api/admin/users/set-level", api_user_set_level)
+    app.router.add_post("/api/admin/users/reset-stats", api_user_reset_stats)
 
     # Groups & Answers
     app.router.add_get("/api/admin/groups", api_groups)
     app.router.add_get("/api/admin/answers", api_answers)
+    app.router.add_get("/api/admin/answers/history", api_answers_history)
 
     # Broadcast
     app.router.add_post("/api/admin/broadcast", api_broadcast_start)

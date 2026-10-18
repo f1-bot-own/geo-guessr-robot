@@ -91,7 +91,10 @@ class GroupGameSession:
         if user_id in self.answered_users_this_round:
             return AnswerResult(status="already_answered")
         
-        self.player_names[user_id] = user_name
+        clean_name = (user_name or "").strip()
+        if not clean_name or clean_name == ".":
+            clean_name = f"Player {user_id}"
+        self.player_names[user_id] = clean_name
         if user_id not in self.scores:
             self.scores[user_id] = 0
         
@@ -153,7 +156,13 @@ class GroupGameSession:
             key=lambda item: item[1],
             reverse=True
         )
-        return [(uid, self.player_names.get(uid, f"Player {uid}"), score) for uid, score in sorted_players]
+        standings = []
+        for uid, score in sorted_players:
+            name = (self.player_names.get(uid) or "").strip()
+            if not name or name == ".":
+                name = f"Player {uid}"
+            standings.append((uid, name, score))
+        return standings
 
     def stop(self):
         """Abort session."""

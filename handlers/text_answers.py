@@ -206,6 +206,8 @@ async def check_group_text_answer(message: Message, bot: Bot):
     if not session or session.status != "in_progress" or not session.current_question:
         return
 
+    q = session.current_question
+
     if getattr(session, "input_mode", "both") == "buttons":
         return
 
@@ -222,8 +224,12 @@ async def check_group_text_answer(message: Message, bot: Bot):
     if not norm_text:
         return
 
-    q = session.current_question
-    user_name = user.first_name or user.username or f"User {user.id}"
+    raw_first = (user.first_name or "").strip()
+    raw_user = (user.username or "").strip()
+    if not raw_first or raw_first == ".":
+        user_name = f"@{raw_user.lstrip('@')}" if raw_user and raw_user != "." else f"Player {user.id}"
+    else:
+        user_name = raw_first
     db = get_db(bot)
 
     # 1. Check if user typed an option shortcut (e.g. "1", "2", "a", "b", "c", "d")
@@ -481,7 +487,12 @@ async def _process_solo_text_guess(message: Message, bot: Bot, session, opt_idx:
         correct_ans = q.correct_answer if q else ""
         is_correct, points, is_game_over = session.check_answer(opt_idx)
         user = message.from_user
-        user_name = user.first_name or user.username or "Player"
+        raw_first = (user.first_name or "").strip()
+        raw_user = (user.username or "").strip()
+        if not raw_first or raw_first == ".":
+            user_name = f"@{raw_user.lstrip('@')}" if raw_user and raw_user != "." else f"Player {user.id}"
+        else:
+            user_name = raw_first
 
         if is_correct:
             await db.record_answer(

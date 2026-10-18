@@ -185,8 +185,11 @@ class GameSession:
 
             elapsed = max(0.1, round(time.time() - self.round_start_time, 2))
 
-            # Store player display name
-            self.user_names[user_id] = user_name
+            # Clean and store player display name (never lone '.')
+            clean_name = (user_name or "").strip()
+            if not clean_name or clean_name == ".":
+                clean_name = f"Player {user_id}"
+            self.user_names[user_id] = clean_name
 
             # Question metadata for logging
             q = self.current_question
@@ -231,7 +234,7 @@ class GameSession:
                     if hasattr(db, "record_answer_log"):
                         await db.record_answer_log(
                             user_id=user_id,
-                            username=user_name,
+                            username=clean_name,
                             chat_id=self.chat_id,
                             mode=q_mode,
                             question_id=str(q_id),
@@ -260,7 +263,7 @@ class GameSession:
                     if hasattr(db, "record_answer_log"):
                         await db.record_answer_log(
                             user_id=user_id,
-                            username=user_name,
+                            username=clean_name,
                             chat_id=self.chat_id,
                             mode=q_mode,
                             question_id=str(q_id),
@@ -283,10 +286,12 @@ class GameSession:
 
     def get_podium(self) -> List[Tuple[int, str, int]]:
         """Return list of (user_id, name, score) sorted by score descending."""
-        results = [
-            (uid, self.user_names.get(uid, f"User {uid}"), score)
-            for uid, score in self.scores.items()
-        ]
+        results = []
+        for uid, score in self.scores.items():
+            name = (self.user_names.get(uid) or "").strip()
+            if not name or name == ".":
+                name = f"Player {uid}"
+            results.append((uid, name, score))
         results.sort(key=lambda x: x[2], reverse=True)
         return results
 

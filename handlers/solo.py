@@ -193,8 +193,38 @@ async def handle_solo_answer(callback: CallbackQuery, bot: Bot):
     is_correct, is_game_over, correct_ans = session.process_answer(option_id)
     lang = session.lang
 
+    raw_first = (callback.from_user.first_name or "").strip()
+    raw_user = (callback.from_user.username or "").strip()
+    if not raw_first or raw_first == ".":
+        user_name = f"@{raw_user.lstrip('@')}" if raw_user and raw_user != "." else f"Player {user_id}"
+    else:
+        user_name = raw_first
+
+    q_selected = option_id
+    if q and hasattr(q, "options"):
+        for opt in q.options:
+            if hasattr(opt, "id") and opt.id == option_id:
+                q_selected = getattr(opt, "text", option_id)
+                break
+
+    q_mode = getattr(q, "mode", "mix") if q else "mix"
+    q_prompt = getattr(q, "prompt", None) or getattr(q, "text", "") if q else ""
+
     # Update database
-    await record_answer_result(user_id, is_correct=is_correct, xp_earned=25 if is_correct else 0)
+    await record_answer_result(
+        user_id,
+        is_correct=is_correct,
+        xp_earned=25 if is_correct else 0,
+        points=100 if is_correct else 0,
+        user_name=user_name,
+        username=callback.from_user.username,
+        chat_id=callback.message.chat.id if callback.message and callback.message.chat else None,
+        mode=q_mode,
+        question_text=q_prompt,
+        selected_option=q_selected,
+        correct_option=correct_ans,
+        chat_title="Solo Practice"
+    )
 
     # Disable buttons on answered message
     try:

@@ -143,7 +143,7 @@ class TestZakovatAndNewSubjects(unittest.TestCase):
     def test_mix_mode_includes_all_new_subjects(self):
         """Verify MIX mode can sample from new modes as well as geography."""
         sampled_modes = set()
-        for _ in range(50):
+        for _ in range(120):
             q = QuestionFactory.generate(mode=GameMode.MIX, lang="uz")
             sampled_modes.add(q.mode)
 

@@ -123,6 +123,18 @@ CREATE TABLE IF NOT EXISTS answer_logs (
 );
 """
 
+CREATE_ADMIN_LOGINS_TABLE = """
+CREATE TABLE IF NOT EXISTS admin_logins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    username TEXT,
+    ip TEXT,
+    user_agent TEXT,
+    auth_method TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 INDEX_STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS idx_users_total_score ON users(total_score DESC);",
     "CREATE INDEX IF NOT EXISTS idx_users_xp ON users(xp DESC);",
@@ -134,6 +146,7 @@ INDEX_STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS idx_answer_logs_user ON answer_logs(user_id);",
     "CREATE INDEX IF NOT EXISTS idx_answer_logs_created ON answer_logs(created_at);",
     "CREATE INDEX IF NOT EXISTS idx_answer_logs_question ON answer_logs(question_id);",
+    "CREATE INDEX IF NOT EXISTS idx_admin_logins_time ON admin_logins(created_at DESC);",
 ]
 
 ALL_TABLES = [
@@ -145,4 +158,5 @@ ALL_TABLES = [
     CREATE_DAILY_CHALLENGES_TABLE,
     CREATE_SCORE_EVENTS_TABLE,
     CREATE_ANSWER_LOGS_TABLE,
+    CREATE_ADMIN_LOGINS_TABLE,
 ]

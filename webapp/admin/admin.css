@@ -177,3 +177,352 @@ body {
     transform: translateY(0);
   }
 }
+
+/* =============================================================
+   ATLAS TELEMETRY DAEMON TERMINAL (Image 3 exact match)
+   ============================================================= */
+.atlas-terminal {
+  background: #050914;
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+.atlas-header {
+  background: rgba(10, 16, 31, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.terminal-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.terminal-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.terminal-dot.red { background-color: #ff5f56; }
+.terminal-dot.yellow { background-color: #ffbd2e; }
+.terminal-dot.green { background-color: #27c93f; }
+
+.atlas-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #38bdf8;
+  letter-spacing: -0.01em;
+}
+
+.atlas-title .prompt-sym {
+  color: #34d399;
+}
+
+.atlas-title .daemon-name {
+  color: #38bdf8;
+}
+
+.atlas-title .tilde {
+  color: #64748b;
+}
+
+.atlas-title .stream-uri {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.streaming-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.streaming-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-ring 2s infinite;
+}
+
+.atlas-search-input {
+  background: #090f1f;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 0.6rem;
+  padding: 0.35rem 0.75rem 0.35rem 2rem;
+  font-size: 0.75rem;
+  color: #f1f5f9;
+  outline: none;
+  transition: all 0.2s;
+  min-width: 200px;
+}
+
+.atlas-search-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.atlas-terminal-body {
+  background: #060a14;
+  padding: 0.75rem;
+  min-height: 240px;
+  max-height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.atlas-row {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: #e2e8f0;
+  transition: all 0.15s ease-in-out;
+  animation: slideInDown 0.25s ease-out;
+}
+
+.atlas-row:hover {
+  background: rgba(30, 41, 59, 0.75);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.atlas-time {
+  color: #64748b;
+  min-width: 65px;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-block;
+}
+
+.badge-zakovat {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.badge-geography {
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  color: #38bdf8;
+}
+
+.badge-cosmos {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #818cf8;
+}
+
+.badge-science {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.badge-history {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.badge-solo {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+.badge-group {
+  background: rgba(20, 184, 166, 0.15);
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  color: #2dd4bf;
+}
+
+.badge-duel {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fb7185;
+}
+
+.atlas-location {
+  color: #7dd3fc;
+  font-size: 0.72rem;
+  min-width: 90px;
+}
+
+.atlas-desc {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-desc .user-tag {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.atlas-desc .action-arrow {
+  color: #64748b;
+}
+
+.atlas-desc .question-snippet {
+  color: #cbd5e1;
+}
+
+.atlas-desc .result-check {
+  font-weight: bold;
+}
+
+.atlas-desc .score-pill {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.score-pill.correct {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.score-pill.incorrect {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.atlas-node-hash {
+  color: #0284c7;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.atlas-footer {
+  background: rgba(10, 16, 31, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.atlas-integrity-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.integrity-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
+}
+
+/* User Full Profile Modal */
+.modal-stat-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.85rem;
+  padding: 0.75rem 1rem;
+  transition: all 0.2s;
+}
+
+.modal-stat-card:hover {
+  border-color: rgba(56, 189, 248, 0.25);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+/* Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #334155;
+  transition: .3s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #06b6d4;
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+

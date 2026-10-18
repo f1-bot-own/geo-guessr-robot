@@ -508,7 +508,15 @@ async def handle_game_answer(callback: CallbackQuery, bot: Bot):
     option_id = parts[2]
     chat_id = callback.message.chat.id
     user_id = callback.from_user.id
-    user_name = callback.from_user.full_name or callback.from_user.first_name or "Player"
+    raw_first = (callback.from_user.full_name or callback.from_user.first_name or "").strip()
+    raw_user = (callback.from_user.username or "").strip()
+    if not raw_first or raw_first == ".":
+        if raw_user and raw_user != ".":
+            user_name = f"@{raw_user.lstrip('@')}"
+        else:
+            user_name = f"Player {user_id}"
+    else:
+        user_name = raw_first
 
     session = game_manager.get_group_game(chat_id)
     if not session or not session.is_active:
@@ -534,17 +542,57 @@ async def handle_game_answer(callback: CallbackQuery, bot: Bot):
         await callback.answer("Only duel participants can answer!", show_alert=True)
         return
 
+    current_q = session.current_question
+    q_mode = getattr(current_q, "mode", session.mode) if current_q else session.mode
+    q_prompt = getattr(current_q, "prompt", None) or getattr(current_q, "text", "") if current_q else ""
+    q_correct = res.correct_answer_text or getattr(current_q, "correct_answer_text", "") if current_q else ""
+    q_selected = option_id
+    if current_q and hasattr(current_q, "options"):
+        for opt in current_q.options:
+            if hasattr(opt, "id") and opt.id == option_id:
+                q_selected = getattr(opt, "text", option_id)
+                break
+
+    chat_title = callback.message.chat.title if callback.message and callback.message.chat else None
+
     if res.status == "wrong":
-        await record_answer_result(user_id, is_correct=False)
+        await record_answer_result(
+            user_id,
+            is_correct=False,
+            points=-res.penalty,
+            xp_earned=0,
+            user_name=user_name,
+            username=callback.from_user.username,
+            chat_id=chat_id,
+            mode=q_mode,
+            question_text=q_prompt,
+            selected_option=q_selected,
+            correct_option=q_correct,
+            time_taken=res.elapsed_time,
+            chat_title=chat_title
+        )
         await callback.answer(t("wrong_answer_alert", lang, penalty=res.penalty), show_alert=True)
         return
 
     if res.status == "correct":
         # Correct answer!
         await callback.answer()
-        await record_answer_result(user_id, is_correct=True, xp_earned=XP_PER_CORRECT)
+        await record_answer_result(
+            user_id,
+            is_correct=True,
+            points=res.points_awarded,
+            xp_earned=XP_PER_CORRECT,
+            user_name=user_name,
+            username=callback.from_user.username,
+            chat_id=chat_id,
+            mode=q_mode,
+            question_text=q_prompt,
+            selected_option=q_selected,
+            correct_option=q_correct,
+            time_taken=res.elapsed_time,
+            chat_title=chat_title
+        )
 
-        current_q = session.current_question
         user_mention = format_user_mention(user_id, user_name)
         # Announce round victory
         announce = t(

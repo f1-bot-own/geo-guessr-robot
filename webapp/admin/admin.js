@@ -1,7 +1,8 @@
 /**
  * GeoGuru & GeoGuessr Web Admin Dashboard JavaScript
  * Handles 2FA Auth, Telegram WebApp Auto-login, SSE Live Streaming,
- * Chart.js Visualizations, User Management, Broadcast Engine, and Logs.
+ * Atlas Telemetry Daemon Terminal, User Account Management Modal,
+ * Chart.js Visualizations, Broadcast Engine, and Audit Logs.
  */
 
 (function () {
@@ -22,6 +23,15 @@
     logAutoScroll: true,
     broadcastPollTimer: null,
     otpTimerInterval: null,
+    strict2fa: localStorage.getItem('geoguru_strict_2fa') === 'true',
+    eventsBuffer: [], // buffer up to 250 events
+    activeUserProfileId: null,
+    tickerInterval: null,
+    overviewSearchFilter: '',
+    answersSearchFilter: '',
+    answersHistoryQuery: '',
+    answersHistoryMode: 'all',
+    answersHistoryCorrect: 'all',
   };
 
   // DOM Elements
@@ -46,6 +56,7 @@
     adminProfileId: document.getElementById('adminProfileId'),
     liveStatusDot: document.getElementById('liveStatusDot'),
     liveStatusText: document.getElementById('liveStatusText'),
+    toggleStrict2fa: document.getElementById('toggleStrict2fa'),
     btnLogout: document.getElementById('btnLogout'),
 
     // KPI Cards
@@ -59,24 +70,47 @@
     liveTickerFeed: document.getElementById('liveTickerFeed'),
     btnClearTicker: document.getElementById('btnClearTicker'),
 
-    // Users
+    // Atlas Telemetry - Overview Tab
+    atlasBodyOverview: document.getElementById('atlasBodyOverview'),
+    atlasSearchOverview: document.getElementById('atlasSearchOverview'),
+    btnClearAtlasOverview: document.getElementById('btnClearAtlasOverview'),
+    atlasCountOverview: document.getElementById('atlasCountOverview'),
+    atlasAutoScrollOverview: document.getElementById('atlasAutoScrollOverview'),
+
+    // Admin Logins Audit Log Table
+    loginsTableBody: document.getElementById('loginsTableBody'),
+    btnRefreshLogins: document.getElementById('btnRefreshLogins'),
+
+    // Users Tab
     inputUserSearch: document.getElementById('inputUserSearch'),
     btnRefreshUsers: document.getElementById('btnRefreshUsers'),
     usersTableBody: document.getElementById('usersTableBody'),
     usersPaginationInfo: document.getElementById('usersPaginationInfo'),
     btnUsersPrev: document.getElementById('btnUsersPrev'),
     btnUsersNext: document.getElementById('btnUsersNext'),
+    btnRefreshRecentUsers: document.getElementById('btnRefreshRecentUsers'),
+    recentUsersTableBody: document.getElementById('recentUsersTableBody'),
 
-    // Groups
+    // Groups Tab
     btnRefreshGroups: document.getElementById('btnRefreshGroups'),
     groupsTableBody: document.getElementById('groupsTableBody'),
 
-    // Answers
+    // Atlas Telemetry - Answers Tab
+    atlasBodyAnswers: document.getElementById('atlasBodyAnswers'),
+    atlasSearchAnswers: document.getElementById('atlasSearchAnswers'),
+    btnClearAtlasAnswers: document.getElementById('btnClearAtlasAnswers'),
+    atlasCountAnswers: document.getElementById('atlasCountAnswers'),
+    atlasAutoScrollAnswers: document.getElementById('atlasAutoScrollAnswers'),
+
+    // Answers Tab Content & Filters
     btnRefreshAnswers: document.getElementById('btnRefreshAnswers'),
+    inputAnswerFilterQuery: document.getElementById('inputAnswerFilterQuery'),
+    selectAnswerFilterMode: document.getElementById('selectAnswerFilterMode'),
+    selectAnswerFilterCorrect: document.getElementById('selectAnswerFilterCorrect'),
     recentAnswersList: document.getElementById('recentAnswersList'),
     difficultQuestionsList: document.getElementById('difficultQuestionsList'),
 
-    // Broadcast
+    // Broadcast Tab
     broadcastText: document.getElementById('broadcastText'),
     broadcastPhoto: document.getElementById('broadcastPhoto'),
     broadcastBtnText: document.getElementById('broadcastBtnText'),
@@ -96,13 +130,45 @@
     broadcastStatusTitle: document.getElementById('broadcastStatusTitle'),
     broadcastSpinner: document.getElementById('broadcastSpinner'),
 
-    // Logs
+    // Server Logs Tab
     terminalWindow: document.getElementById('terminalWindow'),
     inputLogFilter: document.getElementById('inputLogFilter'),
     checkAutoScroll: document.getElementById('checkAutoScroll'),
     btnRefreshLogs: document.getElementById('btnRefreshLogs'),
 
-    // Modals
+    // Full User Profile Modal
+    modalUserProfile: document.getElementById('modalUserProfile'),
+    btnCloseUserProfile: document.getElementById('btnCloseUserProfile'),
+    userModalAvatar: document.getElementById('userModalAvatar'),
+    userModalName: document.getElementById('userModalName'),
+    userModalStatusBadge: document.getElementById('userModalStatusBadge'),
+    userModalUsername: document.getElementById('userModalUsername'),
+    userModalId: document.getElementById('userModalId'),
+    userModalRegistered: document.getElementById('userModalRegistered'),
+    userModalScore: document.getElementById('userModalScore'),
+    userModalXp: document.getElementById('userModalXp'),
+    userModalLevel: document.getElementById('userModalLevel'),
+    userModalWinRate: document.getElementById('userModalWinRate'),
+    userModalAccuracy: document.getElementById('userModalAccuracy'),
+    userModalStreak: document.getElementById('userModalStreak'),
+    userModalBtnAdjustPoints: document.getElementById('userModalBtnAdjustPoints'),
+    userModalBtnAdjustXp: document.getElementById('userModalBtnAdjustXp'),
+    userModalBtnSetLevel: document.getElementById('userModalBtnSetLevel'),
+    userModalBtnBanToggle: document.getElementById('userModalBtnBanToggle'),
+    userModalBtnBanText: document.getElementById('userModalBtnBanText'),
+    userModalBtnResetStats: document.getElementById('userModalBtnResetStats'),
+    userModalAnswersCount: document.getElementById('userModalAnswersCount'),
+    userModalAnswersTableBody: document.getElementById('userModalAnswersTableBody'),
+
+    // Adjust Points Modal
+    modalAdjustPoints: document.getElementById('modalAdjustPoints'),
+    modalAdjustPointsSubtitle: document.getElementById('modalAdjustPointsSubtitle'),
+    modalAdjustPointsUserId: document.getElementById('modalAdjustPointsUserId'),
+    inputNewPoints: document.getElementById('inputNewPoints'),
+    btnCancelAdjustPoints: document.getElementById('btnCancelAdjustPoints'),
+    btnSaveAdjustPoints: document.getElementById('btnSaveAdjustPoints'),
+
+    // Adjust XP Modal
     modalAdjustXp: document.getElementById('modalAdjustXp'),
     modalAdjustUserId: document.getElementById('modalAdjustUserId'),
     modalAdjustXpSubtitle: document.getElementById('modalAdjustXpSubtitle'),
@@ -110,6 +176,15 @@
     btnCancelAdjustXp: document.getElementById('btnCancelAdjustXp'),
     btnSaveAdjustXp: document.getElementById('btnSaveAdjustXp'),
 
+    // Set Level Modal
+    modalSetLevel: document.getElementById('modalSetLevel'),
+    modalSetLevelSubtitle: document.getElementById('modalSetLevelSubtitle'),
+    modalSetLevelUserId: document.getElementById('modalSetLevelUserId'),
+    inputNewLevel: document.getElementById('inputNewLevel'),
+    btnCancelSetLevel: document.getElementById('btnCancelSetLevel'),
+    btnSaveSetLevel: document.getElementById('btnSaveSetLevel'),
+
+    // Ban / Unban Modal
     modalBanUser: document.getElementById('modalBanUser'),
     modalBanTitle: document.getElementById('modalBanTitle'),
     modalBanSubtitle: document.getElementById('modalBanSubtitle'),
@@ -141,7 +216,94 @@
     return data;
   }
 
-  // Show error alert in auth modal
+  // Safe User Name Formatter (Fixes lone "." bug)
+  function formatUserName(userOrName, userId, username) {
+    let name = '';
+    let id = userId;
+    let uname = username;
+
+    if (typeof userOrName === 'object' && userOrName !== null) {
+      name = userOrName.first_name || userOrName.name || userOrName.user_name || '';
+      id = id || userOrName.user_id || userOrName.id;
+      uname = uname || userOrName.username;
+    } else if (typeof userOrName === 'string') {
+      name = userOrName;
+    }
+
+    name = (name || '').trim();
+    // Check if name is empty or consists purely of dots, commas, underscores, dashes, spaces
+    const isLonePunct = !name || /^[\.\,\-\_\s\*\#\@\~]+$/.test(name);
+    if (!isLonePunct) {
+      return name;
+    }
+    if (uname) {
+      return `@${uname}`;
+    }
+    if (id) {
+      return `User #${id}`;
+    }
+    return 'Foydalanuvchi';
+  }
+
+  // Format relative timestamp ("Just now", "5s ago", "2m ago")
+  function getRelativeTime(timestamp) {
+    if (!timestamp) return 'Just now';
+    const now = Date.now();
+    let ts = timestamp;
+    if (typeof timestamp === 'string') {
+      ts = new Date(timestamp).getTime();
+    } else if (typeof timestamp === 'number' && timestamp < 1e11) {
+      ts = timestamp * 1000;
+    }
+    if (isNaN(ts) || ts <= 0) return 'Just now';
+
+    const diffSec = Math.max(0, Math.floor((now - ts) / 1000));
+    if (diffSec < 4) return 'Just now';
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+
+  // Map category to CSS badge class
+  function getCategoryBadgeClass(category) {
+    const cat = (category || 'ZAKOVAT').toUpperCase();
+    const map = {
+      'ZAKOVAT': 'badge-zakovat',
+      'GEOGRAPHY': 'badge-geography',
+      'COSMOS': 'badge-cosmos',
+      'SCIENCE': 'badge-science',
+      'HISTORY': 'badge-history',
+      'SOLO': 'badge-solo',
+      'GROUP': 'badge-group',
+      'DUEL': 'badge-duel',
+    };
+    return map[cat] || 'badge-zakovat';
+  }
+
+  // Format clean date string (YYYY-MM-DD HH:mm:ss)
+  function formatDate(isoStr) {
+    if (!isoStr) return '-';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return isoStr;
+      return d.toLocaleString('uz-UZ', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return isoStr;
+    }
+  }
+
+  // Show alerts in auth modal
   function showAuthError(msg) {
     el.authErrorText.textContent = msg;
     el.authErrorAlert.classList.remove('hidden');
@@ -164,6 +326,22 @@
   // -------------------------------------------------------------
 
   async function checkExistingAuth() {
+    // 0. Initialize Strict 2FA toggle UI
+    if (el.toggleStrict2fa) {
+      el.toggleStrict2fa.checked = state.strict2fa;
+      el.toggleStrict2fa.addEventListener('change', (e) => {
+        state.strict2fa = e.target.checked;
+        localStorage.setItem('geoguru_strict_2fa', state.strict2fa ? 'true' : 'false');
+      });
+    }
+
+    // When Strict 2FA is active, force explicit OTP request screen!
+    if (state.strict2fa) {
+      el.authScreen.classList.remove('hidden');
+      el.webappAutoLoginNotice.classList.add('hidden');
+      return;
+    }
+
     // 1. Try Telegram WebApp auto-login if launched inside Telegram
     const tg = window.Telegram?.WebApp;
     if (tg && tg.initData && tg.initData.length > 10) {
@@ -299,7 +477,9 @@
   // Logout handler
   el.btnLogout.addEventListener('click', async () => {
     if (confirm("Haqiqatan ham boshqaruv panelidan chiqmoqchimisiz?")) {
-      await api('/api/admin/logout', { method: 'POST' });
+      try {
+        await api('/api/admin/logout', { method: 'POST' });
+      } catch {}
       if (state.sseSource) {
         state.sseSource.close();
       }
@@ -312,18 +492,26 @@
     el.mainDashboard.classList.remove('hidden');
 
     const u = state.user || {};
-    el.adminProfileName.textContent = u.first_name || u.username || 'Admin';
+    el.adminProfileName.textContent = formatUserName(u, u.user_id, u.username);
     el.adminProfileId.textContent = `ID: ${u.user_id || u.id || '-'}`;
 
-    // Initialize components
+    // Initialize relative time updater
+    if (state.tickerInterval) clearInterval(state.tickerInterval);
+    state.tickerInterval = setInterval(updateRelativeTimes, 4000);
+
+    // Initialize all components
     initLiveStream();
     loadDashboardStats();
+    loadAdminLogins();
     setupNavigation();
+    setupAtlasControls();
+    setupAnswersFilters();
     setupBroadcastPreview();
+    setupModals();
   }
 
   // -------------------------------------------------------------
-  // SSE Live Stream
+  // SSE Live Stream & Atlas Telemetry Daemon
   // -------------------------------------------------------------
 
   function setStreamStatus(status) {
@@ -356,21 +544,20 @@
     });
 
     sse.addEventListener('ping', () => {
-      // heartbeat received
+      // heartbeat
     });
 
     sse.addEventListener('answer', (e) => {
       try {
         const data = JSON.parse(e.data);
-        addLiveTickerItem('answer', data);
-        incrementAnswerCount(data.is_correct);
+        handleIncomingAnswerEvent(data);
       } catch (err) {}
     });
 
     sse.addEventListener('answer_logged', (e) => {
       try {
         const data = JSON.parse(e.data);
-        addLiveTickerItem('answer', data);
+        handleIncomingAnswerEvent(data);
       } catch (err) {}
     });
 
@@ -414,15 +601,221 @@
     };
   }
 
+  function handleIncomingAnswerEvent(data) {
+    // Normalize event object
+    const safeName = formatUserName(data.user_name || data.first_name, data.user_id, data.username);
+    const isCorrect = Boolean(data.is_correct);
+    const category = (data.category || 'ZAKOVAT').toUpperCase();
+    const chatTag = data.chat_tag || (data.chat_id && data.chat_id < 0 ? `[Guruh: ${Math.abs(data.chat_id)}]` : '[Shaxsiy]');
+    const points = data.points !== undefined ? data.points : (isCorrect ? 100 : -20);
+    const xp = data.xp !== undefined ? data.xp : (isCorrect ? 25 : 0);
+    const nodeHash = data.node_hash || `tg-dc${(Math.abs(Number(data.user_id) || 1) % 5) + 1} · #${String(data.user_id || '0000').slice(-4)}`;
+    const timestamp = data.timestamp || Date.now();
+
+    const normalized = {
+      id: data.id || `evt-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      user_id: data.user_id,
+      user_name: safeName,
+      username: data.username,
+      question_text: data.question_text || '',
+      is_correct: isCorrect,
+      user_answer: data.user_answer || '',
+      correct_answer: data.correct_answer || '',
+      category: category,
+      chat_tag: chatTag,
+      points: points,
+      xp: xp,
+      node_hash: nodeHash,
+      timestamp: timestamp,
+    };
+
+    // Buffer management (keep max 250 events)
+    state.eventsBuffer.unshift(normalized);
+    if (state.eventsBuffer.length > 250) {
+      state.eventsBuffer.pop();
+    }
+
+    // Render to Atlas Terminals
+    renderAtlasEventRow(normalized);
+    updateAtlasCounters();
+
+    // Update KPI ticker and counters
+    addLiveTickerItem('answer', { ...data, user_name: safeName });
+    incrementAnswerCount(isCorrect);
+  }
+
+  // Build Atlas Terminal Row HTML matching Image 3
+  function createAtlasRowElement(evt) {
+    const relTime = getRelativeTime(evt.timestamp);
+    const badgeClass = getCategoryBadgeClass(evt.category);
+    const safeName = escapeHtml(evt.user_name);
+    const qSnippet = evt.question_text ? escapeHtml(evt.question_text.length > 38 ? evt.question_text.slice(0, 36) + '...' : evt.question_text) : 'savol';
+
+    const div = document.createElement('div');
+    div.className = 'atlas-row';
+    div.dataset.id = evt.id;
+    div.dataset.timestamp = typeof evt.timestamp === 'number' ? evt.timestamp : new Date(evt.timestamp).getTime();
+    div.dataset.userId = evt.user_id;
+
+    div.innerHTML = `
+      <span class="atlas-time">${relTime}</span>
+      <span class="atlas-badge ${badgeClass}">[${escapeHtml(evt.category)}]</span>
+      <span class="atlas-location font-mono">${escapeHtml(evt.chat_tag)}</span>
+      <div class="atlas-desc">
+        <span class="user-tag cursor-pointer hover:underline" data-user-id="${evt.user_id}">${safeName}</span>
+        <span class="action-arrow">→</span>
+        <span class="question-snippet">${qSnippet}</span>
+        <span class="result-check ${evt.is_correct ? 'text-emerald-400' : 'text-rose-400'}">
+          ${evt.is_correct ? "to'g'ri javob" : "noto'g'ri"}
+        </span>
+        <span class="score-pill ${evt.is_correct ? 'correct' : 'incorrect'}">
+          ${evt.is_correct ? `+${evt.points} ball, +${evt.xp} XP` : `${evt.points} ball`}
+        </span>
+      </div>
+      <span class="atlas-node-hash font-mono">${escapeHtml(evt.node_hash)}</span>
+    `;
+
+    // Make clicking the row or user tag open Full User Profile Modal
+    div.addEventListener('click', (e) => {
+      openUserProfileModal(evt.user_id);
+    });
+
+    return div;
+  }
+
+  function matchesAtlasFilter(evt, query) {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      (evt.user_name && evt.user_name.toLowerCase().includes(q)) ||
+      String(evt.user_id).includes(q) ||
+      (evt.category && evt.category.toLowerCase().includes(q)) ||
+      (evt.chat_tag && evt.chat_tag.toLowerCase().includes(q)) ||
+      (evt.question_text && evt.question_text.toLowerCase().includes(q)) ||
+      (evt.node_hash && evt.node_hash.toLowerCase().includes(q))
+    );
+  }
+
+  function renderAtlasEventRow(evt) {
+    // 1. Overview Terminal
+    if (el.atlasBodyOverview && matchesAtlasFilter(evt, state.overviewSearchFilter)) {
+      if (el.atlasBodyOverview.children.length === 1 && el.atlasBodyOverview.children[0].textContent.includes('kutilmoqda')) {
+        el.atlasBodyOverview.innerHTML = '';
+      }
+      const rowOverview = createAtlasRowElement(evt);
+      el.atlasBodyOverview.prepend(rowOverview);
+      if (el.atlasBodyOverview.children.length > 150) {
+        el.atlasBodyOverview.removeChild(el.atlasBodyOverview.lastChild);
+      }
+      if (el.atlasAutoScrollOverview && el.atlasAutoScrollOverview.checked) {
+        el.atlasBodyOverview.scrollTop = 0;
+      }
+    }
+
+    // 2. Answers Terminal
+    if (el.atlasBodyAnswers && matchesAtlasFilter(evt, state.answersSearchFilter)) {
+      if (el.atlasBodyAnswers.children.length === 1 && el.atlasBodyAnswers.children[0].textContent.includes('kutilmoqda')) {
+        el.atlasBodyAnswers.innerHTML = '';
+      }
+      const rowAnswers = createAtlasRowElement(evt);
+      el.atlasBodyAnswers.prepend(rowAnswers);
+      if (el.atlasBodyAnswers.children.length > 150) {
+        el.atlasBodyAnswers.removeChild(el.atlasBodyAnswers.lastChild);
+      }
+      if (el.atlasAutoScrollAnswers && el.atlasAutoScrollAnswers.checked) {
+        el.atlasBodyAnswers.scrollTop = 0;
+      }
+    }
+  }
+
+  function reRenderAtlasTerminal(terminalType) {
+    const isOverview = terminalType === 'overview';
+    const container = isOverview ? el.atlasBodyOverview : el.atlasBodyAnswers;
+    const query = isOverview ? state.overviewSearchFilter : state.answersSearchFilter;
+    if (!container) return;
+
+    container.innerHTML = '';
+    const filtered = state.eventsBuffer.filter(e => matchesAtlasFilter(e, query));
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="text-xs text-gray-500 py-6 text-center font-mono">Mos keluvchi hodisalar topilmadi.</div>`;
+      return;
+    }
+
+    filtered.forEach(evt => {
+      container.appendChild(createAtlasRowElement(evt));
+    });
+  }
+
+  function updateAtlasCounters() {
+    const countStr = state.eventsBuffer.length.toString();
+    if (el.atlasCountOverview) el.atlasCountOverview.textContent = countStr;
+    if (el.atlasCountAnswers) el.atlasCountAnswers.textContent = countStr;
+  }
+
+  function updateRelativeTimes() {
+    document.querySelectorAll('.atlas-row').forEach(row => {
+      const ts = Number(row.dataset.timestamp);
+      if (ts) {
+        const timeEl = row.querySelector('.atlas-time');
+        if (timeEl) timeEl.textContent = getRelativeTime(ts);
+      }
+    });
+  }
+
+  function setupAtlasControls() {
+    // Overview Terminal search & clear
+    if (el.atlasSearchOverview) {
+      el.atlasSearchOverview.addEventListener('input', (e) => {
+        state.overviewSearchFilter = e.target.value.trim();
+        reRenderAtlasTerminal('overview');
+      });
+    }
+    if (el.btnClearAtlasOverview) {
+      el.btnClearAtlasOverview.addEventListener('click', () => {
+        state.eventsBuffer = [];
+        updateAtlasCounters();
+        if (el.atlasBodyOverview) {
+          el.atlasBodyOverview.innerHTML = `<div class="text-xs text-gray-500 py-6 text-center font-mono">Jonli hodisalar kutilmoqda va buferlanmoqda...</div>`;
+        }
+        if (el.atlasBodyAnswers) {
+          el.atlasBodyAnswers.innerHTML = `<div class="text-xs text-gray-500 py-6 text-center font-mono">Jonli hodisalar kutilmoqda va buferlanmoqda...</div>`;
+        }
+      });
+    }
+
+    // Answers Terminal search & clear
+    if (el.atlasSearchAnswers) {
+      el.atlasSearchAnswers.addEventListener('input', (e) => {
+        state.answersSearchFilter = e.target.value.trim();
+        reRenderAtlasTerminal('answers');
+      });
+    }
+    if (el.btnClearAtlasAnswers) {
+      el.btnClearAtlasAnswers.addEventListener('click', () => {
+        state.eventsBuffer = [];
+        updateAtlasCounters();
+        if (el.atlasBodyOverview) {
+          el.atlasBodyOverview.innerHTML = `<div class="text-xs text-gray-500 py-6 text-center font-mono">Jonli hodisalar kutilmoqda va buferlanmoqda...</div>`;
+        }
+        if (el.atlasBodyAnswers) {
+          el.atlasBodyAnswers.innerHTML = `<div class="text-xs text-gray-500 py-6 text-center font-mono">Jonli hodisalar kutilmoqda va buferlanmoqda...</div>`;
+        }
+      });
+    }
+  }
+
   function addLiveTickerItem(type, data) {
     const feed = el.liveTickerFeed;
+    if (!feed) return;
     if (feed.children.length === 1 && feed.children[0].textContent.includes('kutilmoqda')) {
       feed.innerHTML = '';
     }
 
     const timeStr = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const div = document.createElement('div');
-    div.className = 'event-item p-2.5 rounded-xl bg-gray-900/60 border border-white/5 flex items-center justify-between text-xs';
+    div.className = 'event-item p-2.5 rounded-xl bg-gray-900/60 border border-white/5 flex items-center justify-between text-xs cursor-pointer hover:border-cyan-500/30 transition';
+
+    const safeName = formatUserName(data.user_name || data.first_name, data.user_id, data.username);
 
     if (type === 'answer') {
       const isCorrect = data.is_correct;
@@ -432,7 +825,7 @@
             ${isCorrect ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>'}
           </span>
           <div>
-            <span class="font-semibold text-white">${escapeHtml(data.user_name || 'Foydalanuvchi ' + data.user_id)}</span>
+            <span class="font-semibold text-white">${escapeHtml(safeName)}</span>
             <span class="text-gray-400 text-[11px]">${isCorrect ? "to'g'ri javob berdi (+XP)" : "noto'g'ri javob berdi"}</span>
           </div>
         </div>
@@ -447,6 +840,19 @@
           <div>
             <span class="font-semibold text-rose-300">User ${data.user_id}</span>
             <span class="text-gray-400 text-[11px]">bloklandi (${escapeHtml(data.reason || 'Sababsiz')})</span>
+          </div>
+        </div>
+        <span class="text-[10px] text-gray-500 font-mono">${timeStr}</span>
+      `;
+    } else if (type === 'unban') {
+      div.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">
+            <i class="fa-solid fa-lock-open"></i>
+          </span>
+          <div>
+            <span class="font-semibold text-emerald-300">User ${data.user_id}</span>
+            <span class="text-gray-400 text-[11px]">blokdan chiqarildi</span>
           </div>
         </div>
         <span class="text-[10px] text-gray-500 font-mono">${timeStr}</span>
@@ -466,6 +872,10 @@
       `;
     }
 
+    if (data.user_id) {
+      div.addEventListener('click', () => openUserProfileModal(data.user_id));
+    }
+
     feed.prepend(div);
     if (feed.children.length > 30) {
       feed.removeChild(feed.lastChild);
@@ -477,9 +887,10 @@
   });
 
   function incrementAnswerCount(isCorrect) {
+    if (!el.statTotalAnswers) return;
     const total = parseInt(el.statTotalAnswers.textContent.replace(/\D/g, '') || 0, 10) + 1;
     el.statTotalAnswers.textContent = total.toLocaleString();
-    if (isCorrect) {
+    if (isCorrect && el.statCorrectAnswers) {
       const correct = parseInt(el.statCorrectAnswers.textContent.replace(/\D/g, '') || 0, 10) + 1;
       el.statCorrectAnswers.textContent = correct.toLocaleString();
       const pct = ((correct / total) * 100).toFixed(1);
@@ -523,19 +934,22 @@
     // Trigger tab data fetch
     if (tabId === 'tabOverview') {
       loadDashboardStats();
+      loadAdminLogins();
     } else if (tabId === 'tabUsers') {
       loadUsers();
+      loadRecentUsers();
     } else if (tabId === 'tabGroups') {
       loadGroups();
     } else if (tabId === 'tabAnswers') {
-      loadAnswers();
+      loadAnswersHistory();
+      loadDifficultQuestions();
     } else if (tabId === 'tabLogs') {
       loadLogs();
     }
   }
 
   // -------------------------------------------------------------
-  // Tab 1: Overview & Charts
+  // Tab 1: Overview, Charts & Admin Logins Audit
   // -------------------------------------------------------------
 
   async function loadDashboardStats() {
@@ -562,7 +976,6 @@
     const labels = activityData.map(d => d.hour_label || '');
     const counts = activityData.map(d => d.event_count || 0);
 
-    // If empty, generate past 6 hours sample labels
     if (labels.length === 0) {
       for (let i = 5; i >= 0; i--) {
         const d = new Date(Date.now() - i * 3600 * 1000);
@@ -629,8 +1042,8 @@
     let counts = modeDist.map(m => m.match_count || 0);
 
     if (labels.length === 0) {
-      labels = ['FLAGS', 'CAPITALS', 'STREETVIEW', 'ZAKOVAT'];
-      counts = [1, 1, 1, 1];
+      labels = ['ZAKOVAT', 'GEOGRAPHY', 'COSMOS', 'SCIENCE', 'HISTORY'];
+      counts = [35, 25, 18, 12, 10];
     }
 
     if (state.chartModes) {
@@ -643,7 +1056,7 @@
         labels: labels,
         datasets: [{
           data: counts,
-          backgroundColor: ['#06b6d4', '#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#ec4899'],
+          backgroundColor: ['#a855f7', '#06b6d4', '#6366f1', '#10b981', '#f59e0b', '#ec4899'],
           borderColor: '#0a0f1d',
           borderWidth: 3,
         }]
@@ -662,8 +1075,68 @@
     });
   }
 
+  // Load Admin Logins Audit Log
+  async function loadAdminLogins() {
+    if (!el.loginsTableBody) return;
+    el.loginsTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500 font-sans">Yuklanmoqda...</td></tr>`;
+
+    const res = await api('/api/admin/logins?limit=50');
+    if (!res.ok) {
+      el.loginsTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-rose-400 font-sans">Loginlar tarixini yuklashda xatolik</td></tr>`;
+      return;
+    }
+
+    const logins = res.logins || [];
+    if (logins.length === 0) {
+      el.loginsTableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500 font-sans">Hozircha admin loginlari qayd etilmagan.</td></tr>`;
+      return;
+    }
+
+    el.loginsTableBody.innerHTML = logins.map(l => {
+      const timeStr = formatDate(l.created_at);
+      const safeAdminName = formatUserName(l.username, l.user_id, l.username);
+      const ip = escapeHtml(l.ip_address || '127.0.0.1');
+      const authMethod = escapeHtml(l.auth_method || '2FA_OTP');
+      const ua = escapeHtml(l.user_agent || 'Unknown Client');
+      const shortUa = ua.length > 40 ? ua.slice(0, 38) + '...' : ua;
+
+      let methodBadge = 'bg-cyan-950 text-cyan-300 border-cyan-800';
+      if (authMethod.includes('WEBAPP')) methodBadge = 'bg-emerald-950 text-emerald-300 border-emerald-800';
+      else if (authMethod.includes('SESSION')) methodBadge = 'bg-purple-950 text-purple-300 border-purple-800';
+
+      return `
+        <tr class="hover:bg-white/[0.02] transition">
+          <td class="p-3 text-gray-400">${timeStr}</td>
+          <td class="p-3 text-cyan-400 font-bold">${l.user_id}</td>
+          <td class="p-3 text-white font-sans font-medium">${safeAdminName}</td>
+          <td class="p-3 text-gray-300 flex items-center space-x-1.5">
+            <i class="fa-solid fa-network-wired text-cyan-500 text-[10px]"></i>
+            <span>${ip}</span>
+          </td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-sans font-semibold border ${methodBadge}">
+              ${authMethod}
+            </span>
+          </td>
+          <td class="p-3 text-gray-400" title="${ua}">
+            <span class="font-sans text-[11px]">${shortUa}</span>
+          </td>
+          <td class="p-3 text-right">
+            <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-sans font-semibold">
+              <i class="fa-solid fa-check text-[9px] mr-1"></i> Muvaffaqiyatli
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  if (el.btnRefreshLogins) {
+    el.btnRefreshLogins.addEventListener('click', () => loadAdminLogins());
+  }
+
   // -------------------------------------------------------------
-  // Tab 2: Users Management
+  // Tab 2: Users Management & Recent Users Table
   // -------------------------------------------------------------
 
   async function loadUsers() {
@@ -693,17 +1166,17 @@
 
     el.usersTableBody.innerHTML = users.map(u => {
       const isBanned = Boolean(u.is_banned);
-      const name = escapeHtml(u.first_name || 'Player');
+      const safeName = formatUserName(u, u.user_id, u.username);
       const username = u.username ? `@${escapeHtml(u.username)}` : `<span class="text-gray-500">-</span>`;
 
       return `
-        <tr class="hover:bg-white/[0.02] transition">
-          <td class="p-3.5 flex items-center space-x-2.5">
+        <tr class="hover:bg-white/[0.02] transition cursor-pointer" data-id="${u.user_id}">
+          <td class="p-3.5 flex items-center space-x-2.5 user-cell" data-id="${u.user_id}">
             <div class="w-8 h-8 rounded-full bg-cyan-600/30 text-cyan-300 font-bold flex items-center justify-center text-xs">
-              ${name.charAt(0).toUpperCase()}
+              ${safeName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <div class="font-medium text-white">${name}</div>
+              <div class="font-medium text-white hover:text-cyan-400 transition">${escapeHtml(safeName)}</div>
               <div class="text-[11px] text-gray-400">${username}</div>
             </div>
           </td>
@@ -729,13 +1202,17 @@
               ? `<span class="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-800 text-[10px] font-semibold">Bloklangan</span>` 
               : `<span class="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-semibold">Faol</span>`}
           </td>
-          <td class="p-3.5 text-right space-x-1">
+          <td class="p-3.5 text-right space-x-1" onclick="event.stopPropagation()">
+            <button class="btn-user-profile px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/20 transition"
+              data-id="${u.user_id}" title="To'liq profilni ko'rish">
+              <i class="fa-solid fa-address-card text-[10px] mr-1"></i> Profil
+            </button>
             <button class="btn-adjust-xp px-2 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 border border-white/10 transition"
-              data-id="${u.user_id}" data-name="${name}" data-xp="${u.xp || 0}">
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-xp="${u.xp || 0}">
               <i class="fa-solid fa-star text-[10px] mr-1"></i> XP
             </button>
             <button class="btn-toggle-ban px-2 py-1 rounded-lg ${isBanned ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'} border border-white/10 transition"
-              data-id="${u.user_id}" data-name="${name}" data-banned="${isBanned}">
+              data-id="${u.user_id}" data-name="${escapeHtml(safeName)}" data-banned="${isBanned}">
               <i class="fa-solid ${isBanned ? 'fa-lock-open' : 'fa-ban'} text-[10px] mr-1"></i> ${isBanned ? 'Ochish' : 'Bloklash'}
             </button>
           </td>
@@ -743,19 +1220,117 @@
       `;
     }).join('');
 
-    // Attach row button events
-    document.querySelectorAll('.btn-adjust-xp').forEach(b => {
-      b.addEventListener('click', () => {
+    // Attach row click to open full profile modal
+    el.usersTableBody.querySelectorAll('tr').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const id = tr.dataset.id;
+        if (id) openUserProfileModal(id);
+      });
+    });
+
+    // Attach button events
+    el.usersTableBody.querySelectorAll('.btn-user-profile').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openUserProfileModal(b.dataset.id);
+      });
+    });
+
+    el.usersTableBody.querySelectorAll('.btn-adjust-xp').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
         openAdjustXpModal(b.dataset.id, b.dataset.name, b.dataset.xp);
       });
     });
 
-    document.querySelectorAll('.btn-toggle-ban').forEach(b => {
-      b.addEventListener('click', () => {
+    el.usersTableBody.querySelectorAll('.btn-toggle-ban').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
         const isBanned = b.dataset.banned === 'true';
         openBanModal(b.dataset.id, b.dataset.name, isBanned);
       });
     });
+  }
+
+  // Load Recent 50 Users Table
+  async function loadRecentUsers() {
+    if (!el.recentUsersTableBody) return;
+    el.recentUsersTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">Yuklanmoqda...</td></tr>`;
+
+    const res = await api('/api/admin/users/recent?limit=50');
+    if (!res.ok) {
+      el.recentUsersTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-rose-400">Yangi foydalanuvchilarni yuklashda xatolik</td></tr>`;
+      return;
+    }
+
+    const users = res.recent_users || [];
+    if (users.length === 0) {
+      el.recentUsersTableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">Yangi foydalanuvchilar topilmadi.</td></tr>`;
+      return;
+    }
+
+    el.recentUsersTableBody.innerHTML = users.map(u => {
+      const isBanned = Boolean(u.is_banned);
+      const safeName = formatUserName(u, u.user_id, u.username);
+      const username = u.username ? `@${escapeHtml(u.username)}` : `<span class="text-gray-500">-</span>`;
+      const regTime = formatDate(u.created_at);
+      const lang = (u.language_code || 'uz').toUpperCase();
+
+      return `
+        <tr class="hover:bg-white/[0.02] transition cursor-pointer" data-id="${u.user_id}">
+          <td class="p-3 flex items-center space-x-2.5">
+            <div class="w-7 h-7 rounded-full bg-emerald-600/30 text-emerald-300 font-bold flex items-center justify-center text-xs">
+              ${safeName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div class="font-medium text-white hover:text-cyan-400 transition">${escapeHtml(safeName)}</div>
+              <div class="text-[11px] text-gray-400">${username}</div>
+            </div>
+          </td>
+          <td class="p-3 font-mono text-cyan-400">${u.user_id}</td>
+          <td class="p-3 font-mono text-gray-400 text-xs">${regTime}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-white/5 text-[10px] font-mono">${lang}</span>
+          </td>
+          <td class="p-3 text-gray-300">
+            <span class="px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700/50 text-[10px] font-semibold mr-1">
+              Lvl ${u.level || 1}
+            </span>
+            <span class="text-xs font-medium">${(u.xp || 0).toLocaleString()} XP</span>
+          </td>
+          <td class="p-3">
+            ${isBanned 
+              ? `<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[10px] font-semibold">Bloklangan</span>` 
+              : `<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-semibold">Faol</span>`}
+          </td>
+          <td class="p-3 text-right" onclick="event.stopPropagation()">
+            <button class="btn-recent-profile px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/20 text-xs transition"
+              data-id="${u.user_id}">
+              <i class="fa-solid fa-address-card mr-1 text-[10px]"></i> Profil
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Attach click handlers
+    el.recentUsersTableBody.querySelectorAll('tr').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const id = tr.dataset.id;
+        if (id) openUserProfileModal(id);
+      });
+    });
+
+    el.recentUsersTableBody.querySelectorAll('.btn-recent-profile').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openUserProfileModal(b.dataset.id);
+      });
+    });
+  }
+
+  if (el.btnRefreshRecentUsers) {
+    el.btnRefreshRecentUsers.addEventListener('click', () => loadRecentUsers());
   }
 
   function updateUsersPagination() {
@@ -781,7 +1356,6 @@
     }
   });
 
-  // Search input debounce
   let searchDebounce = null;
   el.inputUserSearch.addEventListener('input', (e) => {
     clearTimeout(searchDebounce);
@@ -792,9 +1366,156 @@
     }, 350);
   });
 
-  el.btnRefreshUsers.addEventListener('click', () => loadUsers());
+  el.btnRefreshUsers.addEventListener('click', () => {
+    loadUsers();
+    loadRecentUsers();
+  });
 
-  // Adjust XP Modal Logic
+  // -------------------------------------------------------------
+  // Full User Profile Modal Logic
+  // -------------------------------------------------------------
+
+  async function openUserProfileModal(userId) {
+    if (!userId) return;
+    state.activeUserProfileId = userId;
+
+    // Reset and show modal loader state
+    el.userModalAvatar.textContent = '...';
+    el.userModalName.textContent = 'Yuklanmoqda...';
+    el.userModalUsername.textContent = '@...';
+    el.userModalId.textContent = userId;
+    el.userModalRegistered.textContent = "Ro'yxatdan: ...";
+    el.userModalAnswersTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 font-sans">Javoblar tarixi yuklanmoqda...</td></tr>`;
+    el.modalUserProfile.classList.remove('hidden');
+
+    const res = await api(`/api/admin/users/${userId}/full`);
+    if (!res.ok || !res.profile) {
+      alert(res.error || "Foydalanuvchi ma'lumotlarini yuklashda xatolik");
+      el.modalUserProfile.classList.add('hidden');
+      return;
+    }
+
+    const u = res.profile.user || {};
+    const history = res.profile.history || [];
+    const safeName = formatUserName(u, u.user_id, u.username);
+    const isBanned = Boolean(u.is_banned);
+
+    // Populate Header
+    el.userModalAvatar.textContent = safeName.charAt(0).toUpperCase();
+    el.userModalName.textContent = safeName;
+    el.userModalUsername.textContent = u.username ? `@${u.username}` : `(username yo'q)`;
+    el.userModalId.textContent = u.user_id;
+    el.userModalRegistered.textContent = `Ro'yxatdan: ${formatDate(u.created_at)}`;
+
+    if (isBanned) {
+      el.userModalStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30';
+      el.userModalStatusBadge.textContent = 'Bloklangan';
+      el.userModalBtnBanText.textContent = '🔓 Blokdan ochish';
+    } else {
+      el.userModalStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      el.userModalStatusBadge.textContent = 'Faol';
+      el.userModalBtnBanText.textContent = '🚫 Bloklash';
+    }
+
+    // Populate Stats Cards
+    el.userModalScore.textContent = (u.score || 0).toLocaleString();
+    el.userModalXp.textContent = `${(u.xp || 0).toLocaleString()} XP`;
+    el.userModalLevel.textContent = `${u.level || 1}-daraja`;
+    el.userModalWinRate.textContent = `${u.win_rate !== undefined ? u.win_rate : (u.games_played > 0 ? Math.round((u.games_won / u.games_played) * 100) : 0)}%`;
+    el.userModalAccuracy.textContent = `${u.correct_answers || 0} / ${u.total_answers || 0} (${u.accuracy_pct || 0}%)`;
+    el.userModalStreak.textContent = `${u.streak || 0} (Max: ${u.best_streak || 0})`;
+
+    // Populate Top 100 Answer History Table
+    el.userModalAnswersCount.textContent = `${history.length} ta javob`;
+    if (history.length === 0) {
+      el.userModalAnswersTableBody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500 font-sans">Ushbu foydalanuvchi hali savollarga javob bermagan.</td></tr>`;
+    } else {
+      el.userModalAnswersTableBody.innerHTML = history.map(h => {
+        const isCorrect = Boolean(h.is_correct);
+        const timeStr = formatDate(h.created_at);
+        const cat = (h.category || 'ZAKOVAT').toUpperCase();
+        const badgeClass = getCategoryBadgeClass(cat);
+        const qText = escapeHtml(h.question_text || '-');
+        const userAns = escapeHtml(h.user_answer || '-');
+        const corrAns = escapeHtml(h.correct_answer || '-');
+        const points = h.points_awarded !== undefined ? h.points_awarded : (isCorrect ? 100 : -20);
+        const xp = h.xp_awarded !== undefined ? h.xp_awarded : (isCorrect ? 25 : 0);
+
+        return `
+          <tr class="hover:bg-white/[0.02] transition">
+            <td class="p-3 text-gray-400 font-sans text-xs">${timeStr}</td>
+            <td class="p-3">
+              <span class="atlas-badge ${badgeClass}">[${cat}]</span>
+            </td>
+            <td class="p-3 text-gray-200 font-sans text-xs max-w-xs truncate" title="${qText}">${qText}</td>
+            <td class="p-3 font-sans text-xs">
+              <span class="${isCorrect ? 'text-emerald-300 font-medium' : 'text-rose-400 line-through'}">${userAns}</span>
+              ${!isCorrect && corrAns !== '-' ? `<span class="text-emerald-400 ml-1">(${corrAns})</span>` : ''}
+            </td>
+            <td class="p-3">
+              <span class="score-pill ${isCorrect ? 'correct' : 'incorrect'}">
+                ${isCorrect ? 'To\'g\'ri' : 'Noto\'g\'ri'}
+              </span>
+            </td>
+            <td class="p-3 text-right font-sans">
+              <span class="${isCorrect ? 'text-emerald-400 font-bold' : 'text-rose-400'}">
+                ${isCorrect ? `+${points}b, +${xp}XP` : `${points}b`}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Bind modal actions for this active user
+    el.userModalBtnAdjustPoints.onclick = () => openAdjustPointsModal(u.user_id, safeName, u.score || 0);
+    el.userModalBtnAdjustXp.onclick = () => openAdjustXpModal(u.user_id, safeName, u.xp || 0);
+    el.userModalBtnSetLevel.onclick = () => openSetLevelModal(u.user_id, safeName, u.level || 1);
+    el.userModalBtnBanToggle.onclick = () => openBanModal(u.user_id, safeName, isBanned);
+    el.userModalBtnResetStats.onclick = () => confirmResetUserStats(u.user_id, safeName);
+  }
+
+  el.btnCloseUserProfile.addEventListener('click', () => {
+    el.modalUserProfile.classList.add('hidden');
+    state.activeUserProfileId = null;
+  });
+
+  // Modal 1: Adjust Points
+  function openAdjustPointsModal(userId, name, currentPoints) {
+    el.modalAdjustPointsUserId.value = userId;
+    el.modalAdjustPointsSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi ball: ${currentPoints}`;
+    el.inputNewPoints.value = currentPoints;
+    el.modalAdjustPoints.classList.remove('hidden');
+    el.inputNewPoints.focus();
+  }
+
+  el.btnCancelAdjustPoints.addEventListener('click', () => el.modalAdjustPoints.classList.add('hidden'));
+
+  el.btnSaveAdjustPoints.addEventListener('click', async () => {
+    const userId = el.modalAdjustPointsUserId.value;
+    const newPoints = parseInt(el.inputNewPoints.value, 10);
+    if (isNaN(newPoints) || newPoints < 0) {
+      alert("Yaroqli musbat ball kiriting.");
+      return;
+    }
+
+    const res = await api('/api/admin/users/adjust-points', {
+      method: 'POST',
+      body: { user_id: parseInt(userId, 10), points: newPoints }
+    });
+
+    if (res.ok) {
+      el.modalAdjustPoints.classList.add('hidden');
+      loadUsers();
+      if (state.activeUserProfileId == userId) {
+        openUserProfileModal(userId);
+      }
+    } else {
+      alert(res.error || "Ballarni yangilashda xatolik");
+    }
+  });
+
+  // Modal 2: Adjust XP
   function openAdjustXpModal(userId, name, currentXp) {
     el.modalAdjustUserId.value = userId;
     el.modalAdjustXpSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi XP: ${currentXp}`;
@@ -821,12 +1542,50 @@
     if (res.ok) {
       el.modalAdjustXp.classList.add('hidden');
       loadUsers();
+      if (state.activeUserProfileId == userId) {
+        openUserProfileModal(userId);
+      }
     } else {
       alert(res.error || "XP yangilashda xatolik");
     }
   });
 
-  // Ban / Unban Modal Logic
+  // Modal 3: Set Level
+  function openSetLevelModal(userId, name, currentLevel) {
+    el.modalSetLevelUserId.value = userId;
+    el.modalSetLevelSubtitle.textContent = `Foydalanuvchi: ${name} (ID: ${userId}) | Hozirgi daraja: ${currentLevel}`;
+    el.inputNewLevel.value = currentLevel;
+    el.modalSetLevel.classList.remove('hidden');
+    el.inputNewLevel.focus();
+  }
+
+  el.btnCancelSetLevel.addEventListener('click', () => el.modalSetLevel.classList.add('hidden'));
+
+  el.btnSaveSetLevel.addEventListener('click', async () => {
+    const userId = el.modalSetLevelUserId.value;
+    const newLevel = parseInt(el.inputNewLevel.value, 10);
+    if (isNaN(newLevel) || newLevel < 1 || newLevel > 100) {
+      alert("Daraja 1 dan 100 gacha bo'lishi kerak.");
+      return;
+    }
+
+    const res = await api('/api/admin/users/set-level', {
+      method: 'POST',
+      body: { user_id: parseInt(userId, 10), level: newLevel }
+    });
+
+    if (res.ok) {
+      el.modalSetLevel.classList.add('hidden');
+      loadUsers();
+      if (state.activeUserProfileId == userId) {
+        openUserProfileModal(userId);
+      }
+    } else {
+      alert(res.error || "Darajani yangilashda xatolik");
+    }
+  });
+
+  // Modal 4: Ban / Unban
   function openBanModal(userId, name, isCurrentlyBanned) {
     el.modalBanUserId.value = userId;
     el.modalBanAction.value = isCurrentlyBanned ? 'unban' : 'ban';
@@ -868,10 +1627,47 @@
     if (res.ok) {
       el.modalBanUser.classList.add('hidden');
       loadUsers();
+      loadRecentUsers();
+      if (state.activeUserProfileId == userId) {
+        openUserProfileModal(userId);
+      }
     } else {
       alert(res.error || "Amalni bajarishda xatolik");
     }
   });
+
+  // Action: Reset User Stats
+  async function confirmResetUserStats(userId, name) {
+    if (!confirm(`DIQQAT! Foydalanuvchi "${name}" (ID: ${userId}) ning barcha ballari, XP, darajasi va g'alaba hisoblarini nollashni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi!`)) {
+      return;
+    }
+
+    const res = await api('/api/admin/users/reset-stats', {
+      method: 'POST',
+      body: { user_id: parseInt(userId, 10) }
+    });
+
+    if (res.ok) {
+      alert("Foydalanuvchi statistikasi muvaffaqiyatli nollashdi!");
+      loadUsers();
+      loadRecentUsers();
+      if (state.activeUserProfileId == userId) {
+        openUserProfileModal(userId);
+      }
+    } else {
+      alert(res.error || "Statistikani nollashda xatolik yuz berdi");
+    }
+  }
+
+  function setupModals() {
+    // Backdrop click dismiss for modals
+    [el.modalAdjustPoints, el.modalAdjustXp, el.modalSetLevel, el.modalBanUser].forEach(m => {
+      if (!m) return;
+      m.addEventListener('click', (e) => {
+        if (e.target === m) m.classList.add('hidden');
+      });
+    });
+  }
 
   // -------------------------------------------------------------
   // Tab 3: Groups
@@ -920,54 +1716,118 @@
   el.btnRefreshGroups.addEventListener('click', () => loadGroups());
 
   // -------------------------------------------------------------
-  // Tab 4: Answers & Questions
+  // Tab 4: Answers & Questions (Filterable Answers History)
   // -------------------------------------------------------------
 
-  async function loadAnswers() {
-    el.recentAnswersList.innerHTML = `<div class="p-3 text-center text-gray-500 text-xs">Yuklanmoqda...</div>`;
+  function setupAnswersFilters() {
+    let debounceTimer = null;
+    if (el.inputAnswerFilterQuery) {
+      el.inputAnswerFilterQuery.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          state.answersHistoryQuery = e.target.value.trim();
+          loadAnswersHistory();
+        }, 300);
+      });
+    }
+
+    if (el.selectAnswerFilterMode) {
+      el.selectAnswerFilterMode.addEventListener('change', (e) => {
+        state.answersHistoryMode = e.target.value;
+        loadAnswersHistory();
+      });
+    }
+
+    if (el.selectAnswerFilterCorrect) {
+      el.selectAnswerFilterCorrect.addEventListener('change', (e) => {
+        state.answersHistoryCorrect = e.target.value;
+        loadAnswersHistory();
+      });
+    }
+
+    if (el.btnRefreshAnswers) {
+      el.btnRefreshAnswers.addEventListener('click', () => {
+        loadAnswersHistory();
+        loadDifficultQuestions();
+      });
+    }
+  }
+
+  async function loadAnswersHistory() {
+    if (!el.recentAnswersList) return;
+    el.recentAnswersList.innerHTML = `<div class="p-4 text-center text-gray-500 text-xs">Yuklanmoqda...</div>`;
+
+    let url = `/api/admin/answers/history?limit=100`;
+    if (state.answersHistoryQuery) url += `&query=${encodeURIComponent(state.answersHistoryQuery)}`;
+    if (state.answersHistoryMode && state.answersHistoryMode !== 'all') url += `&mode=${encodeURIComponent(state.answersHistoryMode)}`;
+    if (state.answersHistoryCorrect && state.answersHistoryCorrect !== 'all') url += `&correct=${encodeURIComponent(state.answersHistoryCorrect)}`;
+
+    const res = await api(url);
+    if (!res.ok) {
+      el.recentAnswersList.innerHTML = `<div class="p-4 text-center text-rose-400 text-xs">Javoblarni yuklashda xatolik</div>`;
+      return;
+    }
+
+    const answers = res.answers || [];
+    if (answers.length === 0) {
+      el.recentAnswersList.innerHTML = `<div class="p-6 text-center text-gray-500 text-xs font-sans">Belgilangan filter bo'yicha javoblar topilmadi.</div>`;
+      return;
+    }
+
+    el.recentAnswersList.innerHTML = answers.map(a => {
+      const isCorrect = Boolean(a.is_correct);
+      const safeName = formatUserName(a.first_name || a.username, a.user_id, a.username);
+      const qText = escapeHtml(a.question_text || 'Savol matni');
+      const given = escapeHtml(a.user_answer || '-');
+      const correct = escapeHtml(a.correct_answer || '-');
+      const timeStr = formatDate(a.created_at);
+      const cat = (a.category || 'ZAKOVAT').toUpperCase();
+      const badgeClass = getCategoryBadgeClass(cat);
+      const chatTag = a.chat_tag || (a.chat_id && a.chat_id < 0 ? `[Guruh: ${Math.abs(a.chat_id)}]` : '[Shaxsiy]');
+      const points = a.points_awarded !== undefined ? a.points_awarded : (isCorrect ? 100 : -20);
+      const xp = a.xp_awarded !== undefined ? a.xp_awarded : (isCorrect ? 25 : 0);
+
+      return `
+        <div class="p-3.5 hover:bg-white/[0.02] flex items-start justify-between space-x-3 transition cursor-pointer" onclick="window.openUserProfileFromAnswer(${a.user_id})">
+          <div class="space-y-1.5 flex-1 overflow-hidden">
+            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+              <span class="font-semibold text-white hover:text-cyan-400 transition font-sans">${escapeHtml(safeName)}</span>
+              <span class="atlas-badge ${badgeClass}">[${cat}]</span>
+              <span class="text-[10px] text-gray-400 font-mono">${escapeHtml(chatTag)}</span>
+              <span class="score-pill ${isCorrect ? 'correct' : 'incorrect'}">
+                ${isCorrect ? 'To\'g\'ri' : 'Noto\'g\'ri'}
+              </span>
+              <span class="text-[10px] text-gray-500 font-mono ml-auto">${timeStr}</span>
+            </div>
+            <div class="text-gray-300 font-sans text-xs leading-relaxed">${qText}</div>
+            <div class="text-[11px] font-sans text-gray-400 flex items-center space-x-2">
+              <span>Javob: <strong class="${isCorrect ? 'text-emerald-400' : 'text-rose-400 line-through'}">${given}</strong></span>
+              ${!isCorrect && correct !== '-' ? `<span class="text-emerald-400">(To'g'risi: ${correct})</span>` : ''}
+              <span class="ml-auto font-mono ${isCorrect ? 'text-emerald-400 font-bold' : 'text-rose-400'}">
+                ${isCorrect ? `+${points} ball, +${xp} XP` : `${points} ball`}
+              </span>
+            </div>
+          </div>
+          <div class="w-6 h-6 rounded-full ${isCorrect ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center text-[10px] shrink-0 mt-1">
+            <i class="fa-solid ${isCorrect ? 'fa-check' : 'fa-xmark'}"></i>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Global helper for opening user profile from inline answer items
+  window.openUserProfileFromAnswer = function(userId) {
+    if (userId) openUserProfileModal(userId);
+  };
+
+  async function loadDifficultQuestions() {
+    if (!el.difficultQuestionsList) return;
     el.difficultQuestionsList.innerHTML = `<div class="p-3 text-center text-gray-500 text-xs">Yuklanmoqda...</div>`;
 
     const res = await api('/api/admin/answers?limit=30');
     if (!res.ok) return;
 
-    // Recent Answers
-    const answers = res.recent_answers || [];
-    if (answers.length === 0) {
-      el.recentAnswersList.innerHTML = `<div class="p-4 text-center text-gray-500 text-xs">Javoblar logi hozircha bo'sh.</div>`;
-    } else {
-      el.recentAnswersList.innerHTML = answers.map(a => {
-        const isCorrect = Boolean(a.is_correct);
-        const name = escapeHtml(a.first_name || 'Player');
-        const qText = escapeHtml(a.question_text || 'Savol matni');
-        const given = escapeHtml(a.user_answer || '-');
-        const correct = escapeHtml(a.correct_answer || '-');
-        const timeStr = a.created_at ? new Date(a.created_at).toLocaleTimeString('uz-UZ') : '';
-
-        return `
-          <div class="p-3 hover:bg-white/[0.02] flex items-start justify-between space-x-2 text-xs">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="font-semibold text-white">${name}</span>
-                <span class="px-1.5 py-0.2 rounded text-[10px] ${isCorrect ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}">
-                  ${isCorrect ? 'To\'g\'ri' : 'Noto\'g\'ri'}
-                </span>
-                <span class="text-[10px] text-gray-500">${timeStr}</span>
-              </div>
-              <div class="text-gray-300 text-[11px]">${qText}</div>
-              <div class="text-[11px] text-gray-400">
-                Javob: <span class="${isCorrect ? 'text-emerald-400 font-medium' : 'text-rose-400 line-through'}">${given}</span>
-                ${!isCorrect && correct !== '-' ? ` <span class="text-emerald-400">(${correct})</span>` : ''}
-              </div>
-            </div>
-            <div class="w-5 h-5 rounded-full ${isCorrect ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center text-[10px] shrink-0">
-              <i class="fa-solid ${isCorrect ? 'fa-check' : 'fa-xmark'}"></i>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // Difficult Questions
     const questions = res.difficult_questions || [];
     if (questions.length === 0) {
       el.difficultQuestionsList.innerHTML = `<div class="p-4 text-center text-gray-500 text-xs">Yetarlicha javob berilgan savollar yo'q.</div>`;
@@ -997,8 +1857,6 @@
     }
   }
 
-  el.btnRefreshAnswers.addEventListener('click', () => loadAnswers());
-
   // -------------------------------------------------------------
   // Tab 5: Broadcast Composer & Preview
   // -------------------------------------------------------------
@@ -1010,15 +1868,12 @@
       const btnText = el.broadcastBtnText.value.trim();
       const btnUrl = el.broadcastBtnUrl.value.trim();
 
-      // Text preview (render basic html tags)
       if (!text) {
         el.previewTextMessage.innerHTML = '<span class="text-gray-400 italic">Xabar matni bu yerda ko\'rinadi...</span>';
       } else {
-        // Sanitize and preserve telegram-supported tags
         el.previewTextMessage.innerHTML = renderTelegramHtml(text);
       }
 
-      // Photo preview
       if (photo && photo.startsWith('http')) {
         el.previewPhotoImg.src = photo;
         el.previewPhotoContainer.classList.remove('hidden');
@@ -1026,7 +1881,6 @@
         el.previewPhotoContainer.classList.add('hidden');
       }
 
-      // Button preview
       if (btnText && btnUrl) {
         el.previewButton.textContent = btnText;
         el.previewButton.href = btnUrl;

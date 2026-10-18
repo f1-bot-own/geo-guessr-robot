@@ -590,7 +590,12 @@ async def cb_solo_answer(query: CallbackQuery, bot: Bot):
         correct_ans = q.correct_answer if q else ""
         is_correct, points, is_game_over = session.check_answer(opt_idx)
 
-        user_name = user.first_name or user.username or "Player"
+        raw_first = (user.first_name or "").strip()
+        raw_un = (user.username or "").strip()
+        if not raw_first or raw_first == ".":
+            user_name = f"@{raw_un.lstrip('@')}" if raw_un and raw_un != "." else f"Player {user.id}"
+        else:
+            user_name = raw_first
         if is_correct:
             await query.answer(f"🎯 Correct! +{points} pts", show_alert=False)
             try:
