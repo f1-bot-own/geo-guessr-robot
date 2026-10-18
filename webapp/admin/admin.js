@@ -1587,99 +1587,134 @@
     state.activeUserProfileId = userId;
 
     // Reset and show modal loader state
-    el.userModalAvatar.textContent = '...';
-    el.userModalName.textContent = 'Yuklanmoqda...';
-    el.userModalUsername.textContent = '@...';
-    el.userModalId.textContent = userId;
-    el.userModalRegistered.textContent = "Ro'yxatdan: ...";
-    el.userModalAnswersTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 font-sans">Javoblar tarixi yuklanmoqda...</td></tr>`;
-    el.modalUserProfile.classList.remove('hidden');
-
-    const res = await api(`/api/admin/users/${userId}/full`);
-    if (!res.ok || !res.profile) {
-      alert(res.error || "Foydalanuvchi ma'lumotlarini yuklashda xatolik");
-      el.modalUserProfile.classList.add('hidden');
-      return;
+    if (el.userModalAvatar) el.userModalAvatar.textContent = '...';
+    if (el.userModalName) el.userModalName.textContent = 'Yuklanmoqda...';
+    if (el.userModalUsername) el.userModalUsername.textContent = '@...';
+    if (el.userModalId) el.userModalId.textContent = userId;
+    if (el.userModalRegistered) el.userModalRegistered.textContent = "Ro'yxatdan: ...";
+    if (el.userModalAnswersTableBody) {
+      el.userModalAnswersTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 font-sans">Javoblar tarixi yuklanmoqda...</td></tr>`;
+    }
+    if (el.modalUserProfile) {
+      el.modalUserProfile.classList.remove('hidden');
     }
 
-    const u = res.profile.user || {};
-    const history = res.profile.history || [];
-    const safeName = formatUserName(u, u.user_id, u.username);
-    const isBanned = Boolean(u.is_banned);
+    try {
+      const res = await api(`/api/admin/users/${userId}/full`);
+      if (!res || !res.ok) {
+        alert((res && res.error) || "Foydalanuvchi ma'lumotlarini yuklashda xatolik");
+        if (el.modalUserProfile) el.modalUserProfile.classList.add('hidden');
+        return;
+      }
 
-    // Populate Header
-    el.userModalAvatar.textContent = safeName.charAt(0).toUpperCase();
-    el.userModalName.textContent = safeName;
-    el.userModalUsername.textContent = u.username ? `@${u.username}` : `(username yo'q)`;
-    el.userModalId.textContent = u.user_id;
-    el.userModalRegistered.textContent = `Ro'yxatdan: ${formatDate(u.created_at)}`;
+      const p = res.profile || res;
+      const u = p.user || p;
+      const stats = p.stats || {};
+      const history = p.history || p.answers || p.recent_answers || [];
+      const safeName = formatUserName(u, u.user_id || userId, u.username);
+      const isBanned = Boolean(u.is_banned !== undefined ? u.is_banned : stats.is_banned);
 
-    if (isBanned) {
-      el.userModalStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30';
-      el.userModalStatusBadge.textContent = 'Bloklangan';
-      el.userModalBtnBanText.textContent = '🔓 Blokdan ochish';
-    } else {
-      el.userModalStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-      el.userModalStatusBadge.textContent = 'Faol';
-      el.userModalBtnBanText.textContent = '🚫 Bloklash';
+      // Populate Header
+      if (el.userModalAvatar) el.userModalAvatar.textContent = safeName.charAt(0).toUpperCase();
+      if (el.userModalName) el.userModalName.textContent = safeName;
+      if (el.userModalUsername) el.userModalUsername.textContent = u.username ? `@${u.username}` : `(username yo'q)`;
+      if (el.userModalId) el.userModalId.textContent = u.user_id || userId;
+      if (el.userModalRegistered) el.userModalRegistered.textContent = `Ro'yxatdan: ${formatDate(u.created_at || stats.created_at)}`;
+
+      if (el.userModalStatusBadge) {
+        if (isBanned) {
+          el.userModalStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30';
+          el.userModalStatusBadge.textContent = 'Bloklangan';
+          if (el.userModalBtnBanText) el.userModalBtnBanText.textContent = '🔓 Blokdan ochish';
+        } else {
+          el.userModalStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          el.userModalStatusBadge.textContent = 'Faol';
+          if (el.userModalBtnBanText) el.userModalBtnBanText.textContent = '🚫 Bloklash';
+        }
+      }
+
+      // Populate Stats Cards
+      const rawScore = u.score !== undefined ? u.score : (u.total_score !== undefined ? u.total_score : (stats.total_score !== undefined ? stats.total_score : 0));
+      const scoreVal = Number(rawScore) || 0;
+      const rawXp = u.xp !== undefined ? u.xp : (stats.xp !== undefined ? stats.xp : 0);
+      const xpVal = Number(rawXp) || 0;
+      const rawLevel = u.level || stats.level || 1;
+      const levelVal = Number(rawLevel) || 1;
+
+      const rawWinRate = p.win_rate !== undefined ? p.win_rate : (stats.win_rate !== undefined ? stats.win_rate : (u.win_rate !== undefined ? u.win_rate : (u.games_played > 0 ? Math.round((u.games_won / u.games_played) * 100) : 0)));
+      const winRateVal = Number(rawWinRate) || 0;
+
+      const correctAnswers = u.correct_answers !== undefined ? u.correct_answers : (stats.correct_answers !== undefined ? stats.correct_answers : 0);
+      const totalAnswers = u.total_answers !== undefined ? u.total_answers : (stats.total_answers !== undefined ? stats.total_answers : 0);
+      const rawAccuracy = p.accuracy !== undefined ? p.accuracy : (stats.accuracy !== undefined ? stats.accuracy : (u.accuracy_pct !== undefined ? u.accuracy_pct : (totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0)));
+      const accuracyVal = Number(rawAccuracy) || 0;
+
+      const currentStreak = u.streak !== undefined ? u.streak : (u.current_streak !== undefined ? u.current_streak : (stats.streak !== undefined ? stats.streak : (stats.current_streak || 0)));
+      const bestStreak = u.best_streak !== undefined ? u.best_streak : (stats.best_streak || 0);
+
+      if (el.userModalScore) el.userModalScore.textContent = scoreVal.toLocaleString();
+      if (el.userModalXp) el.userModalXp.textContent = `${xpVal.toLocaleString()} XP`;
+      if (el.userModalLevel) el.userModalLevel.textContent = `${levelVal}-daraja`;
+      if (el.userModalWinRate) el.userModalWinRate.textContent = `${winRateVal}%`;
+      if (el.userModalAccuracy) el.userModalAccuracy.textContent = `${correctAnswers} / ${totalAnswers} (${accuracyVal}%)`;
+      if (el.userModalStreak) el.userModalStreak.textContent = `${currentStreak} (Max: ${bestStreak})`;
+
+      // Populate Top 100 Answer History Table
+      if (el.userModalAnswersCount) el.userModalAnswersCount.textContent = `${history.length} ta javob`;
+      if (el.userModalAnswersTableBody) {
+        if (history.length === 0) {
+          el.userModalAnswersTableBody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500 font-sans">Ushbu foydalanuvchi hali savollarga javob bermagan.</td></tr>`;
+        } else {
+          el.userModalAnswersTableBody.innerHTML = history.map(h => {
+            const isCorrect = Boolean(h.is_correct);
+            const timeStr = formatDate(h.created_at);
+            const cat = (h.category || h.mode || 'ZAKOVAT').toUpperCase();
+            const badgeClass = getCategoryBadgeClass(cat);
+            const qText = escapeHtml(h.question_text || h.question || '-');
+            const userAns = escapeHtml(h.user_answer || h.selected_option || '-');
+            const corrAns = escapeHtml(h.correct_answer || h.correct_option || '-');
+            const points = h.points !== undefined ? h.points : (h.points_awarded !== undefined ? h.points_awarded : (isCorrect ? 100 : -20));
+            const xp = h.xp !== undefined ? h.xp : (h.xp_awarded !== undefined ? h.xp_awarded : (isCorrect ? 25 : 0));
+
+            return `
+              <tr class="hover:bg-white/[0.02] transition">
+                <td class="p-3 text-gray-400 font-sans text-xs">${timeStr}</td>
+                <td class="p-3">
+                  <span class="atlas-badge ${badgeClass}">[${cat}]</span>
+                </td>
+                <td class="p-3 text-gray-200 font-sans text-xs max-w-xs truncate" title="${qText}">${qText}</td>
+                <td class="p-3 font-sans text-xs">
+                  <span class="${isCorrect ? 'text-emerald-300 font-medium' : 'text-rose-400 line-through'}">${userAns}</span>
+                  ${!isCorrect && corrAns !== '-' ? `<span class="text-emerald-400 ml-1">(${corrAns})</span>` : ''}
+                </td>
+                <td class="p-3">
+                  <span class="score-pill ${isCorrect ? 'correct' : 'incorrect'}">
+                    ${isCorrect ? 'To\'g\'ri' : 'Noto\'g\'ri'}
+                  </span>
+                </td>
+                <td class="p-3 text-right font-sans">
+                  <span class="${isCorrect ? 'text-emerald-400 font-bold' : 'text-rose-400'}">
+                    ${isCorrect ? `+${points}b, +${xp}XP` : `${points}b`}
+                  </span>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+
+      // Bind modal actions for this active user
+      const targetUserId = u.user_id || userId;
+      if (el.userModalBtnAdjustPoints) el.userModalBtnAdjustPoints.onclick = () => openAdjustPointsModal(targetUserId, safeName, scoreVal);
+      if (el.userModalBtnAdjustXp) el.userModalBtnAdjustXp.onclick = () => openAdjustXpModal(targetUserId, safeName, xpVal);
+      if (el.userModalBtnSetLevel) el.userModalBtnSetLevel.onclick = () => openSetLevelModal(targetUserId, safeName, levelVal);
+      if (el.userModalBtnBanToggle) el.userModalBtnBanToggle.onclick = () => openBanModal(targetUserId, safeName, isBanned);
+      if (el.userModalBtnResetStats) el.userModalBtnResetStats.onclick = () => confirmResetUserStats(targetUserId, safeName);
+    } catch (err) {
+      console.error("Error loading user profile:", err);
+      alert("Foydalanuvchi ma'lumotlarini yuklashda xatolik yuz berdi");
+      if (el.modalUserProfile) el.modalUserProfile.classList.add('hidden');
     }
-
-    // Populate Stats Cards
-    el.userModalScore.textContent = (u.score || 0).toLocaleString();
-    el.userModalXp.textContent = `${(u.xp || 0).toLocaleString()} XP`;
-    el.userModalLevel.textContent = `${u.level || 1}-daraja`;
-    el.userModalWinRate.textContent = `${u.win_rate !== undefined ? u.win_rate : (u.games_played > 0 ? Math.round((u.games_won / u.games_played) * 100) : 0)}%`;
-    el.userModalAccuracy.textContent = `${u.correct_answers || 0} / ${u.total_answers || 0} (${u.accuracy_pct || 0}%)`;
-    el.userModalStreak.textContent = `${u.streak || 0} (Max: ${u.best_streak || 0})`;
-
-    // Populate Top 100 Answer History Table
-    el.userModalAnswersCount.textContent = `${history.length} ta javob`;
-    if (history.length === 0) {
-      el.userModalAnswersTableBody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500 font-sans">Ushbu foydalanuvchi hali savollarga javob bermagan.</td></tr>`;
-    } else {
-      el.userModalAnswersTableBody.innerHTML = history.map(h => {
-        const isCorrect = Boolean(h.is_correct);
-        const timeStr = formatDate(h.created_at);
-        const cat = (h.category || 'ZAKOVAT').toUpperCase();
-        const badgeClass = getCategoryBadgeClass(cat);
-        const qText = escapeHtml(h.question_text || '-');
-        const userAns = escapeHtml(h.user_answer || '-');
-        const corrAns = escapeHtml(h.correct_answer || '-');
-        const points = h.points_awarded !== undefined ? h.points_awarded : (isCorrect ? 100 : -20);
-        const xp = h.xp_awarded !== undefined ? h.xp_awarded : (isCorrect ? 25 : 0);
-
-        return `
-          <tr class="hover:bg-white/[0.02] transition">
-            <td class="p-3 text-gray-400 font-sans text-xs">${timeStr}</td>
-            <td class="p-3">
-              <span class="atlas-badge ${badgeClass}">[${cat}]</span>
-            </td>
-            <td class="p-3 text-gray-200 font-sans text-xs max-w-xs truncate" title="${qText}">${qText}</td>
-            <td class="p-3 font-sans text-xs">
-              <span class="${isCorrect ? 'text-emerald-300 font-medium' : 'text-rose-400 line-through'}">${userAns}</span>
-              ${!isCorrect && corrAns !== '-' ? `<span class="text-emerald-400 ml-1">(${corrAns})</span>` : ''}
-            </td>
-            <td class="p-3">
-              <span class="score-pill ${isCorrect ? 'correct' : 'incorrect'}">
-                ${isCorrect ? 'To\'g\'ri' : 'Noto\'g\'ri'}
-              </span>
-            </td>
-            <td class="p-3 text-right font-sans">
-              <span class="${isCorrect ? 'text-emerald-400 font-bold' : 'text-rose-400'}">
-                ${isCorrect ? `+${points}b, +${xp}XP` : `${points}b`}
-              </span>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    // Bind modal actions for this active user
-    el.userModalBtnAdjustPoints.onclick = () => openAdjustPointsModal(u.user_id, safeName, u.score || 0);
-    el.userModalBtnAdjustXp.onclick = () => openAdjustXpModal(u.user_id, safeName, u.xp || 0);
-    el.userModalBtnSetLevel.onclick = () => openSetLevelModal(u.user_id, safeName, u.level || 1);
-    el.userModalBtnBanToggle.onclick = () => openBanModal(u.user_id, safeName, isBanned);
-    el.userModalBtnResetStats.onclick = () => confirmResetUserStats(u.user_id, safeName);
   }
 
   if (el.btnCloseUserProfile) {

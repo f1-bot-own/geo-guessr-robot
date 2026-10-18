@@ -710,7 +710,40 @@ async def api_user_full_profile(request: web.Request) -> web.Response:
     profile = await db.get_user_full_profile(user_id)
     if not profile:
         return web.json_response({"ok": False, "error": "User not found"}, status=404)
-    return web.json_response({"ok": True, **profile})
+
+    user_dict = dict(profile.get("user") or profile)
+    score_val = user_dict.get("score") if user_dict.get("score") is not None else user_dict.get("total_score", 0)
+    user_dict["score"] = score_val
+    user_dict["total_score"] = score_val
+    user_dict["accuracy_pct"] = user_dict.get("accuracy_pct", profile.get("accuracy", 0.0))
+    user_dict["win_rate"] = user_dict.get("win_rate", profile.get("win_rate", 0.0))
+    user_dict["streak"] = user_dict.get("streak", user_dict.get("current_streak", 0))
+    user_dict["best_streak"] = user_dict.get("best_streak", 0)
+
+    stats_dict = dict(profile.get("stats") or {})
+    stats_dict["score"] = score_val
+    stats_dict["total_score"] = score_val
+    stats_dict["streak"] = user_dict["streak"]
+    stats_dict["best_streak"] = user_dict["best_streak"]
+    stats_dict["win_rate"] = user_dict["win_rate"]
+    stats_dict["accuracy"] = user_dict["accuracy_pct"]
+
+    history = profile.get("answers") or profile.get("recent_answers") or []
+
+    profile_payload = {
+        **profile,
+        "user": user_dict,
+        "stats": stats_dict,
+        "history": history,
+        "answers": history,
+        "recent_answers": history,
+    }
+
+    return web.json_response({
+        "ok": True,
+        "profile": profile_payload,
+        **profile_payload,
+    })
 
 
 @require_admin
