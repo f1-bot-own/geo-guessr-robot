@@ -382,8 +382,8 @@
       // not logged in
     }
 
-    // Show login screen
-    el.authScreen.classList.remove('hidden');
+    // Not authenticated on dashboard page - redirect to /admin login gate
+    window.location.href = '/admin';
   }
 
   function startOtpTimer(durationSeconds = 300) {
@@ -492,10 +492,11 @@
         try {
           await api('/api/admin/logout', { method: 'POST' });
         } catch {}
+        localStorage.removeItem('admin_token');
         if (state.sseSource) {
           state.sseSource.close();
         }
-        location.reload();
+        window.location.href = '/admin';
       }
     });
   }

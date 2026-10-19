@@ -46,8 +46,25 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <!-- Custom CSS with cache-busting -->
-  <link rel="stylesheet" href="/admin/admin.css?v=3.5.2">
+  <link rel="stylesheet" href="/admin/admin.css?v=3.5.3">
   <style>
+    /* Essential Standalone Rules & Anti-FOUC (Zero CDN dependency) */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    .hidden {
+      display: none !important;
+    }
+    html, body {
+      background-color: #060a14 !important;
+      color: #f1f5f9 !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
     /* Direct embedded styles for Atlas Telemetry Terminal & Components */
     .atlas-terminal {
       background: #040914 !important;
@@ -260,92 +277,24 @@
 </head>
 <body class="bg-[#0a0f1d] text-gray-100 min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-white">
 
-  <!-- ================= AUTH SCREEN / 2FA MODAL ================= -->
-  <div id="authScreen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#060a14]/90 backdrop-blur-md">
-    <div class="glass-panel w-full max-w-md rounded-2xl p-8 relative overflow-hidden shadow-2xl border border-white/10">
-      <!-- Glow background circles -->
-      <div class="absolute -top-16 -right-16 w-44 h-44 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
-      <div class="absolute -bottom-16 -left-16 w-44 h-44 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
-
-      <div class="text-center mb-8 relative">
-        <div class="w-16 h-16 mx-auto mb-3 bg-gradient-to-tr from-cyan-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/25">
-          <i class="fa-solid fa-earth-americas text-2xl text-white"></i>
-        </div>
-        <h1 class="text-2xl font-bold bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
-          GeoGuru Admin
-        </h1>
-        <p class="text-xs text-gray-400 mt-1">Xavfsiz 2FA Autentifikatsiyasi</p>
-        <div id="webappAutoLoginNotice" class="hidden mt-3 text-xs text-cyan-400 bg-cyan-950/60 border border-cyan-800/60 rounded-lg p-2.5 flex items-center justify-center space-x-2">
-          <i class="fa-solid fa-circle-notch fa-spin"></i>
-          <span>Telegram Mini App orqali kirilmoqda...</span>
-        </div>
-      </div>
-
-      <!-- Error message banner -->
-      <div id="authErrorAlert" class="hidden mb-5 p-3 rounded-xl bg-rose-950/80 border border-rose-800/80 text-rose-300 text-xs flex items-start space-x-2">
-        <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-        <span id="authErrorText">Xatolik yuz berdi</span>
-      </div>
-
-      <!-- Success message banner -->
-      <div id="authSuccessAlert" class="hidden mb-5 p-3 rounded-xl bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 text-xs flex items-start space-x-2">
-        <i class="fa-solid fa-circle-check mt-0.5"></i>
-        <span id="authSuccessText">Tasdiq kodi yuborildi</span>
-      </div>
-
-      <!-- Step 1: Enter Admin ID -->
-      <div id="authStep1">
-        <div class="mb-5">
-          <label class="block text-xs font-medium text-gray-300 mb-2">Telegram Admin ID</label>
-          <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 text-sm">
-              <i class="fa-solid fa-id-badge"></i>
-            </span>
-            <input type="number" id="inputAdminId" placeholder="Masalan: 12345678" 
-              class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-sm text-white placeholder-gray-500 outline-none transition">
-          </div>
-          <p class="text-[11px] text-gray-400 mt-1.5">ID raqamingiz @userinfobot orqali aniqlanadi.</p>
-        </div>
-
-        <button id="btnRequestOtp" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-white font-medium text-sm shadow-lg shadow-cyan-500/25 flex items-center justify-center space-x-2 transition disabled:opacity-50">
-          <span>Kodni olish (Send 2FA Code)</span>
-          <i class="fa-solid fa-paper-plane text-xs"></i>
-        </button>
-      </div>
-
-      <!-- Step 2: Enter 6-digit OTP -->
-      <div id="authStep2" class="hidden">
-        <div class="mb-5">
-          <div class="flex items-center justify-between mb-2">
-            <label class="block text-xs font-medium text-gray-300">6 xonali tasdiq kodi</label>
-            <span id="otpTimer" class="text-[11px] text-cyan-400">05:00</span>
-          </div>
-          <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 text-sm">
-              <i class="fa-solid fa-key"></i>
-            </span>
-            <input type="text" id="inputOtpCode" maxlength="6" placeholder="123456" 
-              class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-900/80 border border-gray-700/80 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-center tracking-widest font-mono text-lg text-white placeholder-gray-600 outline-none transition">
-          </div>
-          <p class="text-[11px] text-gray-400 mt-1.5">Telegram botingiz chatiga yuborilgan kodni kiriting.</p>
-        </div>
-
-        <button id="btnVerifyOtp" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-medium text-sm shadow-lg shadow-emerald-500/25 flex items-center justify-center space-x-2 transition mb-3">
-          <span>Kirish (Login)</span>
-          <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
-        </button>
-
-        <button id="btnBackToStep1" class="w-full py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs transition flex items-center justify-center space-x-1">
-          <i class="fa-solid fa-arrow-left text-[10px]"></i>
-          <span>Boshqa ID kiritish</span>
-        </button>
-      </div>
-    </div>
+  <!-- Hidden Auth Stubs for script binding compatibility -->
+  <div id="authScreen" class="hidden">
+    <div id="authStep1" class="hidden"></div>
+    <div id="authStep2" class="hidden"></div>
+    <input type="hidden" id="inputAdminId">
+    <input type="hidden" id="inputOtpCode">
+    <button id="btnRequestOtp" class="hidden"></button>
+    <button id="btnVerifyOtp" class="hidden"></button>
+    <button id="btnBackToStep1" class="hidden"></button>
+    <span id="otpTimer" class="hidden"></span>
+    <div id="authErrorAlert" class="hidden"><span id="authErrorText"></span></div>
+    <div id="authSuccessAlert" class="hidden"><span id="authSuccessText"></span></div>
+    <div id="webappAutoLoginNotice" class="hidden"></div>
   </div>
 
 
   <!-- ================= MAIN DASHBOARD SHELL ================= -->
-  <div id="mainDashboard" class="hidden flex-1 flex flex-col">
+  <div id="mainDashboard" class="flex-1 flex flex-col">
 
     <!-- Top Header Bar -->
     <header class="glass-panel sticky top-0 z-40 border-b border-white/10 px-4 lg:px-8 py-3.5 flex items-center justify-between">
