@@ -361,55 +361,6 @@ async def send_admin_otp(bot, admin_id: int, otp_code: str) -> bool:
 
 # ----------------- Route Middleware / Decorator -----------------
 
-def check_request_admin_auth(request: Optional[web.Request]) -> Optional[Dict[str, Any]]:
-    """
-    Check whether request has valid admin credentials from cookie, Authorization header, or query.
-    Returns session_data dict (augmented with user_id and token) if authorized, otherwise None.
-    """
-    if request is None:
-        return None
-
-    token = request.cookies.get("admin_session")
-    if not token:
-        token = request.cookies.get("session_token")
-    if not token:
-        token = request.cookies.get("token")
-    if not token:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:].strip()
-        elif auth_header:
-            token = auth_header.strip()
-    if not token:
-        token = request.query.get("token")
-
-    if not token:
-        return None
-
-    session_data = verify_session_token(token)
-    if not session_data:
-        legacy_session = validate_session(token)
-        if legacy_session:
-            session_data = legacy_session.get("user") or {"user_id": legacy_session.get("user_id")}
-
-    user_id = None
-    if isinstance(session_data, dict):
-        user_id = session_data.get("user_id")
-        if not user_id and "user" in session_data and isinstance(session_data["user"], dict):
-            user_id = session_data["user"].get("user_id") or session_data["user"].get("id")
-
-    if not session_data or not user_id:
-        return None
-
-    if not config.is_admin(user_id):
-        return None
-
-    result = dict(session_data)
-    result["user_id"] = int(user_id)
-    result["_token"] = token
-    return result
-
-
 def require_admin(handler: Callable):
     """
     Route decorator ensuring request has valid admin credentials.

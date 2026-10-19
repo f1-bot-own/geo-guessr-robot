@@ -12,7 +12,6 @@ from typing import Optional
 from aiohttp import web
 
 from webapp.admin_api import register_admin_routes
-from webapp.admin_auth import check_request_admin_auth
 
 logger = logging.getLogger("WebAppServer")
 
@@ -29,35 +28,15 @@ async def index_handler(request: web.Request) -> web.Response:
     return web.Response(text="GeoGuessr Mini App index.html not found", status=404)
 
 async def admin_index_handler(request: web.Request) -> web.Response:
-    """
-    Serve the Web Admin Dashboard HTML if authenticated, or login page if unauthenticated.
-    Guarantees unauthenticated users never receive the dashboard markup.
-    """
-    auth_user = check_request_admin_auth(request)
-    target_file = (ADMIN_DIR / "index.html") if auth_user else (ADMIN_DIR / "login.html")
-    if not target_file.is_file():
-        target_file = ADMIN_DIR / "index.html"
-
-    if target_file.is_file():
-        return web.FileResponse(target_file, headers={
+    """Serve the Web Admin Dashboard HTML with no-cache headers."""
+    html_file = ADMIN_DIR / "index.html"
+    if html_file.is_file():
+        return web.FileResponse(html_file, headers={
             "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
             "Pragma": "no-cache",
             "Expires": "0"
         })
-    return web.Response(text="Admin page not found", status=404)
-
-async def admin_login_handler(request: web.Request) -> web.Response:
-    """Serve the dedicated login page with no-cache headers."""
-    login_file = ADMIN_DIR / "login.html"
-    if not login_file.is_file():
-        login_file = ADMIN_DIR / "index.html"
-    if login_file.is_file():
-        return web.FileResponse(login_file, headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        })
-    return web.Response(text="Login page not found", status=404)
+    return web.Response(text="GeoGuru Web Admin Dashboard index.html not found", status=404)
 
 async def admin_css_handler(request: web.Request) -> web.Response:
     """Serve admin.css with no-cache headers."""
@@ -166,8 +145,6 @@ def create_web_app(db=None, bot=None) -> web.Application:
     # Admin Dashboard HTML and asset entry points with strict no-cache
     app.router.add_get("/admin", admin_index_handler)
     app.router.add_get("/admin/", admin_index_handler)
-    app.router.add_get("/admin/login", admin_login_handler)
-    app.router.add_get("/admin/login/", admin_login_handler)
     app.router.add_get("/admin/admin.css", admin_css_handler)
     app.router.add_get("/admin/admin.js", admin_js_handler)
 

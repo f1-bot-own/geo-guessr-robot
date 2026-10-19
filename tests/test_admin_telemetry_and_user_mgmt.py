@@ -531,12 +531,14 @@ class TestAdminTelemetryAndUserMgmtAPI(AioHTTPTestCase):
         import database.db as db_mod
         db_mod._default_instance = self.db
 
+        app = web.Application()
+        app["db"] = self.db
         self.mock_bot = MagicMock()
         self.mock_bot.send_message = AsyncMock(return_value=MagicMock(message_id=201))
         self.mock_bot.send_photo = AsyncMock(return_value=MagicMock(message_id=202))
+        app["bot"] = self.mock_bot
 
-        from webapp.server import create_web_app
-        app = create_web_app(db=self.db, bot=self.mock_bot)
+        register_admin_routes(app)
         return app
 
     def setUp(self):
@@ -933,28 +935,6 @@ class TestAdminTelemetryAndUserMgmtAPI(AioHTTPTestCase):
         self.assertEqual(resp_logins.status, 200)
         api_logins_data = await resp_logins.json()
         self.assertGreaterEqual(len(api_logins_data["logins"]), 2)
-
-    @unittest_run_loop
-    async def test_admin_page_server_auth_gate(self):
-        """GET /admin blocks unauthenticated users from receiving dashboard markup and serves login page."""
-        # Unauthenticated: no cookies or headers
-        resp_unauth = await self.client.get("/admin")
-        self.assertEqual(resp_unauth.status, 200)
-        html_unauth = await resp_unauth.text()
-        self.assertIn("GeoGuru Admin", html_unauth)
-        self.assertIn("Xavfsiz 2FA Autentifikatsiyasi", html_unauth)
-        # Verify ZERO dashboard markup leaks
-        self.assertNotIn("So'nggi 50 ta Yangi", html_unauth)
-        self.assertNotIn("Ulangan Telegram Guruhlari", html_unauth)
-        self.assertNotIn("Ommaviy Xabarnoma Yaratish", html_unauth)
-
-        # Authenticated: with cookie
-        self.client.session.cookie_jar.update_cookies({"admin_session": self.admin_token})
-        resp_auth = await self.client.get("/admin")
-        self.assertEqual(resp_auth.status, 200)
-        html_auth = await resp_auth.text()
-        self.assertIn("mainDashboard", html_auth)
-        self.assertIn("So'nggi 50 ta Yangi", html_auth)
 
 
 if __name__ == "__main__":
