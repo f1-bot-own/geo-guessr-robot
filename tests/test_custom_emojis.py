@@ -6,6 +6,8 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock
 from aiogram.methods import SendMessage, EditMessageText, SendPhoto
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from locales.custom_emojis import (
     ce,
     apply_custom_emojis,
@@ -90,6 +92,20 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
         self.assertIn('<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji>', req.text)
         self.assertIn('<tg-emoji emoji-id="5420315771991497307">🔥</tg-emoji>', req.text)
 
+    async def test_middleware_transforms_default_parse_mode_message(self):
+        """SendMessage with default parse mode (no explicit parse_mode) gets custom emojis."""
+        mw = CustomEmojiRequestMiddleware()
+        req = SendMessage(chat_id=1001, text="O'yin 🎮 va 🏆")
+        
+        async def fake_make_request(bot, r):
+            return r
+
+        mock_bot = MagicMock()
+        mock_bot.default = DefaultBotProperties(parse_mode=ParseMode.HTML)
+        await mw(fake_make_request, mock_bot, req)
+        self.assertIn('<tg-emoji emoji-id="5467583879948803288">🎮</tg-emoji>', req.text)
+        self.assertIn('<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji>', req.text)
+
     async def test_middleware_transforms_send_photo_caption(self):
         """SendPhoto caption with HTML parse mode gets custom animated emojis."""
         mw = CustomEmojiRequestMiddleware()
@@ -102,11 +118,11 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
         await mw(fake_make_request, mock_bot, req)
         self.assertIn('<tg-emoji emoji-id="5399898266265475100">🌍</tg-emoji>', req.caption)
 
-    async def test_middleware_cleans_button_texts(self):
-        """Buttons with accidental <tg-emoji> tags are stripped so button labels remain clean."""
+    async def test_middleware_enriches_buttons_with_icon_custom_emoji_id(self):
+        """Buttons with leading emojis have icon_custom_emoji_id assigned and text cleaned."""
         mw = CustomEmojiRequestMiddleware()
         btn = InlineKeyboardButton(
-            text='<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji> Leaderboard',
+            text="🏆 Peshqadamlar jadvali",
             callback_data="menu:lb"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[[btn]])
@@ -117,8 +133,31 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
 
         mock_bot = MagicMock()
         await mw(fake_make_request, mock_bot, req)
-        # Button text must have stripped tags!
-        self.assertEqual(req.reply_markup.inline_keyboard[0][0].text, "🏆 Leaderboard")
+        processed_btn = req.reply_markup.inline_keyboard[0][0]
+        self.assertEqual(processed_btn.icon_custom_emoji_id, "5409008750893734809")
+        self.assertEqual(processed_btn.text, "Peshqadamlar jadvali")
+
+    async def test_middleware_fallback_on_custom_emoji_rejection(self):
+        """If Telegram rejects icon_custom_emoji_id, middleware restores original buttons and retries."""
+        mw = CustomEmojiRequestMiddleware()
+        btn = InlineKeyboardButton(text="🎮 O'yin o'ynash", callback_data="menu:play")
+        kb = InlineKeyboardMarkup(inline_keyboard=[[btn]])
+        req = SendMessage(chat_id=1001, text="Menyu", reply_markup=kb, parse_mode="HTML")
+
+        calls = []
+
+        async def fake_make_request(bot, r):
+            calls.append(r)
+            if len(calls) == 1:
+                raise Exception("Bad Request: BUTTON_CUSTOM_EMOJI_INVALID")
+            return "success"
+
+        mock_bot = MagicMock()
+        res = await mw(fake_make_request, mock_bot, req)
+        self.assertEqual(res, "success")
+        self.assertEqual(len(calls), 2)
+        # In second call, original text was restored without error
+        self.assertEqual(calls[1].reply_markup.inline_keyboard[0][0].text, "🎮 O'yin o'ynash")
 
 
 class TestI18nCustomEmojiIntegration(unittest.TestCase):

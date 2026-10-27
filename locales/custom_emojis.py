@@ -38,9 +38,11 @@ FALLBACK_ALIASES: Dict[str, str] = {
     # Timers / Clocks
     "⏱": EMOJI_TO_ID.get("⏰", "5413704112220949842"),
     "⏱️": EMOJI_TO_ID.get("⏰", "5413704112220949842"),
-    # Warnings & Alerts
+    # Warnings & Alerts & Info
     "⚠️": EMOJI_TO_ID.get("❗", "5467928559664242360"),
     "⚠": EMOJI_TO_ID.get("❗", "5467928559664242360"),
+    "ℹ️": EMOJI_TO_ID.get("💡", "5472146462362048818"),
+    "ℹ": EMOJI_TO_ID.get("💡", "5472146462362048818"),
     # Calendar & Schedules
     "📅": EMOJI_TO_ID.get("📆", "5431897022456145283"),
     "🗓": EMOJI_TO_ID.get("📆", "5431897022456145283"),
@@ -53,6 +55,25 @@ FALLBACK_ALIASES: Dict[str, str] = {
     # Settings & tools
     "⚙": EMOJI_TO_ID.get("🔑", "5330115548900501467"),
     "⚙️": EMOJI_TO_ID.get("🔑", "5330115548900501467"),
+    # Visual modes & quiz categories
+    "📸": EMOJI_TO_ID.get("🗽", "5454219968948229067"),  # Landmark / Photo
+    "📷": EMOJI_TO_ID.get("🗽", "5454219968948229067"),
+    "⛩": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Asia / Architecture
+    "⛩️": EMOJI_TO_ID.get("🏰", "5429403746696189687"),
+    "🌌": EMOJI_TO_ID.get("🌟", "5458799228719472718"),  # Astronomy / Space
+    "🏷": EMOJI_TO_ID.get("🎫", "5418010521309815154"),  # Logo / Brand
+    "🏷️": EMOJI_TO_ID.get("🎫", "5418010521309815154"),
+    "📜": EMOJI_TO_ID.get("📖", "5226512880362332956"),  # History / Scroll
+    "📦": EMOJI_TO_ID.get("🎁", "5199749070830197566"),  # Black Box / Gift
+    "🧩": EMOJI_TO_ID.get("🧠", "5237799019329105246"),  # Riddle / Puzzle
+    "🅰": EMOJI_TO_ID.get("🥇", "5280735858926822987"),  # Option A
+    "🅰️": EMOJI_TO_ID.get("🥇", "5280735858926822987"),
+    "🅱": EMOJI_TO_ID.get("🥈", "5283195573812340110"),  # Option B
+    "🅱️": EMOJI_TO_ID.get("🥈", "5283195573812340110"),
+    "🔘": EMOJI_TO_ID.get("✅", "5427009714745517609"),  # Radio button / Check
+    "🔀": EMOJI_TO_ID.get("⚡", "5431449001532594346"),  # Shuffle / Lightning
+    "🔙": EMOJI_TO_ID.get("❌", "5465665476971471368"),  # Back button
+    "🔢": EMOJI_TO_ID.get("📊", "5431577498364158238"),  # Numbers / Rounds
 }
 
 for k, v in FALLBACK_ALIASES.items():
