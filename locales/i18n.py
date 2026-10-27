@@ -6,7 +6,8 @@ import json
 import logging
 import string
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from .custom_emojis import apply_custom_emojis, strip_custom_emojis, ce
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,12 @@ def load_locales():
 load_locales()
 
 
-def t(key: str, lang: str = "en", **kwargs) -> str:
+_PLAIN_TEXT_PREFIXES = ("btn_", "lang_btn_", "solo_btn_", "status_")
+_PLAIN_TEXT_SUFFIXES = ("_alert",)
+_PLAIN_TEXT_KEYS = {"duel_accept", "duel_decline", "solo_round_info"}
+
+
+def t(key: str, lang: str = "en", as_html: bool = False, **kwargs) -> str:
     """
     Get a localized string by key and format it with provided kwargs.
     Defaults to 'en' (English).
@@ -80,12 +86,38 @@ def t(key: str, lang: str = "en", **kwargs) -> str:
     
     if isinstance(val, str):
         if not kwargs:
-            return val
-        try:
-            return _safe_formatter.format(val, **kwargs)
-        except Exception:
-            return val
-    return str(val) if val is not None else ""
+            res = val
+        else:
+            try:
+                res = _safe_formatter.format(val, **kwargs)
+            except Exception:
+                res = val
+    else:
+        res = str(val) if val is not None else ""
+
+    if not res:
+        return res
+
+    # If key was not found and returned fallback key itself, don't wrap
+    if val == key and key not in lang_dict and key not in LOCALES.get("en", {}):
+        return res
+
+    if as_html:
+        # Never wrap button labels or alerts with <tg-emoji>
+        if (
+            key.startswith(_PLAIN_TEXT_PREFIXES)
+            or key.endswith(_PLAIN_TEXT_SUFFIXES)
+            or key in _PLAIN_TEXT_KEYS
+        ):
+            return strip_custom_emojis(res)
+        return apply_custom_emojis(res)
+
+    return strip_custom_emojis(res)
+
+
+def t_html(key: str, lang: str = "en", **kwargs) -> str:
+    """Convenience helper to get localized string with animated custom emojis applied."""
+    return t(key, lang, as_html=True, **kwargs)
 
 
 def get_rank_name(level: int, lang: str = "en") -> str:

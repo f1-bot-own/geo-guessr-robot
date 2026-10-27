@@ -158,6 +158,10 @@ async def main():
         token=config.BOT_TOKEN.strip(),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
+    # Register custom emoji session middleware for automated premium animated emojis
+    from middlewares import CustomEmojiRequestMiddleware
+    bot.session.middleware(CustomEmojiRequestMiddleware())
+
     bot.db = db
     bot["db"] = db
     if runner and hasattr(runner, "app") and runner.app:
