@@ -689,7 +689,7 @@ async def api_users_recent(request: web.Request) -> web.Response:
     except ValueError:
         limit = 50
     users = await db.get_recent_users(limit=limit)
-    return web.json_response({"ok": True, "users": users})
+    return web.json_response({"ok": True, "users": users, "recent_users": users})
 
 
 @require_admin

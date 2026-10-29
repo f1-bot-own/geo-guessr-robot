@@ -1173,7 +1173,7 @@
       return;
     }
 
-    overviewRecentUsersData = res.recent_users || [];
+    overviewRecentUsersData = res.recent_users || res.users || [];
     renderRecentUsersOverviewTable(overviewRecentUsersData);
   }
 
@@ -1461,7 +1461,7 @@
       return;
     }
 
-    const users = res.recent_users || [];
+    const users = res.recent_users || res.users || [];
     if (users.length === 0) {
       el.recentUsersTableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">Yangi foydalanuvchilar topilmadi.</td></tr>`;
       return;
