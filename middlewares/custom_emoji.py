@@ -153,8 +153,8 @@ def _determine_button_style(text: str, callback_data: str = "") -> str:
 
 def _enrich_buttons(reply_markup: Any) -> bool:
     """
-    Examines keyboard buttons and attaches semantic style (color), ensuring clean native emojis
-    are preserved on buttons without star degradation.
+    Examines keyboard buttons, attaches custom emoji icon from RestrictedEmoji pack,
+    and assigns color style (success, danger, primary).
     Returns True if any button was modified.
     """
     if not reply_markup:
@@ -173,16 +173,10 @@ def _enrich_buttons(reply_markup: Any) -> bool:
             if "<tg-emoji" in text:
                 btn.text = strip_custom_emojis(text)
                 text = btn.text
-                modified = True
-
-            # Ensure icon_custom_emoji_id is None to prevent Telegram from replacing the icon with a generic star ⭐
-            if getattr(btn, "icon_custom_emoji_id", None) is not None:
-                btn.icon_custom_emoji_id = None
-                modified = True
 
             cb_data = getattr(btn, "callback_data", "") or getattr(btn, "url", "")
 
-            # Assign color style: determine semantic style
+            # 1. Assign color style: determine semantic style
             current_style = getattr(btn, "style", None)
             if not current_style:
                 btn.style = _determine_button_style(text, cb_data)
@@ -194,35 +188,66 @@ def _enrich_buttons(reply_markup: Any) -> bool:
                 btn.style = "danger"
                 modified = True
 
+            # 2. Attach icon_custom_emoji_id matched to direction
+            if not getattr(btn, "icon_custom_emoji_id", None):
+                m = LEADING_EMOJI_REGEX.match(text)
+                if m:
+                    lead_emoji = m.group(1)
+                    clean_lead = lead_emoji.replace("\ufe0f", "")
+                    rem_text = text[m.end():].strip()
+
+                    # If leading emoji is a selection prefix (✅ or •) and rem_text also starts with an emoji (e.g. "✅ 🔀 Har ikkisi")
+                    cid = None
+                    if lead_emoji in ("✅", "•") and rem_text:
+                        m2 = LEADING_EMOJI_REGEX.match(rem_text)
+                        if m2:
+                            sub_lead = m2.group(1)
+                            sub_clean = sub_lead.replace("\ufe0f", "")
+                            cid = EMOJI_TO_ID.get(sub_lead) or EMOJI_TO_ID.get(sub_clean) or resolve_fallback_emoji_id(sub_lead)
+                            if cid:
+                                rem_text = rem_text[m2.end():].strip()
+
+                    if not cid:
+                        cid = EMOJI_TO_ID.get(lead_emoji) or EMOJI_TO_ID.get(clean_lead) or resolve_fallback_emoji_id(lead_emoji)
+
+                    if cid and rem_text:
+                        btn.icon_custom_emoji_id = str(cid)
+                        btn.text = rem_text
+                        modified = True
+
     return modified
 
 
 class CustomEmojiRequestMiddleware(BaseRequestMiddleware):
     """
     Middleware that intercepts outgoing Telegram API requests and:
-    1. Formats messages and media captions with clean direction-matched native emojis (no star degradation).
-    2. Attaches Telegram 9.4+ color styles (success, danger, primary) to buttons without star degradation.
-    3. Provides automatic fallback retry if Telegram Bot API returns an error on button styles.
+    1. Upgrades standard emojis in HTML message texts and photo/media captions to animated <tg-emoji> tags.
+    2. Attaches icon_custom_emoji_id and color style to buttons.
+    3. Provides automatic fallback retry if Telegram Bot API returns an error on custom emojis or button styles.
     """
 
     async def __call__(self, make_request, bot, request):
-        # 1. Clean message text or photo/media caption
+        # 1. Transform message text or photo/media caption
         try:
             if isinstance(request, (SendMessage, EditMessageText)):
                 if getattr(request, "text", None):
                     request.text = apply_custom_emojis(request.text)
+                    if "<tg-emoji" in request.text and (getattr(request, "parse_mode", None) is None or isinstance(getattr(request, "parse_mode", None), Default)):
+                        request.parse_mode = "HTML"
             elif isinstance(request, (SendPhoto, SendAnimation, SendVideo, SendAudio, SendDocument, SendVoice, EditMessageCaption)):
                 if getattr(request, "caption", None):
                     request.caption = apply_custom_emojis(request.caption)
+                    if "<tg-emoji" in request.caption and (getattr(request, "parse_mode", None) is None or isinstance(getattr(request, "parse_mode", None), Default)):
+                        request.parse_mode = "HTML"
         except Exception as e:
-            logger.debug(f"Error applying clean emojis to text: {e}")
+            logger.debug(f"Error applying custom emojis to text: {e}")
 
-        # 2. Enrich buttons with color style
+        # 2. Enrich buttons with icon_custom_emoji_id and color style
         orig_reply_markup = None
         rm = getattr(request, "reply_markup", None)
         if rm:
             try:
-                # Save backup in case Telegram rejects style
+                # Save backup in case Telegram rejects icon_custom_emoji_id or style
                 orig_reply_markup = copy.deepcopy(rm)
                 _enrich_buttons(rm)
             except Exception as e:

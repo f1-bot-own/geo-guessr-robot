@@ -68,13 +68,13 @@ FALLBACK_ALIASES: Dict[str, str] = {
     "🔴": EMOJI_TO_ID.get("❌", "5465665476971471368"),
     "🗑": EMOJI_TO_ID.get("❌", "5465665476971471368"),
     "🟢": EMOJI_TO_ID.get("✅", "5427009714745517609"),
-    "🔘": EMOJI_TO_ID.get("✅", "5427009714745517609"),
+    "🔘": EMOJI_TO_ID.get("⌨️", "5472111548572900003"),  # Buttons only -> Keyboard
     "🔵": EMOJI_TO_ID.get("💎", "5471952986970267163"),
     "🔷": EMOJI_TO_ID.get("💎", "5471952986970267163"),
     "🔹": EMOJI_TO_ID.get("💎", "5471952986970267163"),
-    "🟡": EMOJI_TO_ID.get("🌟", "5458799228719472718"),
-    "🔶": EMOJI_TO_ID.get("🌟", "5458799228719472718"),
-    "🔸": EMOJI_TO_ID.get("🌟", "5458799228719472718"),
+    "🟡": EMOJI_TO_ID.get("🏆", "5409008750893734809"),
+    "🔶": EMOJI_TO_ID.get("🏆", "5409008750893734809"),
+    "🔸": EMOJI_TO_ID.get("🏆", "5409008750893734809"),
     "⚪": EMOJI_TO_ID.get("✨", "5472164874886846699"),
     "⬜": EMOJI_TO_ID.get("✨", "5472164874886846699"),
     "⬛": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
@@ -84,10 +84,12 @@ FALLBACK_ALIASES: Dict[str, str] = {
     "📷": EMOJI_TO_ID.get("🗽", "5454219968948229067"),
     "⛩": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Asia / Architecture
     "⛩️": EMOJI_TO_ID.get("🏰", "5429403746696189687"),
-    "🌌": EMOJI_TO_ID.get("🌟", "5458799228719472718"),  # Astronomy / Space
+    "🌌": EMOJI_TO_ID.get("🔭", "5372846474881146350"),  # Astronomy & Space -> Telescope
+    "🪐": EMOJI_TO_ID.get("🔭", "5372846474881146350"),  # Planets -> Telescope
     "🏷": EMOJI_TO_ID.get("🎫", "5418010521309815154"),  # Logo / Brand
     "🏷️": EMOJI_TO_ID.get("🎫", "5418010521309815154"),
-    "📜": EMOJI_TO_ID.get("📖", "5226512880362332956"),  # History / Scroll
+    "📜": EMOJI_TO_ID.get("🏛", "5359778044745622115"),  # History & Art -> Classical Monument / Temple
+    "🏛": "5359778044745622115",
     "📦": EMOJI_TO_ID.get("🎁", "5199749070830197566"),  # Black Box / Gift
     "🎒": EMOJI_TO_ID.get("🎁", "5199749070830197566"),  # Backpack
     "👝": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
@@ -96,8 +98,13 @@ FALLBACK_ALIASES: Dict[str, str] = {
     "🅰️": EMOJI_TO_ID.get("🥇", "5280735858926822987"),
     "🅱": EMOJI_TO_ID.get("🥈", "5283195573812340110"),  # Option B
     "🅱️": EMOJI_TO_ID.get("🥈", "5283195573812340110"),
-    "🔀": EMOJI_TO_ID.get("⚡", "5431449001532594346"),  # Shuffle / Lightning
-    "🔙": EMOJI_TO_ID.get("❌", "5465665476971471368"),  # Back button
+    "🔀": EMOJI_TO_ID.get("🔄", "5264727218734524899"),  # Shuffle / Both -> Reload / Cycle
+    "🔙": EMOJI_TO_ID.get("👈", "5469735272017043817"),  # Back button -> Left Pointer
+    "◀️": EMOJI_TO_ID.get("👈", "5469735272017043817"),
+    "◀": EMOJI_TO_ID.get("👈", "5469735272017043817"),
+    "⬅️": EMOJI_TO_ID.get("👈", "5469735272017043817"),
+    "⬅": EMOJI_TO_ID.get("👈", "5469735272017043817"),
+    "👇": EMOJI_TO_ID.get("👇", "5470177992950946662"),
     "🔢": EMOJI_TO_ID.get("📊", "5431577498364158238"),  # Numbers / Rounds
     # Nature, Geography & Landscapes
     "🌊": EMOJI_TO_ID.get("🌍", "5399898266265475100"),  # Ocean / Wave
@@ -355,23 +362,58 @@ _STRIP_REGEX = re.compile(r"<tg-emoji\b[^>]*>(.*?)</tg-emoji>", re.DOTALL)
 
 def ce(key_or_emoji: str, fallback: Optional[str] = None) -> str:
     """
-    Return clean native direction-matched emoji for display.
+    Format a custom emoji tag for Telegram HTML parse_mode:
+    <tg-emoji emoji-id="...">fallback</tg-emoji>
     Supports named aliases ('trophy', 'fire', 'star', etc.) or raw unicode emojis ('🏆', '🔥').
     """
     if key_or_emoji in NAMED_ALIASES:
-        fallback_char, _ = NAMED_ALIASES[key_or_emoji]
-        return fallback or fallback_char
-    return fallback or key_or_emoji
+        fallback_char, cid = NAMED_ALIASES[key_or_emoji]
+        fb = fallback or fallback_char
+        return f'<tg-emoji emoji-id="{cid}">{fb}</tg-emoji>'
+
+    cid = EMOJI_TO_ID.get(key_or_emoji) or EMOJI_TO_ID.get(key_or_emoji.replace("\ufe0f", ""))
+    if not cid:
+        cid = resolve_fallback_emoji_id(key_or_emoji)
+
+    fb = fallback or ID_TO_EMOJI.get(cid, key_or_emoji)
+    return f'<tg-emoji emoji-id="{cid}">{fb}</tg-emoji>'
 
 
 def apply_custom_emojis(text: str) -> str:
     """
-    Clean and format text ensuring all direction-specific native emojis are properly displayed
-    without degraded or single-icon star placeholders.
+    Replace matching emojis in HTML text with Telegram custom emoji tags:
+    <tg-emoji emoji-id="...">emoji</tg-emoji>
+
+    Safely preserves existing HTML tags and avoids double-wrapping.
+    Guarantees all emojis are transformed into custom animated emojis matched to their direction.
     """
-    if not text:
+    if not text or not _COMBINED_REGEX:
         return text
-    return strip_custom_emojis(text)
+
+    def _replacer(match: re.Match) -> str:
+        # Group 1: If it matched an HTML tag or already wrapped tg-emoji, leave untouched
+        tag = match.group(1)
+        if tag:
+            return tag
+
+        # Group 2: Matched a known mapped emoji
+        em = match.group(2)
+        if em:
+            cid = EMOJI_TO_ID.get(em) or EMOJI_TO_ID.get(em.replace("\ufe0f", ""))
+            if cid:
+                disp = ID_TO_EMOJI.get(cid, em)
+                return f'<tg-emoji emoji-id="{cid}">{disp}</tg-emoji>'
+
+        # Group 3: Any other unicode emoji
+        other_em = match.group(3)
+        if other_em:
+            cid = resolve_fallback_emoji_id(other_em)
+            disp = ID_TO_EMOJI.get(cid, other_em)
+            return f'<tg-emoji emoji-id="{cid}">{disp}</tg-emoji>'
+
+        return match.group(0)
+
+    return _COMBINED_REGEX.sub(_replacer, text)
 
 
 def strip_custom_emojis(text: str) -> str:
