@@ -1,5 +1,5 @@
 """
-Unit tests for custom animated emojis module and request middleware.
+Unit tests for custom animated emojis module and request middleware with button styling.
 Pack: Animated Emoji (https://t.me/addemoji/RestrictedEmoji)
 """
 import unittest
@@ -16,7 +16,7 @@ from locales.custom_emojis import (
     NAMED_ALIASES,
 )
 from locales.i18n import t, t_html
-from middlewares.custom_emoji import CustomEmojiRequestMiddleware
+from middlewares.custom_emoji import CustomEmojiRequestMiddleware, _determine_button_style
 
 
 class TestCustomEmojis(unittest.TestCase):
@@ -52,9 +52,7 @@ class TestCustomEmojis(unittest.TestCase):
         """Already wrapped <tg-emoji> tags must not be wrapped again."""
         already_wrapped = '<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji> va yangisi 🔥'
         res = apply_custom_emojis(already_wrapped)
-        # Should only contain one <tg-emoji tag for 🏆
         self.assertEqual(res.count('<tg-emoji emoji-id="5409008750893734809">'), 1)
-        # And 🔥 should also be wrapped
         self.assertIn('<tg-emoji emoji-id="5420315771991497307">🔥</tg-emoji>', res)
 
     def test_apply_custom_emojis_preserves_html_tags(self):
@@ -76,6 +74,48 @@ class TestCustomEmojis(unittest.TestCase):
         self.assertEqual(apply_custom_emojis(None), None)
         self.assertEqual(strip_custom_emojis(""), "")
         self.assertEqual(strip_custom_emojis(None), None)
+
+
+class TestButtonStylingRules(unittest.TestCase):
+    def test_determine_button_style_green_actions(self):
+        """Start, play, accept, add, confirm, and active toggles receive green success style."""
+        self.assertEqual(_determine_button_style("🚀 O'yinni boshlash", "setup:launch"), "success")
+        self.assertEqual(_determine_button_style("🎮 O'yin o'ynash", "menu:play"), "success")
+        self.assertEqual(_determine_button_style("⚔️ Qabul qilish", "duel_acc:123"), "success")
+        self.assertEqual(_determine_button_style("➕ Guruhga qo'shish", ""), "success")
+        self.assertEqual(_determine_button_style("✅ 30s", "setup:time:30"), "success")
+        self.assertEqual(_determine_button_style("• 🏆 All-Time •", "lb:all_time"), "success")
+        self.assertEqual(_determine_button_style("🔘 Barcha rejimlar (Hammasi)", "setup:all_modes"), "success")
+        self.assertEqual(_determine_button_style("✅ 10 ta", "setup:rounds:10"), "success")
+        self.assertEqual(_determine_button_style("• 10 •", "setup:rounds:10"), "success")
+
+    def test_determine_button_style_red_actions(self):
+        """Cancel, decline, stop, back, eliminated answers, and exhausted lifelines receive red danger style."""
+        self.assertEqual(_determine_button_style("❌ Bekor qilish", "setup:cancel"), "danger")
+        self.assertEqual(_determine_button_style("❌ Rad etish", "duel_dec:123"), "danger")
+        self.assertEqual(_determine_button_style("🔙 Orqaga", "menu:back"), "danger")
+        self.assertEqual(_determine_button_style("🔙 📁 Barcha toifalar", "setup:hub:main"), "danger")
+        self.assertEqual(_determine_button_style("◀️ Admin menyusiga qaytish", "admin:menu"), "danger")
+        self.assertEqual(_determine_button_style("🛑 Stop", "stop_game"), "danger")
+        self.assertEqual(_determine_button_style("Blur: ❌ OFF", "setup:blur"), "danger")
+        self.assertEqual(_determine_button_style("✂️ ✖️", "solo_ignore"), "danger")
+        self.assertEqual(_determine_button_style("💡 ✖️", "solo_ignore"), "danger")
+        self.assertEqual(_determine_button_style("✖️", "solo_ignore"), "danger")
+        self.assertEqual(_determine_button_style("—", "solo_disabled"), "danger")
+
+    def test_determine_button_style_blue_navigation(self):
+        """Menu navigation, profile, leaderboard, help, categories, and neutral options receive blue primary style."""
+        self.assertEqual(_determine_button_style("👤 Mening profilim", "menu:profile"), "primary")
+        self.assertEqual(_determine_button_style("🏆 Peshqadamlar", "menu:leaderboard"), "primary")
+        self.assertEqual(_determine_button_style("🌐 Tilni o'zgartirish", "menu:lang"), "primary")
+        self.assertEqual(_determine_button_style("❓ Qo'llanma", "menu:help"), "primary")
+        self.assertEqual(_determine_button_style("Paris", "ans:0"), "primary")
+        self.assertEqual(_determine_button_style("🔘 Faqat tugmalar", "setup:input:buttons"), "primary")
+        self.assertEqual(_determine_button_style("✍️ Faqat matn", "setup:input:text"), "primary")
+        self.assertEqual(_determine_button_style("🔀 Har ikkisi", "setup:input:both"), "primary")
+        self.assertEqual(_determine_button_style("🌍 Geografiya (1,000+)", "setup:hub:geo"), "primary")
+        self.assertEqual(_determine_button_style("✂️ 50/50", "solo_use_5050"), "primary")
+        self.assertEqual(_determine_button_style("💡 Maslahat", "solo_use_hint"), "primary")
 
 
 class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
@@ -118,14 +158,13 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
         await mw(fake_make_request, mock_bot, req)
         self.assertIn('<tg-emoji emoji-id="5399898266265475100">🌍</tg-emoji>', req.caption)
 
-    async def test_middleware_enriches_buttons_with_icon_custom_emoji_id(self):
-        """Buttons with leading emojis have icon_custom_emoji_id assigned and text cleaned."""
+    async def test_middleware_enriches_buttons_with_icon_and_style(self):
+        """Buttons receive both icon_custom_emoji_id and appropriate color style."""
         mw = CustomEmojiRequestMiddleware()
-        btn = InlineKeyboardButton(
-            text="🏆 Peshqadamlar jadvali",
-            callback_data="menu:lb"
-        )
-        kb = InlineKeyboardMarkup(inline_keyboard=[[btn]])
+        btn_start = InlineKeyboardButton(text="🚀 O'yinni boshlash", callback_data="setup:launch")
+        btn_cancel = InlineKeyboardButton(text="❌ Bekor qilish", callback_data="setup:cancel")
+        btn_prof = InlineKeyboardButton(text="👤 Profil", callback_data="menu:profile")
+        kb = InlineKeyboardMarkup(inline_keyboard=[[btn_start], [btn_cancel], [btn_prof]])
         req = SendMessage(chat_id=1001, text="Menyu", reply_markup=kb, parse_mode="HTML")
 
         async def fake_make_request(bot, r):
@@ -133,12 +172,27 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
 
         mock_bot = MagicMock()
         await mw(fake_make_request, mock_bot, req)
-        processed_btn = req.reply_markup.inline_keyboard[0][0]
-        self.assertEqual(processed_btn.icon_custom_emoji_id, "5409008750893734809")
-        self.assertEqual(processed_btn.text, "Peshqadamlar jadvali")
+        
+        # Verify btn_start: green (success) + rocket custom emoji
+        b0 = req.reply_markup.inline_keyboard[0][0]
+        self.assertEqual(b0.style, "success")
+        self.assertEqual(b0.icon_custom_emoji_id, "5445284980978621387")
+        self.assertEqual(b0.text, "O'yinni boshlash")
 
-    async def test_middleware_fallback_on_custom_emoji_rejection(self):
-        """If Telegram rejects icon_custom_emoji_id, middleware restores original buttons and retries."""
+        # Verify btn_cancel: red (danger) + cross custom emoji
+        b1 = req.reply_markup.inline_keyboard[1][0]
+        self.assertEqual(b1.style, "danger")
+        self.assertEqual(b1.icon_custom_emoji_id, "5465665476971471368")
+        self.assertEqual(b1.text, "Bekor qilish")
+
+        # Verify btn_prof: blue (primary) + user custom emoji
+        b2 = req.reply_markup.inline_keyboard[2][0]
+        self.assertEqual(b2.style, "primary")
+        self.assertEqual(b2.icon_custom_emoji_id, "5373012449597335010")
+        self.assertEqual(b2.text, "Profil")
+
+    async def test_middleware_fallback_on_rejection(self):
+        """If Telegram rejects button styling or icon, middleware restores original buttons and retries."""
         mw = CustomEmojiRequestMiddleware()
         btn = InlineKeyboardButton(text="🎮 O'yin o'ynash", callback_data="menu:play")
         kb = InlineKeyboardMarkup(inline_keyboard=[[btn]])
@@ -156,7 +210,6 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
         res = await mw(fake_make_request, mock_bot, req)
         self.assertEqual(res, "success")
         self.assertEqual(len(calls), 2)
-        # In second call, original text was restored without error
         self.assertEqual(calls[1].reply_markup.inline_keyboard[0][0].text, "🎮 O'yin o'ynash")
 
 

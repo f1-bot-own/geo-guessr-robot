@@ -11,11 +11,13 @@ def get_miniapp_button(lang: str = "en") -> InlineKeyboardButton:
     if config.WEBAPP_URL and config.WEBAPP_URL.startswith("https://"):
         return InlineKeyboardButton(
             text=t("btn_miniapp", lang),
-            web_app=WebAppInfo(url=config.WEBAPP_URL)
+            web_app=WebAppInfo(url=config.WEBAPP_URL),
+            style="primary"
         )
     return InlineKeyboardButton(
         text=t("btn_miniapp", lang),
-        callback_data="menu:miniapp"
+        callback_data="menu:miniapp",
+        style="primary"
     )
 
 def get_miniapp_launch_kb(lang: str = "en") -> InlineKeyboardMarkup:
@@ -23,12 +25,14 @@ def get_miniapp_launch_kb(lang: str = "en") -> InlineKeyboardMarkup:
     if config.WEBAPP_URL and config.WEBAPP_URL.startswith("https://"):
         btn = InlineKeyboardButton(
             text=t("btn_miniapp_launch", lang),
-            web_app=WebAppInfo(url=config.WEBAPP_URL)
+            web_app=WebAppInfo(url=config.WEBAPP_URL),
+            style="success"
         )
     else:
         btn = InlineKeyboardButton(
             text=t("btn_miniapp_launch", lang),
-            callback_data="menu:miniapp_info"
+            callback_data="menu:miniapp_info",
+            style="success"
         )
     return InlineKeyboardMarkup(inline_keyboard=[[btn]])
 
@@ -41,22 +45,22 @@ def get_main_menu_kb(lang: str = "en", bot_username: str = "") -> InlineKeyboard
             get_miniapp_button(lang)
         ],
         [
-            InlineKeyboardButton(text=t("btn_play_game", lang), callback_data="menu:play")
+            InlineKeyboardButton(text=t("btn_play_game", lang), callback_data="menu:play", style="success")
         ],
         [
-            InlineKeyboardButton(text=t("btn_play_solo", lang), callback_data="menu:solo"),
-            InlineKeyboardButton(text=t("btn_group_game", lang), url=add_group_url)
+            InlineKeyboardButton(text=t("btn_play_solo", lang), callback_data="menu:solo", style="primary"),
+            InlineKeyboardButton(text=t("btn_group_game", lang), url=add_group_url, style="primary")
         ],
         [
-            InlineKeyboardButton(text=t("btn_daily", lang), callback_data="menu:daily")
+            InlineKeyboardButton(text=t("btn_daily", lang), callback_data="menu:daily", style="primary")
         ],
         [
-            InlineKeyboardButton(text=t("btn_profile", lang), callback_data="menu:profile"),
-            InlineKeyboardButton(text=t("btn_leaderboard", lang), callback_data="menu:leaderboard")
+            InlineKeyboardButton(text=t("btn_profile", lang), callback_data="menu:profile", style="primary"),
+            InlineKeyboardButton(text=t("btn_leaderboard", lang), callback_data="menu:leaderboard", style="primary")
         ],
         [
-            InlineKeyboardButton(text=t("btn_language", lang), callback_data="menu:language"),
-            InlineKeyboardButton(text=t("btn_help", lang), callback_data="menu:help")
+            InlineKeyboardButton(text=t("btn_language", lang), callback_data="menu:language", style="primary"),
+            InlineKeyboardButton(text=t("btn_help", lang), callback_data="menu:help", style="primary")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -65,9 +69,9 @@ def get_language_kb() -> InlineKeyboardMarkup:
     """Generate language selection keyboard."""
     keyboard = [
         [
-            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang:en"),
-            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang:ru"),
-            InlineKeyboardButton(text="🇺🇿 O'zbekcha", callback_data="set_lang:uz")
+            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang:en", style="primary"),
+            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang:ru", style="primary"),
+            InlineKeyboardButton(text="🇺🇿 O'zbekcha", callback_data="set_lang:uz", style="success")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
