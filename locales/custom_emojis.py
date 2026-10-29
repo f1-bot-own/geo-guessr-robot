@@ -79,10 +79,7 @@ FALLBACK_ALIASES: Dict[str, str] = {
     "⬜": EMOJI_TO_ID.get("✨", "5472164874886846699"),
     "⬛": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
     "🔟": EMOJI_TO_ID.get("🏆", "5409008750893734809"),
-    # Numbers & Special Game Buttons
-    "4️⃣": "5350460637182993292",  # Target 🎯 for "To'rtinchisi ortiqcha"
-    "4⃣": "5350460637182993292",
-    "4": "5350460637182993292",
+    # Game buttons
     "🎲": "5467583879948803288",  # Game Controller 🎮 for all Mix / Super Mix buttons
     "🫀": "5470166383654347072",  # Heart ❤️ for Anatomy
     "🛡️": "5408935401442267103",  # Crossed Swords ⚔️ for Coats of Arms
@@ -358,7 +355,7 @@ def resolve_fallback_emoji_id(char: str) -> str:
 
 # Pre-compile replacement regex matching existing HTML tags OR any mapped emojis OR any remaining unicode emoji
 _SORTED_EMOJIS = sorted(EMOJI_TO_ID.keys(), key=lambda x: len(x), reverse=True)
-_TAG_PATTERN = r"<tg-emoji\b[^>]*>.*?</tg-emoji>|<[^>]+>"
+_TAG_PATTERN = r"<tg-emoji\b[^>]*>.*?</tg-emoji>|<code\b[^>]*>.*?</code>|<pre\b[^>]*>.*?</pre>|<[^>]+>"
 _EMOJI_PATTERN = "|".join(re.escape(e) for e in _SORTED_EMOJIS)
 _ANY_EMOJI_PATTERN = (
     r"[\U0001F1E6-\U0001F1FF]{2}|"
