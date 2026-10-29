@@ -38,6 +38,7 @@ FALLBACK_ALIASES: Dict[str, str] = {
     # Timers / Clocks
     "⏱": EMOJI_TO_ID.get("⏰", "5413704112220949842"),
     "⏱️": EMOJI_TO_ID.get("⏰", "5413704112220949842"),
+    "🕰": EMOJI_TO_ID.get("⏰", "5413704112220949842"),
     # Warnings & Alerts & Info
     "⚠️": EMOJI_TO_ID.get("❗", "5467928559664242360"),
     "⚠": EMOJI_TO_ID.get("❗", "5467928559664242360"),
@@ -52,9 +53,32 @@ FALLBACK_ALIASES: Dict[str, str] = {
     "🛡": EMOJI_TO_ID.get("⚔", "5408935401442267103"),
     "🛡️": EMOJI_TO_ID.get("⚔", "5408935401442267103"),
     "🛑": EMOJI_TO_ID.get("❌", "5465665476971471368"),
-    # Settings & tools
+    # Settings, Tools & UI Controls
     "⚙": EMOJI_TO_ID.get("🔑", "5330115548900501467"),
     "⚙️": EMOJI_TO_ID.get("🔑", "5330115548900501467"),
+    "📢": EMOJI_TO_ID.get("🔔", "5242628160297641831"),
+    "📣": EMOJI_TO_ID.get("🔔", "5242628160297641831"),
+    "📯": EMOJI_TO_ID.get("🔔", "5242628160297641831"),
+    "💾": EMOJI_TO_ID.get("📂", "5431721976769027887"),
+    "📁": EMOJI_TO_ID.get("📂", "5431721976769027887"),
+    "🗂": EMOJI_TO_ID.get("📂", "5431721976769027887"),
+    "🗄": EMOJI_TO_ID.get("📂", "5431721976769027887"),
+    "⛔": EMOJI_TO_ID.get("❌", "5465665476971471368"),
+    "🚫": EMOJI_TO_ID.get("❌", "5465665476971471368"),
+    "🔴": EMOJI_TO_ID.get("❌", "5465665476971471368"),
+    "🗑": EMOJI_TO_ID.get("❌", "5465665476971471368"),
+    "🟢": EMOJI_TO_ID.get("✅", "5427009714745517609"),
+    "🔘": EMOJI_TO_ID.get("✅", "5427009714745517609"),
+    "🔵": EMOJI_TO_ID.get("💎", "5471952986970267163"),
+    "🔷": EMOJI_TO_ID.get("💎", "5471952986970267163"),
+    "🔹": EMOJI_TO_ID.get("💎", "5471952986970267163"),
+    "🟡": EMOJI_TO_ID.get("🌟", "5458799228719472718"),
+    "🔶": EMOJI_TO_ID.get("🌟", "5458799228719472718"),
+    "🔸": EMOJI_TO_ID.get("🌟", "5458799228719472718"),
+    "⚪": EMOJI_TO_ID.get("✨", "5472164874886846699"),
+    "⬜": EMOJI_TO_ID.get("✨", "5472164874886846699"),
+    "⬛": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🔟": EMOJI_TO_ID.get("🏆", "5409008750893734809"),
     # Visual modes & quiz categories
     "📸": EMOJI_TO_ID.get("🗽", "5454219968948229067"),  # Landmark / Photo
     "📷": EMOJI_TO_ID.get("🗽", "5454219968948229067"),
@@ -65,15 +89,163 @@ FALLBACK_ALIASES: Dict[str, str] = {
     "🏷️": EMOJI_TO_ID.get("🎫", "5418010521309815154"),
     "📜": EMOJI_TO_ID.get("📖", "5226512880362332956"),  # History / Scroll
     "📦": EMOJI_TO_ID.get("🎁", "5199749070830197566"),  # Black Box / Gift
+    "🎒": EMOJI_TO_ID.get("🎁", "5199749070830197566"),  # Backpack
+    "👝": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
     "🧩": EMOJI_TO_ID.get("🧠", "5237799019329105246"),  # Riddle / Puzzle
     "🅰": EMOJI_TO_ID.get("🥇", "5280735858926822987"),  # Option A
     "🅰️": EMOJI_TO_ID.get("🥇", "5280735858926822987"),
     "🅱": EMOJI_TO_ID.get("🥈", "5283195573812340110"),  # Option B
     "🅱️": EMOJI_TO_ID.get("🥈", "5283195573812340110"),
-    "🔘": EMOJI_TO_ID.get("✅", "5427009714745517609"),  # Radio button / Check
     "🔀": EMOJI_TO_ID.get("⚡", "5431449001532594346"),  # Shuffle / Lightning
     "🔙": EMOJI_TO_ID.get("❌", "5465665476971471368"),  # Back button
     "🔢": EMOJI_TO_ID.get("📊", "5431577498364158238"),  # Numbers / Rounds
+    # Nature, Geography & Landscapes
+    "🌊": EMOJI_TO_ID.get("🌍", "5399898266265475100"),  # Ocean / Wave
+    "🕳": EMOJI_TO_ID.get("🌍", "5399898266265475100"),
+    "🪨": EMOJI_TO_ID.get("🌍", "5399898266265475100"),
+    "🏔": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Mountain
+    "⛰": EMOJI_TO_ID.get("🏰", "5429403746696189687"),
+    "🗻": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Mt Fuji
+    "🌋": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Volcano
+    "🏛": EMOJI_TO_ID.get("🏰", "5429403746696189687"),
+    "🕌": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Mosque
+    "⛪": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Church
+    "🏚": EMOJI_TO_ID.get("🏰", "5429403746696189687"),
+    "🏙": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Cityscape
+    "🗼": EMOJI_TO_ID.get("🏰", "5429403746696189687"),  # Tokyo Tower
+    "🎪": EMOJI_TO_ID.get("🏰", "5429403746696189687"),
+    "⛺": EMOJI_TO_ID.get("🏰", "5429403746696189687"),
+    "🏜": EMOJI_TO_ID.get("☀️", "5469947168523558652"),  # Desert
+    "☉": EMOJI_TO_ID.get("☀️", "5469947168523558652"),  # Sun symbol
+    "🌾": EMOJI_TO_ID.get("🌿", "5449850741667668411"),  # Rice / Crop
+    "🍃": EMOJI_TO_ID.get("🌿", "5449850741667668411"),  # Leaf
+    "🎋": EMOJI_TO_ID.get("🌿", "5449850741667668411"),  # Bamboo
+    "🌙": EMOJI_TO_ID.get("🌟", "5458799228719472718"),  # Moon
+    "🪐": EMOJI_TO_ID.get("🌟", "5458799228719472718"),  # Planet
+    "🌪": EMOJI_TO_ID.get("☁️", "5287571024500498635"),  # Tornado
+    "🌫": EMOJI_TO_ID.get("☁️", "5287571024500498635"),  # Fog
+    "🌬": EMOJI_TO_ID.get("☁️", "5287571024500498635"),  # Wind
+    "💨": EMOJI_TO_ID.get("☁️", "5287571024500498635"),
+    "💧": EMOJI_TO_ID.get("🌧", "5283243028905994049"),  # Droplet
+    "🧊": EMOJI_TO_ID.get("❄️", "5431895003821513760"),  # Ice
+    # Animals & Nature
+    "🦅": EMOJI_TO_ID.get("🐦", "5332594174527022579"),  # Eagle
+    "🐗": EMOJI_TO_ID.get("🐷", "5357233044694508227"),  # Boar
+    "🐒": EMOJI_TO_ID.get("🐵", "5465449362807070392"),  # Monkey
+    "🦨": EMOJI_TO_ID.get("🐱", "5282816560128336499"),  # Skunk
+    "🐡": EMOJI_TO_ID.get("🐟", "5382210409824525356"),  # Fish
+    "🦪": EMOJI_TO_ID.get("🐟", "5382210409824525356"),  # Oyster
+    "🐚": EMOJI_TO_ID.get("🐟", "5382210409824525356"),  # Shell
+    "🪸": EMOJI_TO_ID.get("🐟", "5382210409824525356"),  # Coral
+    # Food & Agriculture
+    "🍎": EMOJI_TO_ID.get("🍓", "5469963154391833732"),  # Apple
+    "🍊": EMOJI_TO_ID.get("🍓", "5469963154391833732"),  # Orange
+    "🥭": EMOJI_TO_ID.get("🍓", "5469963154391833732"),  # Mango
+    "🍇": EMOJI_TO_ID.get("🍓", "5469963154391833732"),  # Grape
+    "🥝": EMOJI_TO_ID.get("🍓", "5469963154391833732"),  # Kiwi
+    "🫒": EMOJI_TO_ID.get("🍓", "5469963154391833732"),  # Olive
+    "🥩": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Meat
+    "🥟": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Dumpling
+    "🍝": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Pasta
+    "🍜": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Ramen
+    "🍲": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Pot
+    "🍛": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Curry
+    "🥘": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Pan
+    "🫓": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Flatbread
+    "🥐": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Croissant
+    "🧇": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Waffle
+    "🧀": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Cheese
+    "🥥": EMOJI_TO_ID.get("🍖", "5470159421512359552"),  # Coconut
+    "🍵": EMOJI_TO_ID.get("🍕", "5370980663778351052"),  # Tea
+    "🍬": EMOJI_TO_ID.get("🍫", "5348308557919970713"),  # Candy
+    "🌶": EMOJI_TO_ID.get("🌿", "5449850741667668411"),  # Pepper
+    "🌽": EMOJI_TO_ID.get("🌿", "5449850741667668411"),  # Corn
+    "🥚": EMOJI_TO_ID.get("🍕", "5370980663778351052"),  # Egg
+    # Vehicles & Transportation
+    "🚢": EMOJI_TO_ID.get("✈️", "5361600266225326825"),  # Ship
+    "🚣": EMOJI_TO_ID.get("✈️", "5361600266225326825"),  # Boat
+    "⚓": EMOJI_TO_ID.get("✈️", "5361600266225326825"),  # Anchor
+    "🚌": EMOJI_TO_ID.get("🚗", "5445085952194124000"),  # Bus
+    "🚒": EMOJI_TO_ID.get("🚗", "5445085952194124000"),  # Fire engine
+    "🚜": EMOJI_TO_ID.get("🚗", "5445085952194124000"),  # Tractor
+    "🚘": EMOJI_TO_ID.get("🚗", "5445085952194124000"),  # Automobile
+    "🛵": EMOJI_TO_ID.get("🚗", "5445085952194124000"),  # Scooter
+    "🚲": EMOJI_TO_ID.get("🚗", "5445085952194124000"),  # Bicycle
+    "🪂": EMOJI_TO_ID.get("🚀", "5445284980978621387"),  # Parachute
+    "⛷": EMOJI_TO_ID.get("🚀", "5445284980978621387"),  # Ski
+    "🏇": EMOJI_TO_ID.get("🚀", "5445284980978621387"),  # Horse racing
+    # People, Professions & Roles
+    "♂": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "♀": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "👧": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "👦": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "👨": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "👩": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "👴": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "🧑": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "🧒": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "👮": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "🕵": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "🤵": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "👰": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "🧖": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "🧘": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "🚶": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "🧕": EMOJI_TO_ID.get("👤", "5373012449597335010"),
+    "👭": EMOJI_TO_ID.get("👥", "5372926953978341366"),
+    "👸": EMOJI_TO_ID.get("👑", "5467406098367521267"),
+    "🤴": EMOJI_TO_ID.get("👑", "5467406098367521267"),
+    "🧙": EMOJI_TO_ID.get("🧠", "5237799019329105246"),
+    "🧝": EMOJI_TO_ID.get("🧠", "5237799019329105246"),
+    "🧜": EMOJI_TO_ID.get("🧠", "5237799019329105246"),
+    "🦹": EMOJI_TO_ID.get("🧠", "5237799019329105246"),
+    "🏃": EMOJI_TO_ID.get("⚡", "5431449001532594346"),
+    # Science, Health, Objects
+    "🫀": EMOJI_TO_ID.get("❤️", "5449505950283078474"),
+    "🩸": EMOJI_TO_ID.get("❤️", "5449505950283078474"),
+    "🧬": EMOJI_TO_ID.get("🔬", "5379679518740978720"),
+    "⚛": EMOJI_TO_ID.get("🔬", "5379679518740978720"),
+    "⚕": EMOJI_TO_ID.get("🔬", "5379679518740978720"),
+    "⚖": EMOJI_TO_ID.get("📖", "5226512880362332956"),
+    "🪦": EMOJI_TO_ID.get("📖", "5226512880362332956"),
+    "✉": EMOJI_TO_ID.get("📖", "5226512880362332956"),
+    "📋": EMOJI_TO_ID.get("📖", "5226512880362332956"),
+    "📐": EMOJI_TO_ID.get("📖", "5226512880362332956"),
+    "🔪": EMOJI_TO_ID.get("⚔", "5408935401442267103"),
+    "🔨": EMOJI_TO_ID.get("⚔", "5408935401442267103"),
+    "⛏": EMOJI_TO_ID.get("⚔", "5408935401442267103"),
+    "🪡": EMOJI_TO_ID.get("⚔", "5408935401442267103"),
+    "🪤": EMOJI_TO_ID.get("⚔", "5408935401442267103"),
+    "🚪": EMOJI_TO_ID.get("🔑", "5330115548900501467"),
+    "🔒": EMOJI_TO_ID.get("🔑", "5330115548900501467"),
+    "👓": EMOJI_TO_ID.get("🔍", "5188217332748527444"),
+    "🕶": EMOJI_TO_ID.get("🔍", "5188217332748527444"),
+    "📻": EMOJI_TO_ID.get("💬", "5465300082628763143"),
+    "🔋": EMOJI_TO_ID.get("⚡", "5431449001532594346"),
+    "🖌": EMOJI_TO_ID.get("🎨", "5431456208487716895"),
+    "🥋": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🩰": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🧢": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "👒": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🧣": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🧥": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "👘": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🦺": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🥼": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🦰": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🦱": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🧶": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "📿": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
+    "🏈": EMOJI_TO_ID.get("🎮", "5467583879948803288"),
+    "🏉": EMOJI_TO_ID.get("🎮", "5467583879948803288"),
+    "🆚": EMOJI_TO_ID.get("⚔", "5408935401442267103"),
+    "➡": EMOJI_TO_ID.get("✨", "5472164874886846699"),
+    "⬅": EMOJI_TO_ID.get("✨", "5472164874886846699"),
+    "🦯": EMOJI_TO_ID.get("✨", "5472164874886846699"),
+    "🪞": EMOJI_TO_ID.get("✨", "5472164874886846699"),
+    "🪶": EMOJI_TO_ID.get("✨", "5472164874886846699"),
+    "🧴": EMOJI_TO_ID.get("✨", "5472164874886846699"),
+    "🎎": EMOJI_TO_ID.get("✨", "5472164874886846699"),
 }
 
 for k, v in FALLBACK_ALIASES.items():
@@ -150,11 +322,34 @@ NAMED_ALIASES: Dict[str, Tuple[str, str]] = {
     "key": ("🔑", "5330115548900501467"),
 }
 
-# Pre-compile replacement regex matching existing HTML tags OR any mapped emojis
+DEFAULT_CUSTOM_EMOJI_ID = "5458799228719472718"  # Animated glowing star
+
+
+def resolve_fallback_emoji_id(char: str) -> str:
+    """Resolve any emoji character to the closest animated custom emoji ID in RestrictedEmoji pack."""
+    clean = char.replace("\ufe0f", "")
+    if clean in EMOJI_TO_ID:
+        return EMOJI_TO_ID[clean]
+    if char in EMOJI_TO_ID:
+        return EMOJI_TO_ID[char]
+    return DEFAULT_CUSTOM_EMOJI_ID
+
+
+# Pre-compile replacement regex matching existing HTML tags OR any mapped emojis OR any remaining unicode emoji
 _SORTED_EMOJIS = sorted(EMOJI_TO_ID.keys(), key=lambda x: len(x), reverse=True)
 _TAG_PATTERN = r"<tg-emoji\b[^>]*>.*?</tg-emoji>|<[^>]+>"
 _EMOJI_PATTERN = "|".join(re.escape(e) for e in _SORTED_EMOJIS)
-_COMBINED_REGEX = re.compile(f"({_TAG_PATTERN})|({_EMOJI_PATTERN})", re.DOTALL) if _SORTED_EMOJIS else None
+_ANY_EMOJI_PATTERN = (
+    r"[\U0001F1E6-\U0001F1FF]{2}|"
+    r"[\U0001F300-\U0001FAFF]|"
+    r"[\u2600-\u27bf]|"
+    r"[\u2300-\u23ff]|"
+    r"[\u2b50\u2b55\u203c\u2049\u2139\u2194-\u21aa\u2934\u2935\u2b05-\u2b07\u2b1b\u2b1c\u3030\u303d\u3297\u3299]"
+)
+_COMBINED_REGEX = re.compile(
+    f"({_TAG_PATTERN})|({_EMOJI_PATTERN})|({_ANY_EMOJI_PATTERN})",
+    re.DOTALL
+) if _SORTED_EMOJIS else None
 _STRIP_REGEX = re.compile(r"<tg-emoji\b[^>]*>(.*?)</tg-emoji>", re.DOTALL)
 
 
@@ -171,11 +366,11 @@ def ce(key_or_emoji: str, fallback: Optional[str] = None) -> str:
         return f'<tg-emoji emoji-id="{cid}">{fb}</tg-emoji>'
 
     cid = EMOJI_TO_ID.get(key_or_emoji) or EMOJI_TO_ID.get(key_or_emoji.replace("\ufe0f", ""))
-    if cid:
-        fb = fallback or key_or_emoji
-        return f'<tg-emoji emoji-id="{cid}">{fb}</tg-emoji>'
+    if not cid:
+        cid = resolve_fallback_emoji_id(key_or_emoji)
 
-    return fallback or key_or_emoji
+    fb = fallback or key_or_emoji
+    return f'<tg-emoji emoji-id="{cid}">{fb}</tg-emoji>'
 
 
 def apply_custom_emojis(text: str) -> str:
@@ -184,21 +379,30 @@ def apply_custom_emojis(text: str) -> str:
     <tg-emoji emoji-id="...">emoji</tg-emoji>
 
     Safely preserves existing HTML tags and avoids double-wrapping.
+    Guarantees all emojis are transformed into custom animated emojis.
     """
     if not text or not _COMBINED_REGEX:
         return text
 
     def _replacer(match: re.Match) -> str:
-        # If it matched an HTML tag or already wrapped tg-emoji, leave untouched
+        # Group 1: If it matched an HTML tag or already wrapped tg-emoji, leave untouched
         tag = match.group(1)
         if tag:
             return tag
-        
-        # Matched an emoji
+
+        # Group 2: Matched a known mapped emoji
         em = match.group(2)
-        if em and em in EMOJI_TO_ID:
-            cid = EMOJI_TO_ID[em]
-            return f'<tg-emoji emoji-id="{cid}">{em}</tg-emoji>'
+        if em:
+            cid = EMOJI_TO_ID.get(em) or EMOJI_TO_ID.get(em.replace("\ufe0f", ""))
+            if cid:
+                return f'<tg-emoji emoji-id="{cid}">{em}</tg-emoji>'
+
+        # Group 3: Any other unicode emoji
+        other_em = match.group(3)
+        if other_em:
+            cid = resolve_fallback_emoji_id(other_em)
+            return f'<tg-emoji emoji-id="{cid}">{other_em}</tg-emoji>'
+
         return match.group(0)
 
     return _COMBINED_REGEX.sub(_replacer, text)

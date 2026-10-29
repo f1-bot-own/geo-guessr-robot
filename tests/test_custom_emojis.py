@@ -62,6 +62,24 @@ class TestCustomEmojis(unittest.TestCase):
         self.assertTrue(res.startswith('<b><tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji> Champion!</b>'))
         self.assertIn('<a href="https://t.me/bot?mode=🔥">Link</a>', res)
 
+    def test_all_bot_specific_emojis_have_custom_id(self):
+        """All emojis across game modes, nature, astronomy, admin, and UI must map to custom emojis."""
+        test_icons = [
+            "📢", "💾", "⛔", "🔟", "🔴", "🟢", "🔵", "🟡",
+            "🌊", "🏔", "🏜", "🌾", "🦅", "🩸", "🌙", "🕳",
+            "🕌", "🪐", "🧬", "🎒", "🥩", "🥟", "🚢", "🚜"
+        ]
+        for icon in test_icons:
+            tag = ce(icon)
+            self.assertTrue(tag.startswith("<tg-emoji emoji-id=\""), f"Icon {icon} must be converted to <tg-emoji>")
+            self.assertTrue(tag.endswith("</tg-emoji>"))
+
+    def test_unseen_emoji_gets_animated_custom_tag(self):
+        """Even arbitrary or rare unicode emojis get automatically converted to custom emojis."""
+        res = apply_custom_emojis("Super yangilik 🛸 va 🪈!")
+        self.assertIn('<tg-emoji emoji-id="5319139188744936824">🛸</tg-emoji>', res)
+        self.assertTrue('<tg-emoji emoji-id="' in res and '">🪈</tg-emoji>' in res)
+
     def test_strip_custom_emojis(self):
         """strip_custom_emojis removes tags and recovers clean unicode emojis."""
         tagged = '<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji> Reyting'
@@ -190,6 +208,30 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b2.style, "primary")
         self.assertEqual(b2.icon_custom_emoji_id, "5373012449597335010")
         self.assertEqual(b2.text, "Profil")
+
+    async def test_admin_buttons_enrich_with_icons(self):
+        """Admin buttons like broadcast and backup receive custom emoji icons and primary style."""
+        mw = CustomEmojiRequestMiddleware()
+        btn_broadcast = InlineKeyboardButton(text="📢 Xabar yuborish", callback_data="admin:broadcast")
+        btn_backup = InlineKeyboardButton(text="💾 DB Backup olish", callback_data="admin:backup")
+        kb = InlineKeyboardMarkup(inline_keyboard=[[btn_broadcast], [btn_backup]])
+        req = SendMessage(chat_id=1001, text="Admin panel", reply_markup=kb, parse_mode="HTML")
+
+        async def fake_make_request(bot, r):
+            return r
+
+        mock_bot = MagicMock()
+        await mw(fake_make_request, mock_bot, req)
+
+        b0 = req.reply_markup.inline_keyboard[0][0]
+        self.assertEqual(b0.style, "primary")
+        self.assertEqual(b0.icon_custom_emoji_id, "5242628160297641831")  # Bell custom emoji
+        self.assertEqual(b0.text, "Xabar yuborish")
+
+        b1 = req.reply_markup.inline_keyboard[1][0]
+        self.assertEqual(b1.style, "primary")
+        self.assertEqual(b1.icon_custom_emoji_id, "5431721976769027887")  # Folder custom emoji
+        self.assertEqual(b1.text, "DB Backup olish")
 
     async def test_middleware_fallback_on_rejection(self):
         """If Telegram rejects button styling or icon, middleware restores original buttons and retries."""

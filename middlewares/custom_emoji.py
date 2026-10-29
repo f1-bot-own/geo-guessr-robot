@@ -10,8 +10,23 @@ from typing import Any
 from aiogram.client.default import Default
 from aiogram.client.session.middlewares.base import BaseRequestMiddleware
 from aiogram.enums import ParseMode
-from aiogram.methods import SendMessage, EditMessageText, SendPhoto
-from locales.custom_emojis import apply_custom_emojis, strip_custom_emojis, EMOJI_TO_ID
+from aiogram.methods import (
+    SendMessage,
+    EditMessageText,
+    SendPhoto,
+    SendAnimation,
+    SendVideo,
+    SendAudio,
+    SendDocument,
+    SendVoice,
+    EditMessageCaption,
+)
+from locales.custom_emojis import (
+    apply_custom_emojis,
+    strip_custom_emojis,
+    resolve_fallback_emoji_id,
+    EMOJI_TO_ID,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +106,15 @@ def _determine_button_style(text: str, callback_data: str = "") -> str:
         "clear", "tozalash", "очистить",
         "reject",
     ]
-    if any(k in t_lower or k in cb_lower for k in danger_keywords):
-        return "danger"
+    for k in danger_keywords:
+        if k == "back":
+            if (
+                ("back" in t_lower and "backup" not in t_lower and "feedback" not in t_lower)
+                or ("back" in cb_lower and "backup" not in cb_lower and "feedback" not in cb_lower)
+            ):
+                return "danger"
+        elif k in t_lower or k in cb_lower:
+            return "danger"
 
     # 2. Green (success) conditions:
     if (
@@ -174,7 +196,7 @@ def _enrich_buttons(reply_markup: Any) -> bool:
             if m:
                 lead_emoji = m.group(1)
                 clean_lead = lead_emoji.replace("\ufe0f", "")
-                cid = EMOJI_TO_ID.get(lead_emoji) or EMOJI_TO_ID.get(clean_lead)
+                cid = EMOJI_TO_ID.get(lead_emoji) or EMOJI_TO_ID.get(clean_lead) or resolve_fallback_emoji_id(lead_emoji)
                 if cid:
                     rem_text = text[m.end():].strip()
                     if rem_text:
@@ -188,20 +210,24 @@ def _enrich_buttons(reply_markup: Any) -> bool:
 class CustomEmojiRequestMiddleware(BaseRequestMiddleware):
     """
     Middleware that intercepts outgoing Telegram API requests and:
-    1. Upgrades standard emojis in HTML message texts and photo captions to animated <tg-emoji> tags.
+    1. Upgrades standard emojis in HTML message texts and photo/media captions to animated <tg-emoji> tags.
     2. Attaches icon_custom_emoji_id and color style to buttons.
     3. Provides automatic fallback retry if Telegram Bot API returns an error on custom emojis or button styles.
     """
 
     async def __call__(self, make_request, bot, request):
-        # 1. Transform message text or photo caption
+        # 1. Transform message text or photo/media caption
         try:
             if isinstance(request, (SendMessage, EditMessageText)):
-                if _is_html_mode(request, bot) and getattr(request, "text", None):
+                if getattr(request, "text", None):
                     request.text = apply_custom_emojis(request.text)
-            elif isinstance(request, SendPhoto):
-                if _is_html_mode(request, bot) and getattr(request, "caption", None):
+                    if "<tg-emoji" in request.text and (getattr(request, "parse_mode", None) is None or isinstance(getattr(request, "parse_mode", None), Default)):
+                        request.parse_mode = "HTML"
+            elif isinstance(request, (SendPhoto, SendAnimation, SendVideo, SendAudio, SendDocument, SendVoice, EditMessageCaption)):
+                if getattr(request, "caption", None):
                     request.caption = apply_custom_emojis(request.caption)
+                    if "<tg-emoji" in request.caption and (getattr(request, "parse_mode", None) is None or isinstance(getattr(request, "parse_mode", None), Default)):
+                        request.parse_mode = "HTML"
         except Exception as e:
             logger.debug(f"Error applying custom emojis to text: {e}")
 
