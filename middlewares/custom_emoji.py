@@ -26,6 +26,7 @@ from locales.custom_emojis import (
     strip_custom_emojis,
     resolve_fallback_emoji_id,
     EMOJI_TO_ID,
+    FALLBACK_ALIASES,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,8 @@ LEADING_EMOJI_REGEX = re.compile(
     r"[\U00002702-\U000027B0]|"
     r"[\U000024C2-\U0001F251]|"
     r"[\U00002600-\U000026FF]|"
-    r"[\U00002300-\U000023FF]"
+    r"[\U00002300-\U000023FF]|"
+    r"[0-9]\ufe0f?\u20e3"
     r")\ufe0f?\s*",
     flags=re.UNICODE,
 )
@@ -153,10 +155,8 @@ def _determine_button_style(text: str, callback_data: str = "") -> str:
 
 def _enrich_buttons(reply_markup: Any) -> bool:
     """
-    Examines keyboard buttons and assigns semantic color style (success, danger, primary).
-    Ensures that icon_custom_emoji_id is explicitly set to None so that Telegram
-    never degrades button icons to generic yellow stars (⭐).
-    The real direction emojis are cleanly preserved directly in the button text.
+    Examines keyboard buttons and attaches direction-matched custom animated emoji IDs
+    and semantic color style (success, danger, primary).
     Returns True if any button was modified.
     """
     if not reply_markup:
@@ -177,11 +177,6 @@ def _enrich_buttons(reply_markup: Any) -> bool:
                 text = btn.text
                 modified = True
 
-            # Explicitly ensure icon_custom_emoji_id is None to avoid yellow star degradation on buttons
-            if getattr(btn, "icon_custom_emoji_id", None) is not None:
-                btn.icon_custom_emoji_id = None
-                modified = True
-
             cb_data = getattr(btn, "callback_data", "") or getattr(btn, "url", "")
 
             # 1. Assign color style: determine semantic style
@@ -195,6 +190,45 @@ def _enrich_buttons(reply_markup: Any) -> bool:
             elif (text.startswith("❌") or text.startswith("🔴") or "✖️" in text or text.strip() in ("—", "-", "✖️", "❌")) and current_style != "danger":
                 btn.style = "danger"
                 modified = True
+
+            # 2. Attach icon_custom_emoji_id matched to direction
+            if not getattr(btn, "icon_custom_emoji_id", None):
+                m = LEADING_EMOJI_REGEX.match(text)
+                if m:
+                    lead_emoji = m.group(1)
+                    clean_lead = lead_emoji.replace("\ufe0f", "")
+                    rem_text = text[m.end():].strip()
+
+                    cid = None
+                    # If selection prefix like ✅ or • or back 🔙 (e.g. "✅ 🔀 Har ikkisi" or "🔙 📁 Barcha toifalar")
+                    if lead_emoji in ("✅", "•", "🔙", "◀️", "◀", "⬅️", "⬅") and rem_text:
+                        m2 = LEADING_EMOJI_REGEX.match(rem_text)
+                        if m2:
+                            sub_lead = m2.group(1)
+                            sub_clean = sub_lead.replace("\ufe0f", "")
+                            cid = (
+                                FALLBACK_ALIASES.get(sub_lead)
+                                or FALLBACK_ALIASES.get(sub_clean)
+                                or EMOJI_TO_ID.get(sub_lead)
+                                or EMOJI_TO_ID.get(sub_clean)
+                                or resolve_fallback_emoji_id(sub_lead)
+                            )
+                            if cid:
+                                rem_text = rem_text[m2.end():].strip()
+
+                    if not cid:
+                        cid = (
+                            FALLBACK_ALIASES.get(lead_emoji)
+                            or FALLBACK_ALIASES.get(clean_lead)
+                            or EMOJI_TO_ID.get(lead_emoji)
+                            or EMOJI_TO_ID.get(clean_lead)
+                            or resolve_fallback_emoji_id(lead_emoji)
+                        )
+
+                    if cid and rem_text:
+                        btn.icon_custom_emoji_id = str(cid)
+                        btn.text = rem_text
+                        modified = True
 
     return modified
 

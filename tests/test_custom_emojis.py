@@ -176,18 +176,18 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
         
         b0 = req.reply_markup.inline_keyboard[0][0]
         self.assertEqual(b0.style, "success")
-        self.assertIsNone(b0.icon_custom_emoji_id)
-        self.assertEqual(b0.text, "🚀 O'yinni boshlash")
+        self.assertIsNotNone(b0.icon_custom_emoji_id)
+        self.assertEqual(b0.text, "O'yinni boshlash")
 
         b1 = req.reply_markup.inline_keyboard[1][0]
         self.assertEqual(b1.style, "danger")
-        self.assertIsNone(b1.icon_custom_emoji_id)
-        self.assertEqual(b1.text, "❌ Bekor qilish")
+        self.assertIsNotNone(b1.icon_custom_emoji_id)
+        self.assertEqual(b1.text, "Bekor qilish")
 
         b2 = req.reply_markup.inline_keyboard[2][0]
         self.assertEqual(b2.style, "primary")
-        self.assertIsNone(b2.icon_custom_emoji_id)
-        self.assertEqual(b2.text, "👤 Profil")
+        self.assertIsNotNone(b2.icon_custom_emoji_id)
+        self.assertEqual(b2.text, "Profil")
 
     async def test_category_buttons_enrich_with_matched_direction_icons(self):
         """Game category buttons preserve their specific direction emojis without turning into stars."""
@@ -212,44 +212,44 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
 
         # 🎓 Zakovat
         b_zakovat = req.reply_markup.inline_keyboard[0][0]
-        self.assertIsNone(b_zakovat.icon_custom_emoji_id)
-        self.assertEqual(b_zakovat.text, "🎓 Zakovat Klubi (500)")
+        self.assertEqual(b_zakovat.icon_custom_emoji_id, "5375163339154399459")
+        self.assertEqual(b_zakovat.text, "Zakovat Klubi (500)")
         self.assertEqual(b_zakovat.style, "primary")
 
         # 🌌 Koinot
         b_koinot = req.reply_markup.inline_keyboard[1][0]
-        self.assertIsNone(b_koinot.icon_custom_emoji_id)
-        self.assertEqual(b_koinot.text, "🌌 Koinot & Tabiat (800)")
+        self.assertEqual(b_koinot.icon_custom_emoji_id, "5372846474881146350")
+        self.assertEqual(b_koinot.text, "Koinot & Tabiat (800)")
         self.assertEqual(b_koinot.style, "primary")
 
         # 🌍 Geografiya
         b_geo = req.reply_markup.inline_keyboard[2][0]
-        self.assertIsNone(b_geo.icon_custom_emoji_id)
-        self.assertEqual(b_geo.text, "🌍 Geografiya (1,000+)")
+        self.assertEqual(b_geo.icon_custom_emoji_id, "5399898266265475100")
+        self.assertEqual(b_geo.text, "Geografiya (1,000+)")
         self.assertEqual(b_geo.style, "primary")
 
         # 📜 Tarix
         b_tarix = req.reply_markup.inline_keyboard[3][0]
-        self.assertIsNone(b_tarix.icon_custom_emoji_id)
-        self.assertEqual(b_tarix.text, "📜 Tarix & San'at (1,200)")
+        self.assertEqual(b_tarix.icon_custom_emoji_id, "5359778044745622115")
+        self.assertEqual(b_tarix.text, "Tarix & San'at (1,200)")
         self.assertEqual(b_tarix.style, "primary")
 
         # 🎲 SUPER MIX
         b_mix = req.reply_markup.inline_keyboard[4][0]
-        self.assertIsNone(b_mix.icon_custom_emoji_id)
-        self.assertEqual(b_mix.text, "🎲 SUPER MIX (Barchasi - 4,000+)")
+        self.assertEqual(b_mix.icon_custom_emoji_id, "5467583879948803288")
+        self.assertEqual(b_mix.text, "SUPER MIX (Barchasi - 4,000+)")
         self.assertEqual(b_mix.style, "primary")
 
         # ✅ 🔀 Har ikkisi
         b_both = req.reply_markup.inline_keyboard[5][0]
-        self.assertIsNone(b_both.icon_custom_emoji_id)
-        self.assertEqual(b_both.text, "✅ 🔀 Har ikkisi")
+        self.assertEqual(b_both.icon_custom_emoji_id, "5264727218734524899")
+        self.assertEqual(b_both.text, "Har ikkisi")
         self.assertEqual(b_both.style, "success")
 
         # 🔙 Orqaga
         b_back = req.reply_markup.inline_keyboard[6][0]
-        self.assertIsNone(b_back.icon_custom_emoji_id)
-        self.assertEqual(b_back.text, "🔙 Orqaga")
+        self.assertEqual(b_back.icon_custom_emoji_id, "5469735272017043817")
+        self.assertEqual(b_back.text, "Orqaga")
         self.assertEqual(b_back.style, "danger")
 
     async def test_admin_buttons_enrich_with_styles_and_icons(self):
@@ -268,13 +268,13 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
 
         b0 = req.reply_markup.inline_keyboard[0][0]
         self.assertEqual(b0.style, "primary")
-        self.assertIsNone(b0.icon_custom_emoji_id)
-        self.assertEqual(b0.text, "📢 Xabar yuborish")
+        self.assertIsNotNone(b0.icon_custom_emoji_id)
+        self.assertEqual(b0.text, "Xabar yuborish")
 
         b1 = req.reply_markup.inline_keyboard[1][0]
         self.assertEqual(b1.style, "primary")
-        self.assertIsNone(b1.icon_custom_emoji_id)
-        self.assertEqual(b1.text, "💾 DB Backup olish")
+        self.assertIsNotNone(b1.icon_custom_emoji_id)
+        self.assertEqual(b1.text, "DB Backup olish")
 
     async def test_middleware_fallback_on_rejection(self):
         """If Telegram rejects button styling, middleware restores original buttons and retries."""

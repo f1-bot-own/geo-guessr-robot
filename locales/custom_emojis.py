@@ -79,6 +79,16 @@ FALLBACK_ALIASES: Dict[str, str] = {
     "⬜": EMOJI_TO_ID.get("✨", "5472164874886846699"),
     "⬛": EMOJI_TO_ID.get("🎁", "5199749070830197566"),
     "🔟": EMOJI_TO_ID.get("🏆", "5409008750893734809"),
+    # Numbers & Special Game Buttons
+    "4️⃣": "5350460637182993292",  # Target 🎯 for "To'rtinchisi ortiqcha"
+    "4⃣": "5350460637182993292",
+    "4": "5350460637182993292",
+    "🎲": "5467583879948803288",  # Game Controller 🎮 for all Mix / Super Mix buttons
+    "🫀": "5470166383654347072",  # Heart ❤️ for Anatomy
+    "🛡️": "5408935401442267103",  # Crossed Swords ⚔️ for Coats of Arms
+    "🛡": "5408935401442267103",
+    "📁": "5433653135799228968",  # Folder 📁 for Categories
+    "📁️": "5433653135799228968",
     # Visual modes & quiz categories
     "📸": EMOJI_TO_ID.get("🗽", "5454219968948229067"),  # Landmark / Photo
     "📷": EMOJI_TO_ID.get("🗽", "5454219968948229067"),
@@ -335,6 +345,10 @@ DEFAULT_CUSTOM_EMOJI_ID = "5458799228719472718"  # Animated glowing star
 def resolve_fallback_emoji_id(char: str) -> str:
     """Resolve any emoji character to the closest animated custom emoji ID in RestrictedEmoji pack."""
     clean = char.replace("\ufe0f", "")
+    if clean in FALLBACK_ALIASES:
+        return FALLBACK_ALIASES[clean]
+    if char in FALLBACK_ALIASES:
+        return FALLBACK_ALIASES[char]
     if clean in EMOJI_TO_ID:
         return EMOJI_TO_ID[clean]
     if char in EMOJI_TO_ID:
