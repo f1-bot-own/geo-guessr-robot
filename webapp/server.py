@@ -145,6 +145,8 @@ def create_web_app(db=None, bot=None) -> web.Application:
     # Admin Dashboard HTML and asset entry points with strict no-cache
     app.router.add_get("/admin", admin_index_handler)
     app.router.add_get("/admin/", admin_index_handler)
+    app.router.add_get("/admin/admin", admin_index_handler)
+    app.router.add_get("/admin/admin/", admin_index_handler)
     app.router.add_get("/admin/admin.css", admin_css_handler)
     app.router.add_get("/admin/admin.js", admin_js_handler)
 

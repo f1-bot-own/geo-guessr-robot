@@ -12,6 +12,8 @@ def get_admin_dashboard_url() -> str:
     base = config.WEBAPP_URL or ""
     if base:
         clean_base = base.rstrip("/")
+        if clean_base.endswith("/admin"):
+            return clean_base
         return f"{clean_base}/admin"
     return ""
 
