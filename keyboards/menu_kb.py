@@ -42,9 +42,6 @@ def get_main_menu_kb(lang: str = "en", bot_username: str = "") -> InlineKeyboard
     
     keyboard = [
         [
-            get_miniapp_button(lang)
-        ],
-        [
             InlineKeyboardButton(text=t("btn_play_game", lang), callback_data="menu:play", style="success")
         ],
         [

@@ -355,57 +355,23 @@ _STRIP_REGEX = re.compile(r"<tg-emoji\b[^>]*>(.*?)</tg-emoji>", re.DOTALL)
 
 def ce(key_or_emoji: str, fallback: Optional[str] = None) -> str:
     """
-    Format a custom emoji tag for Telegram HTML parse_mode:
-    <tg-emoji emoji-id="...">fallback</tg-emoji>
-
+    Return clean native direction-matched emoji for display.
     Supports named aliases ('trophy', 'fire', 'star', etc.) or raw unicode emojis ('🏆', '🔥').
     """
     if key_or_emoji in NAMED_ALIASES:
-        fallback_char, cid = NAMED_ALIASES[key_or_emoji]
-        fb = fallback or fallback_char
-        return f'<tg-emoji emoji-id="{cid}">{fb}</tg-emoji>'
-
-    cid = EMOJI_TO_ID.get(key_or_emoji) or EMOJI_TO_ID.get(key_or_emoji.replace("\ufe0f", ""))
-    if not cid:
-        cid = resolve_fallback_emoji_id(key_or_emoji)
-
-    fb = fallback or key_or_emoji
-    return f'<tg-emoji emoji-id="{cid}">{fb}</tg-emoji>'
+        fallback_char, _ = NAMED_ALIASES[key_or_emoji]
+        return fallback or fallback_char
+    return fallback or key_or_emoji
 
 
 def apply_custom_emojis(text: str) -> str:
     """
-    Replace matching emojis in HTML text with Telegram custom emoji tags:
-    <tg-emoji emoji-id="...">emoji</tg-emoji>
-
-    Safely preserves existing HTML tags and avoids double-wrapping.
-    Guarantees all emojis are transformed into custom animated emojis.
+    Clean and format text ensuring all direction-specific native emojis are properly displayed
+    without degraded or single-icon star placeholders.
     """
-    if not text or not _COMBINED_REGEX:
+    if not text:
         return text
-
-    def _replacer(match: re.Match) -> str:
-        # Group 1: If it matched an HTML tag or already wrapped tg-emoji, leave untouched
-        tag = match.group(1)
-        if tag:
-            return tag
-
-        # Group 2: Matched a known mapped emoji
-        em = match.group(2)
-        if em:
-            cid = EMOJI_TO_ID.get(em) or EMOJI_TO_ID.get(em.replace("\ufe0f", ""))
-            if cid:
-                return f'<tg-emoji emoji-id="{cid}">{em}</tg-emoji>'
-
-        # Group 3: Any other unicode emoji
-        other_em = match.group(3)
-        if other_em:
-            cid = resolve_fallback_emoji_id(other_em)
-            return f'<tg-emoji emoji-id="{cid}">{other_em}</tg-emoji>'
-
-        return match.group(0)
-
-    return _COMBINED_REGEX.sub(_replacer, text)
+    return strip_custom_emojis(text)
 
 
 def strip_custom_emojis(text: str) -> str:

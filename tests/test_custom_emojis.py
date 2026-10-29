@@ -1,6 +1,7 @@
 """
-Unit tests for custom animated emojis module and request middleware with button styling.
-Pack: Animated Emoji (https://t.me/addemoji/RestrictedEmoji)
+Unit tests for custom emojis module and request middleware with button styling.
+Ensures direction-matched native emojis are preserved and colored buttons (success, danger, primary)
+are cleanly applied without yellow star icon degradation.
 """
 import unittest
 from unittest.mock import AsyncMock, MagicMock
@@ -25,60 +26,54 @@ class TestCustomEmojis(unittest.TestCase):
         self.assertGreater(len(EMOJI_TO_ID), 900)
 
     def test_named_aliases_exist_and_format_properly(self):
-        """Top key icons must have valid animated custom emoji IDs."""
+        """Top key icons must return direction-matched clean native emojis."""
         key_icons = ["trophy", "fire", "star", "earth", "game", "swords", "check", "cross", "robot", "brain", "crown"]
         for icon in key_icons:
-            tag = ce(icon)
-            self.assertTrue(tag.startswith("<tg-emoji emoji-id=\""))
-            self.assertTrue(tag.endswith("</tg-emoji>"))
+            char = ce(icon)
+            self.assertTrue(len(char) > 0)
+            self.assertNotIn("<tg-emoji", char)
 
     def test_raw_emoji_formatting(self):
-        """Raw unicode emojis must be converted into <tg-emoji> tags."""
-        tag = ce("🏆")
-        self.assertEqual(tag, '<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji>')
+        """Raw unicode emojis must return clean native emojis without star degradation."""
+        char_trophy = ce("🏆")
+        self.assertEqual(char_trophy, "🏆")
 
-        tag_fire = ce("🔥")
-        self.assertEqual(tag_fire, '<tg-emoji emoji-id="5420315771991497307">🔥</tg-emoji>')
+        char_fire = ce("🔥")
+        self.assertEqual(char_fire, "🔥")
 
-    def test_apply_custom_emojis_replaces_icons(self):
-        """apply_custom_emojis replaces emojis with their corresponding animated tags."""
+    def test_apply_custom_emojis_retains_clean_icons(self):
+        """apply_custom_emojis preserves clean direction-matched native emojis."""
         sample = "🏆 Oltin medal! 🔥 5 ta ketma-ket! 🎮 O'yin boshlandi!"
         res = apply_custom_emojis(sample)
-        self.assertIn('<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji>', res)
-        self.assertIn('<tg-emoji emoji-id="5420315771991497307">🔥</tg-emoji>', res)
-        self.assertIn('<tg-emoji emoji-id="5467583879948803288">🎮</tg-emoji>', res)
+        self.assertIn("🏆", res)
+        self.assertIn("🔥", res)
+        self.assertIn("🎮", res)
+        self.assertNotIn("<tg-emoji", res)
 
-    def test_apply_custom_emojis_avoids_double_wrapping(self):
-        """Already wrapped <tg-emoji> tags must not be wrapped again."""
+    def test_apply_custom_emojis_strips_tg_emoji_tags(self):
+        """Already wrapped <tg-emoji> tags are stripped down to native emojis."""
         already_wrapped = '<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji> va yangisi 🔥'
         res = apply_custom_emojis(already_wrapped)
-        self.assertEqual(res.count('<tg-emoji emoji-id="5409008750893734809">'), 1)
-        self.assertIn('<tg-emoji emoji-id="5420315771991497307">🔥</tg-emoji>', res)
+        self.assertNotIn("<tg-emoji", res)
+        self.assertIn("🏆 va yangisi 🔥", res)
 
     def test_apply_custom_emojis_preserves_html_tags(self):
         """HTML links and formatting tags are preserved intact."""
-        html_text = '<b>🏆 Champion!</b> <a href="https://t.me/bot?mode=🔥">Link</a>'
+        html_text = '<b>🏆 Champion!</b> <a href="https://t.me/bot?mode=fire">Link</a>'
         res = apply_custom_emojis(html_text)
-        self.assertTrue(res.startswith('<b><tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji> Champion!</b>'))
-        self.assertIn('<a href="https://t.me/bot?mode=🔥">Link</a>', res)
+        self.assertEqual(res, '<b>🏆 Champion!</b> <a href="https://t.me/bot?mode=fire">Link</a>')
 
-    def test_all_bot_specific_emojis_have_custom_id(self):
-        """All emojis across game modes, nature, astronomy, admin, and UI must map to custom emojis."""
+    def test_all_bot_specific_emojis_have_native_representation(self):
+        """All emojis across game modes, nature, astronomy, admin, and UI must map properly."""
         test_icons = [
             "📢", "💾", "⛔", "🔟", "🔴", "🟢", "🔵", "🟡",
             "🌊", "🏔", "🏜", "🌾", "🦅", "🩸", "🌙", "🕳",
             "🕌", "🪐", "🧬", "🎒", "🥩", "🥟", "🚢", "🚜"
         ]
         for icon in test_icons:
-            tag = ce(icon)
-            self.assertTrue(tag.startswith("<tg-emoji emoji-id=\""), f"Icon {icon} must be converted to <tg-emoji>")
-            self.assertTrue(tag.endswith("</tg-emoji>"))
-
-    def test_unseen_emoji_gets_animated_custom_tag(self):
-        """Even arbitrary or rare unicode emojis get automatically converted to custom emojis."""
-        res = apply_custom_emojis("Super yangilik 🛸 va 🪈!")
-        self.assertIn('<tg-emoji emoji-id="5319139188744936824">🛸</tg-emoji>', res)
-        self.assertTrue('<tg-emoji emoji-id="' in res and '">🪈</tg-emoji>' in res)
+            val = ce(icon)
+            self.assertTrue(len(val) > 0)
+            self.assertNotIn("<tg-emoji", val)
 
     def test_strip_custom_emojis(self):
         """strip_custom_emojis removes tags and recovers clean unicode emojis."""
@@ -132,13 +127,20 @@ class TestButtonStylingRules(unittest.TestCase):
         self.assertEqual(_determine_button_style("✍️ Faqat matn", "setup:input:text"), "primary")
         self.assertEqual(_determine_button_style("🔀 Har ikkisi", "setup:input:both"), "primary")
         self.assertEqual(_determine_button_style("🌍 Geografiya (1,000+)", "setup:hub:geo"), "primary")
+        self.assertEqual(_determine_button_style("🎓 Zakovat Klubi (500)", "setup:cat:zakovat"), "primary")
+        self.assertEqual(_determine_button_style("🌌 Koinot va Astronomiya (400)", "setup:cat:astronomy"), "primary")
+        self.assertEqual(_determine_button_style("🔬 Fan va Mantiq (400)", "setup:cat:science"), "primary")
+        self.assertEqual(_determine_button_style("📜 Jahon Tarixi (400)", "setup:cat:history"), "primary")
+        self.assertEqual(_determine_button_style("👑 Buyuk Shaxslar (400)", "setup:cat:figures"), "primary")
+        self.assertEqual(_determine_button_style("🔍 Blur va Piksel (300)", "setup:cat:blur"), "primary")
+        self.assertEqual(_determine_button_style("🎮 Super Mix (3,400)", "setup:cat:all"), "primary")
         self.assertEqual(_determine_button_style("✂️ 50/50", "solo_use_5050"), "primary")
         self.assertEqual(_determine_button_style("💡 Maslahat", "solo_use_hint"), "primary")
 
 
 class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
-    async def test_middleware_transforms_html_send_message(self):
-        """SendMessage with HTML parse mode gets custom animated emojis."""
+    async def test_middleware_cleans_html_send_message(self):
+        """SendMessage preserves clean native emojis."""
         mw = CustomEmojiRequestMiddleware()
         req = SendMessage(chat_id=1001, text="Salom 🏆 va 🔥!", parse_mode="HTML")
         
@@ -147,25 +149,12 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
 
         mock_bot = MagicMock()
         await mw(fake_make_request, mock_bot, req)
-        self.assertIn('<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji>', req.text)
-        self.assertIn('<tg-emoji emoji-id="5420315771991497307">🔥</tg-emoji>', req.text)
-
-    async def test_middleware_transforms_default_parse_mode_message(self):
-        """SendMessage with default parse mode (no explicit parse_mode) gets custom emojis."""
-        mw = CustomEmojiRequestMiddleware()
-        req = SendMessage(chat_id=1001, text="O'yin 🎮 va 🏆")
-        
-        async def fake_make_request(bot, r):
-            return r
-
-        mock_bot = MagicMock()
-        mock_bot.default = DefaultBotProperties(parse_mode=ParseMode.HTML)
-        await mw(fake_make_request, mock_bot, req)
-        self.assertIn('<tg-emoji emoji-id="5467583879948803288">🎮</tg-emoji>', req.text)
-        self.assertIn('<tg-emoji emoji-id="5409008750893734809">🏆</tg-emoji>', req.text)
+        self.assertIn("🏆", req.text)
+        self.assertIn("🔥", req.text)
+        self.assertNotIn("<tg-emoji", req.text)
 
     async def test_middleware_transforms_send_photo_caption(self):
-        """SendPhoto caption with HTML parse mode gets custom animated emojis."""
+        """SendPhoto caption preserves clean direction-matched native emojis."""
         mw = CustomEmojiRequestMiddleware()
         req = SendPhoto(chat_id=1001, photo="file_id_123", caption="Savol: 🌍 Qaysi davlat?", parse_mode="HTML")
 
@@ -174,10 +163,11 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
 
         mock_bot = MagicMock()
         await mw(fake_make_request, mock_bot, req)
-        self.assertIn('<tg-emoji emoji-id="5399898266265475100">🌍</tg-emoji>', req.caption)
+        self.assertIn("🌍", req.caption)
+        self.assertNotIn("<tg-emoji", req.caption)
 
-    async def test_middleware_enriches_buttons_with_icon_and_style(self):
-        """Buttons receive both icon_custom_emoji_id and appropriate color style."""
+    async def test_middleware_enriches_buttons_with_style_without_star_degradation(self):
+        """Buttons receive appropriate color style, retain original text/emoji, and have icon_custom_emoji_id=None."""
         mw = CustomEmojiRequestMiddleware()
         btn_start = InlineKeyboardButton(text="🚀 O'yinni boshlash", callback_data="setup:launch")
         btn_cancel = InlineKeyboardButton(text="❌ Bekor qilish", callback_data="setup:cancel")
@@ -191,26 +181,62 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
         mock_bot = MagicMock()
         await mw(fake_make_request, mock_bot, req)
         
-        # Verify btn_start: green (success) + rocket custom emoji
+        # Verify btn_start: green (success) + full emoji preserved + no star degradation
         b0 = req.reply_markup.inline_keyboard[0][0]
         self.assertEqual(b0.style, "success")
-        self.assertEqual(b0.icon_custom_emoji_id, "5445284980978621387")
-        self.assertEqual(b0.text, "O'yinni boshlash")
+        self.assertIsNone(b0.icon_custom_emoji_id)
+        self.assertEqual(b0.text, "🚀 O'yinni boshlash")
 
-        # Verify btn_cancel: red (danger) + cross custom emoji
+        # Verify btn_cancel: red (danger) + full emoji preserved + no star degradation
         b1 = req.reply_markup.inline_keyboard[1][0]
         self.assertEqual(b1.style, "danger")
-        self.assertEqual(b1.icon_custom_emoji_id, "5465665476971471368")
-        self.assertEqual(b1.text, "Bekor qilish")
+        self.assertIsNone(b1.icon_custom_emoji_id)
+        self.assertEqual(b1.text, "❌ Bekor qilish")
 
-        # Verify btn_prof: blue (primary) + user custom emoji
+        # Verify btn_prof: blue (primary) + full emoji preserved + no star degradation
         b2 = req.reply_markup.inline_keyboard[2][0]
         self.assertEqual(b2.style, "primary")
-        self.assertEqual(b2.icon_custom_emoji_id, "5373012449597335010")
-        self.assertEqual(b2.text, "Profil")
+        self.assertIsNone(b2.icon_custom_emoji_id)
+        self.assertEqual(b2.text, "👤 Profil")
 
-    async def test_admin_buttons_enrich_with_icons(self):
-        """Admin buttons like broadcast and backup receive custom emoji icons and primary style."""
+    async def test_category_buttons_preserve_direction_emojis(self):
+        """Game category buttons retain their specific native emojis (Zakovat, Koinot, Geografiya, etc.)."""
+        mw = CustomEmojiRequestMiddleware()
+        btn_zakovat = InlineKeyboardButton(text="🎓 Zakovat Klubi (500)", callback_data="setup:cat:zakovat")
+        btn_koinot = InlineKeyboardButton(text="🌌 Koinot va Astronomiya (400)", callback_data="setup:cat:astronomy")
+        btn_geo = InlineKeyboardButton(text="🌍 Geografiya (1,000+)", callback_data="setup:cat:geo")
+        btn_back = InlineKeyboardButton(text="🔙 Orqaga", callback_data="setup:hub:main")
+        kb = InlineKeyboardMarkup(inline_keyboard=[[btn_zakovat], [btn_koinot], [btn_geo], [btn_back]])
+        req = SendMessage(chat_id=1001, text="Toifalar", reply_markup=kb, parse_mode="HTML")
+
+        async def fake_make_request(bot, r):
+            return r
+
+        mock_bot = MagicMock()
+        await mw(fake_make_request, mock_bot, req)
+
+        b_zakovat = req.reply_markup.inline_keyboard[0][0]
+        self.assertEqual(b_zakovat.text, "🎓 Zakovat Klubi (500)")
+        self.assertEqual(b_zakovat.style, "primary")
+        self.assertIsNone(b_zakovat.icon_custom_emoji_id)
+
+        b_koinot = req.reply_markup.inline_keyboard[1][0]
+        self.assertEqual(b_koinot.text, "🌌 Koinot va Astronomiya (400)")
+        self.assertEqual(b_koinot.style, "primary")
+        self.assertIsNone(b_koinot.icon_custom_emoji_id)
+
+        b_geo = req.reply_markup.inline_keyboard[2][0]
+        self.assertEqual(b_geo.text, "🌍 Geografiya (1,000+)")
+        self.assertEqual(b_geo.style, "primary")
+        self.assertIsNone(b_geo.icon_custom_emoji_id)
+
+        b_back = req.reply_markup.inline_keyboard[3][0]
+        self.assertEqual(b_back.text, "🔙 Orqaga")
+        self.assertEqual(b_back.style, "danger")
+        self.assertIsNone(b_back.icon_custom_emoji_id)
+
+    async def test_admin_buttons_enrich_with_styles(self):
+        """Admin buttons receive primary style while keeping their native emojis."""
         mw = CustomEmojiRequestMiddleware()
         btn_broadcast = InlineKeyboardButton(text="📢 Xabar yuborish", callback_data="admin:broadcast")
         btn_backup = InlineKeyboardButton(text="💾 DB Backup olish", callback_data="admin:backup")
@@ -225,16 +251,16 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
 
         b0 = req.reply_markup.inline_keyboard[0][0]
         self.assertEqual(b0.style, "primary")
-        self.assertEqual(b0.icon_custom_emoji_id, "5242628160297641831")  # Bell custom emoji
-        self.assertEqual(b0.text, "Xabar yuborish")
+        self.assertIsNone(b0.icon_custom_emoji_id)
+        self.assertEqual(b0.text, "📢 Xabar yuborish")
 
         b1 = req.reply_markup.inline_keyboard[1][0]
         self.assertEqual(b1.style, "primary")
-        self.assertEqual(b1.icon_custom_emoji_id, "5431721976769027887")  # Folder custom emoji
-        self.assertEqual(b1.text, "DB Backup olish")
+        self.assertIsNone(b1.icon_custom_emoji_id)
+        self.assertEqual(b1.text, "💾 DB Backup olish")
 
     async def test_middleware_fallback_on_rejection(self):
-        """If Telegram rejects button styling or icon, middleware restores original buttons and retries."""
+        """If Telegram rejects button styling, middleware restores original buttons and retries."""
         mw = CustomEmojiRequestMiddleware()
         btn = InlineKeyboardButton(text="🎮 O'yin o'ynash", callback_data="menu:play")
         kb = InlineKeyboardMarkup(inline_keyboard=[[btn]])
@@ -245,7 +271,7 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
         async def fake_make_request(bot, r):
             calls.append(r)
             if len(calls) == 1:
-                raise Exception("Bad Request: BUTTON_CUSTOM_EMOJI_INVALID")
+                raise Exception("Bad Request: BUTTON_STYLE_INVALID")
             return "success"
 
         mock_bot = MagicMock()
@@ -256,14 +282,15 @@ class TestCustomEmojiMiddleware(unittest.IsolatedAsyncioTestCase):
 
 
 class TestI18nCustomEmojiIntegration(unittest.TestCase):
-    def test_t_html_returns_custom_emojis(self):
-        """t_html explicitly applies custom animated emojis to translations."""
+    def test_t_html_returns_clean_emojis(self):
+        """t_html returns clean HTML with native emojis."""
         res = t_html("welcome_private", "en")
-        self.assertIn('<tg-emoji emoji-id="5399898266265475100">🌍</tg-emoji>', res)
+        self.assertIn("🌍", res)
         self.assertIn("Welcome to GeoGuru & GeoGuessr Bot!", res)
+        self.assertNotIn("<tg-emoji", res)
 
     def test_t_buttons_remain_clean_plain_text(self):
-        """Button keys never contain <tg-emoji> tags even when accessed."""
+        """Button keys never contain <tg-emoji> tags."""
         btn_text = t("btn_leaderboard", "en")
         self.assertNotIn("<tg-emoji", btn_text)
         self.assertIn("🏆", btn_text)

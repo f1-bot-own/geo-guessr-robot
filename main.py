@@ -101,16 +101,13 @@ async def setup_bot_commands(bot: Bot):
     except Exception as e:
         logger.warning(f"Could not register bot commands: {e}")
 
-    # Set Chat Menu Button to Mini App if valid HTTPS URL is configured
-    if config.WEBAPP_URL and config.WEBAPP_URL.startswith("https://"):
-        try:
-            from aiogram.types import MenuButtonWebApp, WebAppInfo
-            await bot.set_chat_menu_button(
-                menu_button=MenuButtonWebApp(text="🗺️ Mini App", web_app=WebAppInfo(url=config.WEBAPP_URL))
-            )
-            logger.info(f"Registered Telegram Menu Button pointing to {config.WEBAPP_URL}")
-        except Exception as e:
-            logger.warning(f"Could not set webapp menu button: {e}")
+    # Reset Chat Menu Button to Default (remove Mini App button from chat)
+    try:
+        from aiogram.types import MenuButtonDefault
+        await bot.set_chat_menu_button(menu_button=MenuButtonDefault())
+        logger.info("Chat menu button reset to default (Mini App removed from chat button).")
+    except Exception as e:
+        logger.debug(f"Could not reset chat menu button: {e}")
 
 
 async def main():

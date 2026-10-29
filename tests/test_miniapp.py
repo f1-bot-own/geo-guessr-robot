@@ -137,11 +137,13 @@ class TestMiniAppKeyboards(unittest.TestCase):
             self.assertIsNotNone(btn.web_app)
             self.assertEqual(btn.web_app.url, "https://geobot.up.railway.app")
 
-    def test_main_menu_includes_miniapp(self):
-        """Main menu keyboard contains Mini App button as top row."""
+    def test_main_menu_does_not_include_miniapp_button(self):
+        """Main menu keyboard has play game as top row and excludes miniapp button when removed."""
         kb = get_main_menu_kb("en")
         first_btn = kb.inline_keyboard[0][0]
-        self.assertTrue("Mini App" in first_btn.text or "GeoGuessr" in first_btn.text)
+        self.assertIn("Play Game", first_btn.text)
+        all_texts = [btn.text for row in kb.inline_keyboard for btn in row]
+        self.assertFalse(any("Mini App" in text for text in all_texts))
 
 
 class TestMiniAppHandlers(unittest.IsolatedAsyncioTestCase):
